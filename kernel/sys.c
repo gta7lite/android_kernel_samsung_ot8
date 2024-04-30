@@ -76,9 +76,6 @@
 #include <mt-plat/turbo_common.h>
 #endif
 
-#ifdef CONFIG_SECURITY_DEFEX
-#include <linux/defex.h>
-#endif
 
 #include "uid16.h"
 
@@ -828,10 +825,6 @@ long __sys_setfsuid(uid_t uid)
 	if (!uid_valid(kuid))
 		return old_fsuid;
 
-#ifdef CONFIG_SECURITY_DEFEX
-	if (task_defex_enforce(current, NULL, -__NR_setfsuid))
-		return old_fsuid;
-#endif
 
 	new = prepare_creds();
 	if (!new)
@@ -877,10 +870,6 @@ long __sys_setfsgid(gid_t gid)
 	if (!gid_valid(kgid))
 		return old_fsgid;
 
-#ifdef CONFIG_SECURITY_DEFEX
-	if (task_defex_enforce(current, NULL, -__NR_setfsgid))
-		return old_fsgid;
-#endif
 
 	new = prepare_creds();
 	if (!new)
