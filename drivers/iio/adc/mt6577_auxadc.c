@@ -469,12 +469,6 @@ static int mt6577_auxadc_probe(struct platform_device *pdev)
 
 	adc_dev->dev_comp = of_device_get_match_data(&pdev->dev);
 
-	if (!adc_dev->dev_comp) {
-		ret = -EINVAL;
-		dev_notice(&pdev->dev, "null dev_comp\n");
-		goto err_disable_clk;
-	}
-
 	if (adc_dev->dev_comp->sample_data_cali)
 		mt_auxadc_update_cali(&pdev->dev);
 
@@ -521,9 +515,18 @@ static int mt6577_auxadc_remove(struct platform_device *pdev)
 	return 0;
 }
 
+/* hs14 code for SR-AL6528A-60 by shanxinkai at 2022/09/29 start*/
+#if defined(CONFIG_HQ_PROJECT_O22)
+static const struct dev_pm_ops mt6577_auxadc_pm_ops = {
+	SET_NOIRQ_SYSTEM_SLEEP_PM_OPS(mt6577_auxadc_suspend,
+			      mt6577_auxadc_resume)
+};
+#else
 static SIMPLE_DEV_PM_OPS(mt6577_auxadc_pm_ops,
 			 mt6577_auxadc_suspend,
 			 mt6577_auxadc_resume);
+#endif
+/* hs14 code for SR-AL6528A-60 by shanxinkai at 2022/09/29 end*/
 
 static const struct of_device_id mt6577_auxadc_of_match[] = {
 	{ .compatible = "mediatek,mt2701-auxadc", .data = &mt8173_compat},
