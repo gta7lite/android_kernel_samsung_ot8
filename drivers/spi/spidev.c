@@ -187,6 +187,12 @@ spidev_write(struct file *filp, const char __user *buf,
 	ssize_t			status = 0;
 	unsigned long		missing;
 
+	/*TabA7 Lite code for OT8S-7 by chengerui at 20220302 start*/
+        #ifdef CONFIG_HQ_PROJECT_OT8
+	pr_err("grdm spidev write\n");
+        #endif
+        /*TabA7 Lite code for OT8S-7 by chengerui at 20220302 end*/
+
 	/* chipselect only toggles at start or end of operation */
 	if (count > bufsiz)
 		return -EMSGSIZE;
@@ -677,6 +683,7 @@ static const struct of_device_id spidev_dt_ids[] = {
 	{ .compatible = "lineartechnology,ltc2488" },
 	{ .compatible = "ge,achc" },
 	{ .compatible = "semtech,sx1301" },
+
 	{},
 };
 MODULE_DEVICE_TABLE(of, spidev_dt_ids);
@@ -744,6 +751,7 @@ static int spidev_probe(struct spi_device *spi)
 		return -ENOMEM;
 
 	/* Initialize the driver data */
+
 	spidev->spi = spi;
 	spin_lock_init(&spidev->spi_lock);
 	mutex_init(&spidev->buf_lock);
