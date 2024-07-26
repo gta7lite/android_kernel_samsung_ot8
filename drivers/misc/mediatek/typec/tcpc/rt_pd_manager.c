@@ -10,6 +10,7 @@
 #include <linux/power_supply.h>
 #include <linux/usb/typec.h>
 
+#include "inc/tcpci_core.h"
 #include "inc/tcpci_typec.h"
 #ifdef CONFIG_MTK_CHARGER
 #include <charger_class.h>
@@ -22,8 +23,6 @@
 #ifdef CONFIG_WATER_DETECTION
 #include <mt-plat/mtk_boot.h>
 #endif /* CONFIG_WATER_DETECTION */
-
-#include "usb_boost.h"
 
 #define RT_PD_MANAGER_VERSION	"1.0.8_MTK"
 
@@ -63,6 +62,37 @@ void __attribute__((weak)) usb_dpdm_pulldown(bool enable)
 	pr_notice("%s is not defined\n", __func__);
 }
 
+#define V_CHARGER_MIN 4600000 /* 4.6 V */
+#define V_CHARGER_MIN_1 4400000 /* 4.4 V */
+#define V_CHARGER_MIN_2 4200000 /* 4.2 V */
+#ifndef ADAPT_CHARGER_V1
+static void set_dynamic_mivr(struct rt_pd_manager_data *rpmd)
+{
+	int ret = 0;
+	int mivr;
+
+	ret = charger_dev_get_mivr(rpmd->chg_dev, &mivr);
+	if (ret < 0) {
+		pr_notice("%s: failed, ret = %d\n", __func__, ret);
+		return;
+	}
+	if (mivr > rpmd->sink_mv_new * 1000) {
+		dev_info(rpmd->dev, "%s original mivr = %d\n", __func__, mivr);
+		if (mivr <= V_CHARGER_MIN_2)
+			charger_dev_set_mivr(rpmd->chg_dev, V_CHARGER_MIN_2);
+		else if (mivr <= V_CHARGER_MIN_1)
+			charger_dev_set_mivr(rpmd->chg_dev, V_CHARGER_MIN_1);
+		else
+			charger_dev_set_mivr(rpmd->chg_dev, V_CHARGER_MIN);
+	}
+}
+#endif
+/* HS03s code for SR-AL5625-01-52 by wenyaqi at 20210419 start */
+int usb_cc_flag = 0;
+EXPORT_SYMBOL(usb_cc_flag);
+/* HS03s code for SR-AL5625-01-35 by wenyaqi at 20210420 start */
+extern int ss_charger_status;
+extern bool pd_hub_flag;
 static int pd_tcp_notifier_call(struct notifier_block *nb,
 				unsigned long event, void *data)
 {
@@ -84,7 +114,7 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 	switch (event) {
 	case TCP_NOTIFY_SINK_VBUS:
 		rpmd->sink_mv_new = noti->vbus_state.mv;
-		rpmd->sink_ma_new = noti->vbus_state.ma;
+		rpmd->sink_ma_new = 500;//noti->vbus_state.ma;
 		dev_info(rpmd->dev, "%s sink vbus %dmV %dmA type(0x%02X)\n",
 				    __func__, rpmd->sink_mv_new,
 				    rpmd->sink_ma_new, noti->vbus_state.type);
@@ -98,8 +128,14 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 				rpmd->chg_consumer, MAIN_CHARGER, true);
 #else
 			if (rpmd->sink_mv_new && rpmd->sink_ma_new) {
-				charger_dev_enable_powerpath(rpmd->chg_dev,
-							true);
+				if (ss_charger_status != 1) {
+					charger_dev_enable_powerpath(rpmd->chg_dev,
+							     true);
+					set_dynamic_mivr(rpmd);
+				} else
+					dev_info(rpmd->dev, "%s ss_charger_status =%d\n",
+						__func__, ss_charger_status);
+/* HS03s code for SR-AL5625-01-35 by wenyaqi at 20210420 end */
 			} else {
 				charger_dev_enable_powerpath(rpmd->chg_dev,
 							false);
@@ -115,7 +151,9 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		    (new_state == TYPEC_ATTACHED_SNK ||
 		     new_state == TYPEC_ATTACHED_NORP_SRC ||
 		     new_state == TYPEC_ATTACHED_CUSTOM_SRC ||
-		     new_state == TYPEC_ATTACHED_DBGACC_SNK)) {
+		     new_state == TYPEC_ATTACHED_DBGACC_SNK ||
+		     new_state == TYPEC_ATTACHED_WD_SNK)) {
+
 			dev_info(rpmd->dev,
 				 "%s Charger plug in, polarity = %d\n",
 				 __func__, noti->typec_state.polarity);
@@ -123,7 +161,8 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			 * start charger type detection,
 			 * and enable device connection
 			 */
-
+			usb_cc_flag = (noti->typec_state.polarity ?
+					TYPEC_ORIENTATION_NORMAL : TYPEC_ORIENTATION_REVERSE);
 			typec_set_data_role(rpmd->typec_port, TYPEC_DEVICE);
 			typec_set_pwr_role(rpmd->typec_port, TYPEC_SINK);
 			typec_set_pwr_opmode(rpmd->typec_port,
@@ -133,9 +172,11 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		} else if ((old_state == TYPEC_ATTACHED_SNK ||
 			    old_state == TYPEC_ATTACHED_NORP_SRC ||
 			    old_state == TYPEC_ATTACHED_CUSTOM_SRC ||
-			    old_state == TYPEC_ATTACHED_DBGACC_SNK) &&
+			    old_state == TYPEC_ATTACHED_DBGACC_SNK ||
+			    old_state == TYPEC_ATTACHED_WD_SNK) &&
 			    new_state == TYPEC_UNATTACHED) {
 			dev_info(rpmd->dev, "%s Charger plug out\n", __func__);
+			usb_cc_flag = TYPEC_ORIENTATION_NONE;
 			/*
 			 * report charger plug-out,
 			 * and disable device connection
@@ -146,6 +187,8 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			dev_info(rpmd->dev,
 				 "%s OTG plug in, polarity = %d\n",
 				 __func__, noti->typec_state.polarity);
+			usb_cc_flag = (noti->typec_state.polarity ?
+				TYPEC_ORIENTATION_NORMAL : TYPEC_ORIENTATION_REVERSE);
 			/* enable host connection */
 
 			typec_set_data_role(rpmd->typec_port, TYPEC_HOST);
@@ -186,6 +229,7 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			typec_headset_queue_work();
 #endif
 		}
+		pr_info("%s:cc_flag=%d\n",__func__,usb_cc_flag);
 
 		if (new_state == TYPEC_UNATTACHED) {
 			typec_unregister_partner(rpmd->partner);
@@ -300,6 +344,7 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 				    __func__, noti->en_state.en);
 #ifdef CONFIG_MTK_CHARGER
 		charger_dev_enable_discharge(rpmd->chg_dev, noti->en_state.en);
+
 #endif /* CONFIG_MTK_CHARGER */
 		break;
 	case TCP_NOTIFY_PD_STATE:
@@ -418,8 +463,6 @@ static int tcpc_typec_dr_set(const struct typec_capability *cap,
 
 	dev_info(rpmd->dev, "%s role = %d\n", __func__, role);
 
-	usb_boost();
-
 	if (role == TYPEC_HOST) {
 		if (data_role == PD_ROLE_UFP) {
 			do_swap = true;
@@ -457,8 +500,6 @@ static int tcpc_typec_pr_set(const struct typec_capability *cap,
 	bool do_swap = false;
 
 	dev_info(rpmd->dev, "%s role = %d\n", __func__, role);
-
-	usb_boost();
 
 	if (role == TYPEC_SOURCE) {
 		if (power_role == PD_ROLE_SINK) {
@@ -537,8 +578,6 @@ static int tcpc_typec_port_type_set(const struct typec_capability *cap,
 
 	dev_info(rpmd->dev, "%s type = %d, as_sink = %d\n",
 			    __func__, type, as_sink);
-
-	usb_boost();
 
 	switch (type) {
 	case TYPEC_PORT_SNK:
@@ -747,7 +786,7 @@ static int __init rt_pd_manager_init(void)
 {
 	return platform_driver_register(&rt_pd_manager_driver);
 }
-late_initcall_sync(rt_pd_manager_init);
+late_initcall(rt_pd_manager_init);
 
 static void __exit rt_pd_manager_exit(void)
 {

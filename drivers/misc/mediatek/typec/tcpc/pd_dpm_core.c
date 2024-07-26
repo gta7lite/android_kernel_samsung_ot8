@@ -88,15 +88,22 @@ static const struct svdm_svid_ops svdm_svid_ops[] = {
 int dpm_check_supported_modes(void)
 {
 	int i;
-	const int size = ARRAY_SIZE(svdm_svid_ops);
+	bool is_disorder = false;
+	bool found_error = false;
 
-	for (i = 0; i < size; i++) {
+	for (i = 0; i < ARRAY_SIZE(svdm_svid_ops); i++) {
+		if (i < (ARRAY_SIZE(svdm_svid_ops) - 1)) {
+			if (svdm_svid_ops[i + 1].svid <=
+				svdm_svid_ops[i].svid)
+				is_disorder = true;
+		}
 		pr_info("SVDM supported mode [%d]: name = %s, svid = 0x%x\n",
 			i, svdm_svid_ops[i].name,
 			svdm_svid_ops[i].svid);
 	}
-
-	return 0;
+	pr_info("%s : found \"disorder\"...\n", __func__);
+	found_error |= is_disorder;
+	return found_error ? -EFAULT : 0;
 }
 
 /*
@@ -2316,7 +2323,7 @@ int pd_dpm_core_init(struct pd_port *pd_port)
 
 #ifdef CONFIG_USB_PD_REV30
 	pd_port->pps_request_wake_lock =
-		wakeup_source_register(NULL, "pd_pps_request_wake_lock");
+		wakeup_source_register(&tcpc->dev, "pd_pps_request_wake_lock");
 	init_waitqueue_head(&pd_port->pps_request_wait_que);
 	atomic_set(&pd_port->pps_request, false);
 	pd_port->pps_request_task = kthread_run(pps_request_thread_fn, tcpc,

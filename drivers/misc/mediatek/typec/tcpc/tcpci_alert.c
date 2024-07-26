@@ -595,6 +595,8 @@ int tcpci_report_usb_port_changed(struct tcpc_device *tcpc)
 		tcpci_report_usb_port_attached(tcpc);
 	else if (tcpc->typec_attach_new == TYPEC_UNATTACHED)
 		tcpci_report_usb_port_detached(tcpc);
+
+/* A03s code for SR-AL5625-01-52 by wenyaqi at 20210419 end */
 	else
 		TCPC_DBG2("TCPC Attach Again\n");
 

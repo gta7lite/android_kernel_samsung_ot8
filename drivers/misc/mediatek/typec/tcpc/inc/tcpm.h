@@ -33,6 +33,9 @@ enum typec_attach_type {
 
 /* CONFIG_TYPEC_CAP_NORP_SRC */
 	TYPEC_ATTACHED_NORP_SRC,		/* No Rp */
+
+/* CONFIG_WATER_DETECTION */
+	TYPEC_ATTACHED_WD_SNK,
 };
 
 enum pd_connect_result {
@@ -257,6 +260,9 @@ enum {
 
 	/* HardReset failed because detach or error recovery */
 	TCP_HRESET_RESULT_FAIL,
+
+	/* ERROR Recovery because in power off charge not receive source cap*/
+	TCP_ERROR_RECOVERY_KPOC,
 
 	/* HardReset signal from Local Policy Engine */
 	TCP_HRESET_SIGNAL_SEND,
@@ -900,6 +906,12 @@ extern uint8_t tcpm_inquire_cable_current(
 extern uint32_t tcpm_inquire_dpm_flags(
 	struct tcpc_device *tcpc);
 
+extern bool tcpm_is_src_usb_suspend_support(
+	struct tcpc_device *tcpc_dev);
+
+extern bool tcpm_is_src_usb_communication_capable(
+	struct tcpc_device *tcpc_dev);
+
 extern uint32_t tcpm_inquire_dpm_caps(
 	struct tcpc_device *tcpc);
 
@@ -1419,6 +1431,18 @@ static inline uint8_t tcpm_inquire_cable_current(
 
 static inline uint32_t tcpm_inquire_dpm_flags(
 	struct tcpc_device *tcpc)
+{
+	return 0;
+}
+
+static inline bool tcpm_is_src_usb_suspend_support(
+	struct tcpc_device *tcpc_dev)
+{
+	return 0;
+}
+
+static inline bool tcpm_is_src_usb_communication_capable(
+	struct tcpc_device *tcpc_dev)
 {
 	return 0;
 }

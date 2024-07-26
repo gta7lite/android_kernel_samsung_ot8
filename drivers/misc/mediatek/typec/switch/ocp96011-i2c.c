@@ -457,17 +457,16 @@ static int ocp96011_probe(struct i2c_client *i2c,
 
 	fsa_priv->psy_nb.notifier_call = ocp96011_usbc_event_changed;
 	fsa_priv->psy_nb.priority = 0;
-
-//#if 1
-//	rc = ocp96011_reg_notifier(&fsa_priv->psy_nb);
-//#else
-//	rc = power_supply_reg_notifier(&fsa_priv->psy_nb);
-//#endif
-//	if (rc) {
-//		dev_info(fsa_priv->dev, "%s: power supply reg failed: %d\n",
-//			__func__, rc);
-//		goto err_supply;
-//	}
+#if 1
+	rc = ocp96011_reg_notifier(&fsa_priv->psy_nb);
+#else
+	rc = power_supply_reg_notifier(&fsa_priv->psy_nb);
+#endif
+	if (rc) {
+		dev_err(fsa_priv->dev, "%s: power supply reg failed: %d\n",
+			__func__, rc);
+		goto err_supply;
+	}
 
 	mutex_init(&fsa_priv->notification_lock);
 	i2c_set_clientdata(i2c, fsa_priv);
@@ -512,7 +511,7 @@ static int ocp96011_remove(struct i2c_client *i2c)
 static void ocp96011_shutdown(struct i2c_client *i2c)
 {
 	printk("%s enter \n", __func__);
-	ocp96011_switch_event(1);
+	ocp96011_switch_event(2);
 }
 
 ///#ifdef CONFIG_OF
