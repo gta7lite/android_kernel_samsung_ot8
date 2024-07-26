@@ -137,4 +137,6 @@ extern void mt_accdet_suspend(void);
 extern void mt_accdet_resume(void);
 extern void accdet_set_debounce(int state, unsigned int debounce);
 
+extern int mtk_accdet_init(struct snd_soc_component *component);
+extern int mtk_accdet_set_drvdata(struct snd_soc_card *card);
 #endif

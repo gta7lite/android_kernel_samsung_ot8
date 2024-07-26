@@ -23,6 +23,27 @@
  * mt6768_mt6358_spk_amp_event()
  */
 #define EXT_SPK_AMP_W_NAME "Ext_Speaker_Amp"
+/* hs14 code for SR-AL6528A-01-392 | AL6528ADEU-2986 by yingboyang at 20221201 start */
+#define COMPATIBLE_PA_SUPPORT
+#ifdef COMPATIBLE_PA_SUPPORT
+#include <linux/of_gpio.h>
+#include <linux/gpio.h>
+#include <linux/spinlock.h>
+#define FS15XX_START  500        // 200us < t < 1000us
+#define FS15XX_PULSE_DELAY_US 10 // 2us < t < 150us
+#define FS15XX_T_WORK  300       // pull up gpio > 220us
+#define FS15XX_T_PWD  5000       // Tswton suggest to be 3ms+ between each mode
+#define FS15XX_RETRY  (10)
+#define FS15XX_OFF_MODE 0
+#define FS15XX_OPEN_MODE 4
+
+#define AW87XX_OFF_MODE 0
+#define AW87XX_OPEN_MODE 1
+#define AW87XX_PULSE_DELAY_US 2
+int ctrl_mod = 0;
+static DEFINE_SPINLOCK(fs15xx_lock);
+#endif
+/* hs14 code for SR-AL6528A-01-392 | AL6528ADEU-2986 by yingboyang at 20221201 end */
 
 static const char *const mt6768_spk_type_str[] = {MTK_SPK_NOT_SMARTPA_STR,
 						  MTK_SPK_RICHTEK_RT5509_STR,
@@ -70,6 +91,89 @@ static int mt6768_spk_i2s_in_type_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+/* hs14 code for SR-AL6528A-01-392 by yingboyang at 20220918 start */
+#ifdef COMPATIBLE_PA_SUPPORT
+int fs15xx_shutdown(unsigned int mod_pin)
+{
+    unsigned long gpio_flag;
+
+    spin_lock_irqsave(&fs15xx_lock, gpio_flag);
+    gpio_set_value(mod_pin, 0);
+    udelay(FS15XX_T_PWD);
+    spin_unlock_irqrestore(&fs15xx_lock, gpio_flag);
+
+    return 0;
+}
+
+int fs15xx_set_mode(int fsm_mode_new, int aw_mode_new)
+{
+    unsigned long gpio_flag;
+    static int g_fsm_mode = FS15XX_OFF_MODE;
+    static int g_aw_mode = AW87XX_OFF_MODE;
+    int count;
+    int ret = 0;
+
+    pr_info("%s(),fsm_mode_new:%d ,aw_mode_new:%d", __func__, fsm_mode_new, aw_mode_new);
+    if (fsm_mode_new > 6 || fsm_mode_new < 0 || aw_mode_new > 10 || aw_mode_new < 0) {
+        // invalid mode
+        return -1;
+    }
+
+    if ((g_fsm_mode == fsm_mode_new) && (g_aw_mode == aw_mode_new)) {
+        // the same mode and same gpio, not to switch again
+        return ret;
+    }
+
+    // switch mode online, need shut down pa firstly
+    g_fsm_mode = fsm_mode_new;
+    g_aw_mode = aw_mode_new;
+    fs15xx_shutdown(ctrl_mod);
+    if ((fsm_mode_new == FS15XX_OFF_MODE) || (aw_mode_new == AW87XX_OFF_MODE)) {
+        return 0;
+    }
+
+    // enable pa into work mode
+    // make sure idle mode: gpio output low
+    gpio_direction_output(ctrl_mod, 0);
+    spin_lock_irqsave(&fs15xx_lock, gpio_flag);
+
+    // awinic pa sequential logic
+    gpio_set_value(ctrl_mod, 1);
+    count = g_aw_mode - 1;
+    while (count > 0) {
+        udelay(AW87XX_PULSE_DELAY_US);
+        gpio_set_value(ctrl_mod, 0);
+        udelay(AW87XX_PULSE_DELAY_US);
+        gpio_set_value(ctrl_mod, 1);
+        count--;
+    }
+
+    // 1. send T-sta
+    gpio_set_value(ctrl_mod, 1);
+    udelay(FS15XX_START);
+    gpio_set_value(ctrl_mod, 0);
+    udelay(FS15XX_PULSE_DELAY_US); // < 140us
+    // 2. send mode
+    count = g_fsm_mode - 1;
+    while (count > 0) { // count of pulse
+        gpio_set_value(ctrl_mod, 1);
+        udelay(FS15XX_PULSE_DELAY_US); // < 140us 10-150
+        gpio_set_value(ctrl_mod, 0);
+        udelay(FS15XX_PULSE_DELAY_US); // < 140us
+        count--;
+    }
+
+    // 3. pull up gpio and delay, enable pa
+    gpio_set_value(ctrl_mod, 1);
+    spin_unlock_irqrestore(&fs15xx_lock, gpio_flag);
+
+    udelay(FS15XX_T_WORK); // pull up gpio > 220us
+
+    return ret;
+}
+#endif
+/* hs14 code for SR-AL6528A-01-392 by yingboyang at 20220918 end */
+
 static int mt6768_mt6358_spk_amp_event(struct snd_soc_dapm_widget *w,
 				       struct snd_kcontrol *kcontrol,
 				       int event)
@@ -82,9 +186,19 @@ static int mt6768_mt6358_spk_amp_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		/* spk amp on control */
+/* hs14 code for SR-AL6528A-01-392 by yingboyang at 20220918 start */
+#ifdef COMPATIBLE_PA_SUPPORT
+		fs15xx_set_mode(FS15XX_OPEN_MODE, AW87XX_OPEN_MODE);
+#endif
+/* hs14 code for SR-AL6528A-01-392 by yingboyang at 20220918 end */
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		/* spk amp off control */
+/* hs14 code for SR-AL6528A-01-392 by yingboyang at 20220918 start */
+#ifdef COMPATIBLE_PA_SUPPORT
+		fs15xx_set_mode(FS15XX_OFF_MODE, AW87XX_OFF_MODE);
+#endif
+/* hs14 code for SR-AL6528A-01-392 by yingboyang at 20220918 end */
 		break;
 	default:
 		break;
@@ -496,6 +610,30 @@ static struct snd_soc_dai_link mt6768_mt6358_dai_links[] = {
 		.ignore_suspend = 1,
 	},
 	{
+		.name = "Hostless_FM_Record",
+		.stream_name = "Hostless_FM_Record",
+		.cpu_dai_name = "Hostless FM RECORD DAI",
+		.codec_name = "snd-soc-dummy",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.trigger = {SND_SOC_DPCM_TRIGGER_PRE,
+			    SND_SOC_DPCM_TRIGGER_PRE},
+		.dynamic = 1,
+		.dpcm_capture = 1,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = "Hostless_ADDA_DL_HWGain",
+		.stream_name = "Hostless_ADDA_DL_HWGain",
+		.cpu_dai_name = "Hostless_ADDA_DL_HWGain DAI",
+		.codec_name = "snd-soc-dummy",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.trigger = {SND_SOC_DPCM_TRIGGER_PRE,
+			    SND_SOC_DPCM_TRIGGER_PRE},
+		.dynamic = 1,
+		.dpcm_playback = 1,
+		.ignore_suspend = 1,
+	},
+	{
 		.name = "Hostless_Speech",
 		.stream_name = "Hostless_Speech",
 		.cpu_dai_name = "Hostless Speech DAI",
@@ -560,13 +698,8 @@ static struct snd_soc_dai_link mt6768_mt6358_dai_links[] = {
 	{
 		.name = "I2S3",
 		.cpu_dai_name = "I2S3",
-#ifdef CONFIG_SND_SOC_FS16XX
-		.codec_dai_name = "fs16xx-aif",
-		.codec_name = "fs16xx",
-#else
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
-#endif
 		.no_pcm = 1,
 		.dpcm_playback = 1,
 		.ignore_suspend = 1,
@@ -575,13 +708,8 @@ static struct snd_soc_dai_link mt6768_mt6358_dai_links[] = {
 	{
 		.name = "I2S0",
 		.cpu_dai_name = "I2S0",
-#ifdef CONFIG_SND_SOC_FS16XX
-		.codec_dai_name = "fs16xx-aif",
-		.codec_name = "fs16xx",
-#else
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
-#endif
 		.no_pcm = 1,
 		.dpcm_capture = 1,
 		.ignore_suspend = 1,
@@ -864,6 +992,20 @@ static int mt6768_mt6358_dev_probe(struct platform_device *pdev)
 	}
 
 	card->dev = &pdev->dev;
+
+/* hs14 code for SR-AL6528A-01-392 || AL6528A-1042 by tangjie at 20221215 start */
+#ifdef COMPATIBLE_PA_SUPPORT
+	ctrl_mod = of_get_named_gpio(pdev->dev.of_node, "ctrl-mod", 0);
+	if (ctrl_mod < 0) {
+		pr_err("%s(), get ctrl-mod fail!\n", __func__);
+	}
+	if (gpio_is_valid(ctrl_mod)) {
+		if (gpio_request(ctrl_mod, "ctrl-mod") < 0) {
+			pr_err("%s(), gpio_request ctrl-mod fail\n", __func__);
+		}
+	}
+#endif
+/* hs14 code for SR-AL6528A-01-392 || AL6528A-1042 by tangjie at 20221215 end */
 
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
 	if (ret)

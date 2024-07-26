@@ -443,3 +443,7 @@ config MTK_ULTRASND_PROXIMITY
 	  emulate physical proximity sensor. Using
 	  IPI interface to communicate with SCP side and
 	  be controlled by sensor hal.
+
+# TabA7 Lite code for OT8-5362 by yingboyang at 20220314 start
+source "sound/soc/mediatek/aw87390/Kconfig"
+# TabA7 Lite code for OT8-5362 by yingboyang at 20220314 end

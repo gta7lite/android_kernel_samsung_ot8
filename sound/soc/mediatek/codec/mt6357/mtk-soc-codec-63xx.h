@@ -28,6 +28,7 @@
 
 #ifndef _AUDIO_CODEC_63xx_H
 #define _AUDIO_CODEC_63xx_H
+#include <sound/soc.h>
 
 #define CODEC_MT6357_NAME "mtk-codec-mt6357"
 
@@ -50,6 +51,7 @@ int set_codec_ops(struct mtk_codec_ops *ops);
 #ifdef CONFIG_MTK_ACCDET
 extern void accdet_late_init(unsigned long a);
 #endif
+extern int mtk_accdet_set_drvdata(struct snd_soc_card *card);
 
 /*AKITA-5 M8 audio bring up begin */
 #ifdef SND_SOC_AW87519

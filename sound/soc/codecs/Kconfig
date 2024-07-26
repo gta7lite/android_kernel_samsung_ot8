@@ -619,14 +619,6 @@ config SND_SOC_ES8328_SPI
 	depends on SPI_MASTER
 	select SND_SOC_ES8328
 
-config SND_SOC_FS16XX
-	tristate "Foursemi speaker amplifier"
-	depends on I2C
-	help
-	  Config of FS18xx . It is a Smart power amplifier which contain speaker protection,
-	  multi-band DRC, equalizer function. It would be set to yes if device with FS18xx on it.
-	  Select this if your FS16xx is connected via an I2S bus.
-
 config SND_SOC_GTM601
 	tristate 'GTM601 UMTS modem audio codec'
 
@@ -1445,7 +1437,10 @@ config SND_SOC_SMARTPAINFO
 	  It is a smartpa.It would be set to yes
 	  if device with smartpa on it, enable it.
 	  If unsure, say N.
-
+# hs04 code for DEAL6398A-1876 by tangsumian at 20221012 start
+config HEADSET_IN_OUT_NOTIFY
+	tristate "headset notify"
+# hs04 code for DEAL6398A-1876 by tangsumian at 20221012 end
 source "sound/soc/codecs/cs35l43/Kconfig"
 
 endmenu
