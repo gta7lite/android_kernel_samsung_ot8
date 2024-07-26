@@ -11,15 +11,6 @@ config MTK_FLASHLIGHT
 	  If you have any questions about this, say Y here,
 	  only say N if you know exactly what you are doing.
 
-
-config MTK_V4L2_FLASHLIGHT
-	tristate "Mediatek V4L2 flashlight driver"
-	help
-	  Say Y to enable V4L2 flashlight device
-	  This Framework is good for
-	  controling flashlight Leds.
-	  Say N to disable V4L2 flashlight.
-
 config MTK_FLASHLIGHT_AW3644
 	tristate "Mediatek flashlight with driver IC (AW3644)"
 	depends on MTK_FLASHLIGHT
@@ -202,4 +193,44 @@ config MTK_FLASHLIGHT_DLPT
 	  Dynamic low power throttling is a mechanism to monitor
 	  the current of battary dynamicly. It will start by request
 	  and notice user by kernel notifier.
+#hs03s code add for flashlights_aw36518 by chengzhi at 2021.06.13 begin
+config MTK_FLASHLIGHT_AW36518
+	tristate "Mediatek flashlight with driver IC (AW36518)"
+	depends on MTK_FLASHLIGHT && RT_FLASHLIGHT
+	default n
+	help
+	  This is for the flashlight driver IC (AW36518).
 
+	  Say Y here if you want a flashlight driver IC AW36518.
+	  Select this only if your board has this IC.
+
+	  Say M here if you want to compile this driver as a module.
+#hs03s code add for flashlights_aw36518 by chengzhi at 2021.06.13 end
+
+# hs03s code for CAM-AL5625-01-324 by lisizhou at 2021/05/31 start
+config MTK_FLASHLIGHT_SGM3785_GPIO
+	tristate "Mediatek flashlight with driver IC (SGM3785)"
+	depends on MTK_FLASHLIGHT && RT_FLASHLIGHT
+	default n
+	help
+	  This is for the flashlight driver IC (SGM3785).
+
+	  Say Y here if you want a flashlight driver IC SGM3785.
+	  Select this only if your board has this IC.
+
+	  Say M here if you want to compile this driver as a module.
+# hs03s code for CAM-AL5625-01-324 by lisizhou at 2021/05/31 end
+
+#hs04 code for DEVAL6398A-46 by renxinglin at  2022/10/18 start
+config MTK_FLASHLIGHT_O21_SGM3785_GPIO
+	tristate "Mediatek flashlight with driver IC (O21_SGM3785)"
+	depends on MTK_FLASHLIGHT && RT_FLASHLIGHT
+	default n
+	help
+	  This is for the flashlight driver IC (O21_SGM3785).
+
+	  Say Y here if you want a flashlight driver IC O21_SGM3785.
+	  Select this only if your board has this IC.
+
+	  Say M here if you want to compile this driver as a module.
+#hs04 code for DEVAL6398A-46 by renxinglin at  2022/10/18 end
