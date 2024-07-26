@@ -519,8 +519,4 @@ int ssusb_set_power_resource(struct ssusb_mtk *ssusb, int mode);
 irqreturn_t mtu3_ep0_isr(struct mtu3 *mtu);
 extern const struct usb_ep_ops mtu3_ep0_ops;
 
-#if IS_ENABLED(CONFIG_MACH_MT6771)
-extern void slp_set_infra_on(bool infra_on);
-#endif
-
 #endif
