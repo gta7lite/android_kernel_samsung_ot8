@@ -7,10 +7,7 @@
 #define __MMDVFS_PMQOS_H__
 
 #include <linux/pm_qos.h>
-#if !defined(CONFIG_MACH_MT6771)
 #include <linux/soc/mediatek/mtk-pm-qos.h>
-#endif
-
 
 #define MAX_FREQ_STEP 6
 
@@ -151,6 +148,9 @@ s32 mm_hrt_add_bw_throttle_notifier(struct notifier_block *nb);
  * Returns 0, or -errno
  */
 s32 mm_hrt_remove_bw_throttle_notifier(struct notifier_block *nb);
+
+s32 add_cam_max_bw_notifier(struct notifier_block *nb);
+s32 remove_cam_max_bw_notifier(struct notifier_block *nb);
 
 /**
  * mmdvfs_set_max_camera_hrt_bw - set maximum camera hrt bw
