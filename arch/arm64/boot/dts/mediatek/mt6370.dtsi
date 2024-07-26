@@ -29,7 +29,8 @@
 			compatible = "mediatek,mt6370_pmu_charger";
 			interrupt-names = "chg_mivr", "chg_aiclmeasi",
 				"attachi", "ovpctrl_uvp_d_evt", "chg_wdtmri",
-				"chg_vbusov", "chg_tmri", "chg_treg", "dcdti";
+				"chg_vbusov", "chg_tmri", "chg_treg", "dcdti",
+				"pwr_rdy";
 			bootmode = <&chosen>;
 			charger_name = "primary_chg";
 			load_switch_name = "primary_load_switch";
@@ -41,10 +42,20 @@
 			safety_timer = <12>;	/* hour */
 			dc_wdt = <4000000>;	/* us */
 			ircmp_resistor = <25000>;	/* uohm */
-			ircmp_vclamp = <32000>;		/* uV */
+			/*HS03s for SR-AL5625-01-374 by wenyaqi at 20210429 start*/
+			ircmp_vclamp = <0>;		/* uV */
+			/*HS03s for SR-AL5625-01-374 by wenyaqi at 20210429 end*/
 			enable_te;
 			enable_wdt;
+#ifdef CONFIG_HQ_PROJECT_HS03S
 			enable_otg_wdt;
+#endif
+#ifdef CONFIG_HQ_PROJECT_O22
+			enable_otg_wdt;
+#endif
+#ifdef CONFIG_HQ_PROJECT_HS04
+			enable_otg_wdt;
+#endif
 			lbp_hys_sel = <1>;	/* 0: 100mV, 1: 200mV */
 			lbp_dt = <1>;		/* 0: 10ms, 1: 20ms */
 						/* 2: 40ms, 3: 500us */
@@ -139,7 +150,20 @@
 			interrupt-names = "bled_ocp";
 			mt,bled_name = "mt6370_pmu_bled";
 			/* mt,ext_en_pin; */
-			mt,chan_en  = <0xF>; /* bit 0 1 2 3 -> chan 1 2 3 4 */
+			/* HS03S code added for SR-AL5625-01-357 by gaozhengwei at 20210423 start */
+#ifdef CONFIG_HQ_PROJECT_OT8
+ 			mt,chan_en  = <0xE>; /* bit 0 1 2 3 -> chan 1 2 3 4 */
+#endif
+#ifdef CONFIG_HQ_PROJECT_HS03S
+			mt,chan_en  = <0xC>; /* bit 0 1 2 3 -> chan 1 2 3 4 */
+#endif
+#ifdef CONFIG_HQ_PROJECT_O22
+			mt,chan_en  = <0xC>; /* bit 0 1 2 3 -> chan 1 2 3 4 */
+#endif
+#ifdef CONFIG_HQ_PROJECT_HS04
+			mt,chan_en  = <0xC>; /* bit 0 1 2 3 -> chan 1 2 3 4 */
+#endif
+			/* HS03S code added for SR-AL5625-01-357 by gaozhengwei at 20210423 end */
 			mt,map_linear;
 			mt,bl_ovp_level = <3>;	/* 0: 17v */
 						/* 1: 21v */
@@ -158,8 +182,10 @@
 						/* 2: 160ns */
 						/* 3: 200ns */
 			mt,pwm_hys_en = <1>;	/* PWM Input Hysteresis */
-			mt,pwm_hys = <0>;	/* 0: 1 bit, 1: 2 bit */
+			/* hs03s code for SR-AL5625-01-394 by gaozhengwei at 2021/05/29 start */
+			mt,pwm_hys = <2>;	/* 0: 1 bit, 1: 2 bit */
 						/* 2: 4 bit, 3: 6 bit */
+			/* hs03s code for SR-AL5625-01-394 by gaozhengwei at 2021/05/29 end */
 			mt,pwm_avg_cycle = <0>; /* 0: disable avg */
 						/* 1: avg 2 cycle */
 						/* 2: avg 4 cycle */
@@ -174,7 +200,20 @@
 							/* 1ms, 2ms, 5ms */
 
 			/* we have 11 bit resolution, quantize in driver */
-			mt,max_bled_brightness = <512>; /* maximum 2047 */
+			/* HS03S code added for SR-AL5625-01-357 by gaozhengwei at 20210423 start */
+#ifdef CONFIG_HQ_PROJECT_OT8
+ 			mt,max_bled_brightness = <1501>; /* maximum 2047 */
+#endif
+#ifdef CONFIG_HQ_PROJECT_HS03S
+			mt,max_bled_brightness = <1570>; /* maximum 2047 */
+#endif
+#ifdef CONFIG_HQ_PROJECT_O22
+			mt,max_bled_brightness = <1570>; /* maximum 2047 */
+#endif
+#ifdef CONFIG_HQ_PROJECT_HS04
+			mt,max_bled_brightness = <1570>; /* maximum 2047 */
+#endif
+			/* HS03S code added for SR-AL5625-01-357 by gaozhengwei at 20210423 end */
 
 			mt,bled_curr_scale = <0>;	/* 0: 30mA, 1: 22.5mA */
 							/* 2: 20mA, 3: 17.5mA */
@@ -246,7 +285,9 @@
 					/* 1 = 0ms */
 					/* 2 = 1ms */
 					/* 3 = 4ms */
-			db_vbst  = <5700>;      /* mV */
+			/* HS03S code added for SR-AL5625-01-316 by gaozhengwei at 20210423 start */
+			db_vbst  = <6200>;      /* mV */
+			/* HS03S code added for SR-AL5625-01-316 by gaozhengwei at 20210423 end */
 			db_vpos_slew = <1>;	/* 0: 8.54 V/ms */
 						/* 1: 5.84 V/ms */
 						/* 2: 4.83 V/ms */
