@@ -26,6 +26,9 @@
 #include <linux/regmap.h>
 #include <linux/timer.h>
 #include <linux/workqueue.h>
+/*hs03s  code for SR-AL5625-01-266 by wangdeyan at 20210408 start*/
+#include <linux/input.h>
+/*hs03s  code for SR-AL5625-01-266 by wangdeyan at 20210408 end*/
 
 #define KPD_NAME	"mtk-kpd"
 
@@ -67,6 +70,59 @@ struct mtk_keypad {
 static void kpd_keymap_handler(unsigned long data);
 
 static int kpd_pdrv_probe(struct platform_device *pdev);
+
+
+/*hs03s  code for SR-AL5625-01-266 by wangdeyan at 20210408 start*/
+struct device *sec_key;
+
+#include <linux/sec_class.h>
+static int key_power_state = 0;
+static int key_valuedown_state = 0;
+static int key_valueup_state = 0;
+
+void power_homekey_pressed(int keycode)
+{
+        if(keycode == KEY_POWER)
+		key_power_state = 1;
+	if(keycode == KEY_VOLUMEDOWN)
+		key_valuedown_state = 1;
+}
+
+void power_homekey_released(int keycode)
+{
+        if(keycode == KEY_POWER)
+		key_power_state = 0;
+	if(keycode == KEY_VOLUMEDOWN)
+		key_valuedown_state = 0;
+}
+
+void get_key_code_state(int keycode,int pressed)
+{
+	if(keycode == KEY_VOLUMEUP){
+		if(pressed == 1)
+			key_valueup_state = 1;
+		else
+			key_valueup_state = 0;
+        }
+}
+
+static ssize_t keycode_pressed_show(struct device *dev,
+                struct device_attribute *attr, char *buf)
+{
+        return snprintf(buf, PAGE_SIZE, "%d:%d,%d:%d,%d:%d\n",KEY_POWER,
+			key_power_state,KEY_VOLUMEDOWN,key_valuedown_state,KEY_VOLUMEUP,key_valueup_state);
+}
+static DEVICE_ATTR(keycode_pressed, 0444, keycode_pressed_show, NULL);
+
+static struct attribute *sec_key_attrs[] = {
+        &dev_attr_keycode_pressed.attr,
+        NULL,
+};
+
+static struct attribute_group sec_key_attr_group = {
+        .attrs = sec_key_attrs,
+};
+/*hs03s  code for SR-AL5625-01-266 by wangdeyan at 20210408 end*/
 
 static void kpd_get_keymap_state(void __iomem *kp_base, u16 state[])
 {
@@ -118,6 +174,9 @@ static void kpd_keymap_handler(unsigned long data)
 				continue;
 			input_report_key(keypad->input_dev, keycode, pressed);
 			input_sync(keypad->input_dev);
+/*hs03s  code for SR-AL5625-01-266 by wangdeyan at 20210408 start*/
+			get_key_code_state(keycode,pressed);
+/*hs03s  code for SR-AL5625-01-266 by wangdeyan at 20210408 end*/
 			pr_debug("report Linux keycode = %d\n", keycode);
 		}
 	}
@@ -304,6 +363,17 @@ static int kpd_pdrv_probe(struct platform_device *pdev)
 		goto err_irq;
 	}
 
+/*hs03s  code for SR-AL5625-01-266 by wangdeyan at 20210408 start*/
+	sec_key = sec_device_create(NULL, "sec_key");
+	if (IS_ERR(sec_key))
+			pr_err("Failed to create device(sec_key)!\n");
+	err = sysfs_create_group(&sec_key->kobj, &sec_key_attr_group);
+	if (err) {
+			pr_notice("Unable to create sysfs_group, error: %d\n",
+					err);
+	}
+	dev_set_drvdata(sec_key, keypad);
+/*hs03s  code for SR-AL5625-01-266 by wangdeyan at 20210408 end*/
 	pr_info("kpd_probe OK.\n");
 
 	return 0;

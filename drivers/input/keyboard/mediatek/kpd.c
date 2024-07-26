@@ -14,7 +14,10 @@
 #include <linux/clk.h>
 #include <linux/debugfs.h>
 #include <linux/pinctrl/consumer.h>
-
+/*hs14 code for SR-AL6528A-01-403 by hehaoran5 at 20220908 start*/
+#include <linux/input.h>
+#include <linux/sec_class.h>
+/*hs14 code for SR-AL6528A-01-403 by hehaoran5 at 20220908 end*/
 #define KPD_NAME	"mtk-kpd"
 
 #ifdef CONFIG_LONG_PRESS_MODE_EN
@@ -49,6 +52,50 @@ static int kpd_pdrv_probe(struct platform_device *pdev);
 static int kpd_pdrv_suspend(struct platform_device *pdev, pm_message_t state);
 static int kpd_pdrv_resume(struct platform_device *pdev);
 static struct platform_driver kpd_pdrv;
+
+/*hs14 code for SR-AL6528A-01-403 by hehaoran5 at 20220908 start*/
+struct device *sec_key;
+static int key_power_state = 0;
+static int key_volumedown_state = 0;
+static int key_volumeup_state = 0;
+
+void get_power_state(int keycode,int pressed)
+{
+	if (keycode == KEY_POWER) {
+		key_power_state = pressed;
+	}
+}
+
+void get_volumedown_state(int keycode,int pressed)
+{
+	if (keycode == KEY_VOLUMEDOWN) {
+		key_volumedown_state = pressed;
+	}
+}
+
+void get_volumeup_state(int keycode,int pressed)
+{
+	if (keycode == KEY_VOLUMEUP) {
+		key_volumeup_state = pressed;
+	}
+}
+
+static ssize_t keycode_pressed_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        return snprintf(buf, PAGE_SIZE, "%d:%d,%d:%d,%d:%d\n",KEY_POWER,
+			key_power_state,KEY_VOLUMEDOWN,key_volumedown_state,KEY_VOLUMEUP,key_volumeup_state);
+}
+static DEVICE_ATTR(keycode_pressed, 0444, keycode_pressed_show, NULL);
+
+static struct attribute *sec_key_attrs[] = {
+	&dev_attr_keycode_pressed.attr,
+	NULL,
+};
+
+static struct attribute_group sec_key_attr_group = {
+	.attrs = sec_key_attrs,
+};
+/*hs14 code for SR-AL6528A-01-403 by hehaoran5 at 20220908 end*/
 
 static void kpd_memory_setting(void)
 {
@@ -142,6 +189,28 @@ void vol_down_long_press(unsigned long pressed)
 #endif
 /*****************************************/
 
+#if defined(PMIC_KEY_STATUS)
+unsigned int kpd_pwrkey_pmic_status(void)
+{
+	unsigned int pressed;
+
+	pressed = kpd_pmic_pwrkey_status_hal();
+	kpd_info("[%s] %s power key\n", __func__, pressed ? "pressed" : "released");
+
+	return pressed;
+}
+
+unsigned int kpd_homekey_pmic_status(void)
+{
+	unsigned int pressed;
+
+	pressed = kpd_pmic_homekey_status_hal();
+	kpd_info("[%s] %s home key\n", __func__, pressed ? "pressed" : "released");
+
+	return pressed;
+}
+#endif
+
 #ifdef CONFIG_KPD_PWRKEY_USE_PMIC
 void kpd_pwrkey_pmic_handler(unsigned long pressed)
 {
@@ -201,6 +270,9 @@ static void kpd_keymap_handler(unsigned long data)
 				continue;
 			input_report_key(kpd_input_dev, linux_keycode, pressed);
 			input_sync(kpd_input_dev);
+/*hs14 code for SR-AL6528A-01-403 by hehaoran5 at 20220908 start*/
+			get_volumeup_state(linux_keycode,pressed);
+/*hs14 code for SR-AL6528A-01-403 by hehaoran5 at 20220908 end*/
 			kpd_print("report Linux keycode = %d\n", linux_keycode);
 
 #ifdef CONFIG_LONG_PRESS_MODE_EN
@@ -399,9 +471,12 @@ static int kpd_pdrv_probe(struct platform_device *pdev)
 		if (kpd_keymap[i] != 0)
 			__set_bit(kpd_keymap[i], kpd_input_dev->keybit);
 	}
-
+/*HS03s_T code for P221014-07273 by wenghailong at 20221110 start*/
+#if defined(CONFIG_KPD_PWRKEY_USE_PMIC)
 	if (kpd_dts_data.kpd_sw_rstkey)
 		__set_bit(kpd_dts_data.kpd_sw_rstkey, kpd_input_dev->keybit);
+#endif
+/*HS03s_T code for P221014-07273 by wenghailong at 20221110 end*/
 #ifdef KPD_KEY_MAP
 	__set_bit(KPD_KEY_MAP, kpd_input_dev->keybit);
 #endif
@@ -444,7 +519,16 @@ static int kpd_pdrv_probe(struct platform_device *pdev)
 	}
 	/* Add kpd debug node */
 	mt_kpd_debugfs();
-
+/*hs14 code for SR-AL6528A-01-403 by hehaoran5 at 20220908 start*/
+	sec_key = sec_device_create(NULL, "sec_key");
+	if (IS_ERR(sec_key)) {
+		pr_err("Failed to create device(sec_key)!\n");
+	}
+	err = sysfs_create_group(&sec_key->kobj, &sec_key_attr_group);
+	if (err) {
+		pr_notice("Unable to create sysfs_group, error: %d\n",err);
+	}
+/*hs14 code for SR-AL6528A-01-403 by hehaoran5 at 20220908 end*/
 	kpd_info("kpd_probe OK.\n");
 
 	return err;

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2019 MediaTek Inc.
-*/
+ * Copyright (C) 2019 MediaTek Inc.
+ */
 
 #ifndef __TPD_H
 #define __TPD_H
@@ -22,6 +22,7 @@
 #include <linux/kobject.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/input/sec_cmd.h>
 
 /*debug macros */
 #define TPD_DEBUG
@@ -97,6 +98,7 @@ struct tpd_device {
 	struct timer_list timer;
 	struct tasklet_struct tasklet;
 	int btn_state;
+	int tp_is_enabled;
 };
 struct tpd_key_dim_local {
 	int key_x;
@@ -138,14 +140,22 @@ struct tpd_driver_t {
 };
 
 
-#if 1				/* #ifdef TPD_HAVE_BUTTON */
+				/* #ifdef TPD_HAVE_BUTTON */
 void tpd_button(unsigned int x, unsigned int y, unsigned int down);
 void tpd_button_init(void);
 ssize_t tpd_virtual_key(char *buf);
 /* #ifndef TPD_BUTTON_HEIGHT */
 /* #define TPD_BUTTON_HEIGHT TPD_RES_Y */
 /* #endif */
+
+extern char *mtp_chip_name;
+extern int mtp_fw_ver;
+extern int mtk_touch_get_usb_status(void);
+
+#if 0
+extern int smart_wakeup_open_flag;
 #endif
+
 
 extern int tpd_driver_add(struct tpd_driver_t *tpd_drv);
 extern int tpd_driver_remove(struct tpd_driver_t *tpd_drv);
@@ -154,13 +164,8 @@ extern int tpd_em_spl_num;
 extern int tpd_em_pressure_threshold;
 extern struct tpd_device *tpd;
 extern void tpd_get_dts_info(void);
-#ifdef CONFIG_TOUCHSCREEN_HIMAX_CHIPSET_8789P1_8185P3
-#define GTP_RST_PORT    2
-#define GTP_INT_PORT    1
-#else
-#define GTP_RST_PORT    0
-#define GTP_INT_PORT    1
-#endif
+#define GTP_RST_PORT    172
+#define GTP_INT_PORT    10
 extern void tpd_gpio_as_int(int pin);
 extern void tpd_gpio_output(int pin, int level);
 extern const struct of_device_id touch_of_match[];

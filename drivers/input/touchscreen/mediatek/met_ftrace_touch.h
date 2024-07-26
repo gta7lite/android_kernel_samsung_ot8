@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2019 MediaTek Inc.
-*/
+ * Copyright (C) 2019 MediaTek Inc.
+ */
 
 #undef TRACE_SYSTEM
 #define TRACE_SYSTEM met_touch
@@ -29,10 +29,10 @@ TRACE_EVENT(MET_touch,
 			),
 
 		TP_fast_assign(
-			strlcpy(__entry->_touch_type, touch_type, 16);
+			memcpy(__entry->_touch_type, touch_type, 16);
 			__entry->_tsec = tsec;
 			__entry->_tusec = tusec;
-			strlcpy(__entry->_mode, mode, 16);
+			memcpy(__entry->_mode, mode, 16);
 			__entry->_value = value;
 			),
 
