@@ -269,6 +269,20 @@ extern void mtk_ccci_ccb_info_peek(void);
 #define CCCI_IOC_CCB_CTRL_INFO			\
 	_IOWR(CCCI_IOC_MAGIC, 71, struct ccb_ctrl_info)
 
+/* for user space ccci mdinit user */
+#define CCCI_IOC_GET_MDINIT_KILLED      \
+	_IOR(CCCI_IOC_MAGIC, 72, unsigned int)
+#define CCCI_IOC_ENTER_UPLOAD	\
+	_IO(CCCI_IOC_MAGIC, 73) /* modem log */
+#define CCCI_IOC_DRV_ENTER_UPLOAD	\
+	_IO(CCCI_IOC_MAGIC, 74) /* modem log for s */
+#define CCCI_IOC_LOG_LVL	\
+	_IOW(CCCI_IOC_MAGIC, 75, unsigned int) /* modem log for s */
+
+/* for meta cancel poll */
+#define CCCI_IOC_SMEM_POLL_EXIT	\
+	_IO(CCCI_IOC_MAGIC, 76) /* only for meta mode */
+
 #define CCCI_IOC_SET_HEADER			\
 	_IO(CCCI_IOC_MAGIC,  112) /* emcs_va */
 #define CCCI_IOC_CLR_HEADER			\
@@ -397,11 +411,11 @@ enum CCCI_CH {
 	CCCI_CCMNI8_DLACK_RX            = 93,
 	CCCI_MDL_MONITOR_DL             = 94,
 	CCCI_MDL_MONITOR_UL             = 95,
-	CCCI_CCMNILAN_RX                = 96,
-	CCCI_CCMNILAN_RX_ACK            = 97,
-	CCCI_CCMNILAN_TX                = 98,
-	CCCI_CCMNILAN_TX_ACK            = 99,
-	CCCI_CCMNILAN_DLACK_RX          = 100,
+	CCCI_CCMNI9_RX                = 96,
+	CCCI_CCMNI9_RX_ACK            = 97,
+	CCCI_CCMNI9_TX                = 98,
+	CCCI_CCMNI9_TX_ACK            = 99,
+	CCCI_CCMNI9_DLACK_RX          = 100,
 	CCCI_IMSEM_UL                   = 101,
 	CCCI_IMSEM_DL                   = 102,
 	CCCI_CCMNI10_RX                 = 103,
@@ -488,6 +502,10 @@ enum CCCI_CH {
 	CCCI_TCHE_TX			= 182,
 	CCCI_DISP_RX			= 183,
 	CCCI_DISP_TX			= 184,
+	
+	CCCI_CIQ_RX			= 185,
+	CCCI_CIQ_TX			= 186,
+	
 	CCCI_WIFI_RX			= 187,
 	CCCI_WIFI_TX			= 188,
 	CCCI_VTS_RX			= 189,
@@ -495,6 +513,13 @@ enum CCCI_CH {
 
 	CCCI_IKERAW_RX			= 191,
 	CCCI_IKERAW_TX			= 192,
+
+	CCCI_RIL_IPC0_RX		= 193,
+	CCCI_RIL_IPC0_TX		= 194,
+	CCCI_RIL_IPC1_RX		= 195,
+	CCCI_RIL_IPC1_TX		= 196,
+	CCCI_VT_CTL_RX			= 197,
+	CCCI_VT_CTL_TX			= 198,
 
 	CCCI_MD_DIRC_RX			= 200,
 	CCCI_MD_DIRC_TX			= 201,
@@ -511,6 +536,9 @@ enum CCCI_CH {
 	CCCI_EPDG3_TX			= 241,
 	CCCI_EPDG4_RX			= 242,
 	CCCI_EPDG4_TX			= 243,
+
+	CCCI_AT_RX			= 258,
+	CCCI_AT_TX			= 259,
 
 	CCCI_C2K_PPP_DATA, /* data ch for c2k */
 
@@ -609,4 +637,5 @@ extern void fsm_scp_init0(void);
 #ifdef CCCI_KMODULE_ENABLE
 int ccci_init(void);
 #endif
+void drv_tri_panic_by_lvl(int md_id);
 #endif	/* __CCCI_CORE_H__ */

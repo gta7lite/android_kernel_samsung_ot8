@@ -180,7 +180,7 @@ static inline void ccci_md_inc_tx_seq_num(unsigned char md_id,
 static inline void ccci_channel_update_packet_counter(
 	unsigned long *logic_ch_pkt_cnt, struct ccci_header *ccci_h)
 {
-	if ((ccci_h->channel & 0xFFFF) < CCCI_MAX_CH_NUM) {
+	if (ccci_h->channel < CCCI_MAX_CH_NUM) {
 		logic_ch_pkt_cnt[ccci_h->channel]++;
 	} else {
 		CCCI_ERROR_LOG(-1, CORE,

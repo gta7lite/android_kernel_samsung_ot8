@@ -82,6 +82,7 @@ enum {
 	SCP_CCCI_STATE_INVALID = 0,
 	SCP_CCCI_STATE_BOOTING = 1,
 	SCP_CCCI_STATE_RBREADY = 2,
+	SCP_CCCI_STATE_STOP = 3,
 };
 
 enum CCCI_MD_MSG {
@@ -210,6 +211,7 @@ struct ccci_fsm_ee {
 	char ex_mpu_string[MD_EX_MPU_STR_LEN];
 	char ex_start_time[MD_EX_START_TIME_LEN];
 	unsigned int mdlog_dump_done;
+	unsigned int is_normal_ee_case;
 };
 
 struct ccci_fsm_monitor {
@@ -274,6 +276,9 @@ int fsm_poller_init(struct ccci_fsm_poller *poller_ctl);
 int fsm_ee_init(struct ccci_fsm_ee *ee_ctl);
 int fsm_monitor_init(struct ccci_fsm_monitor *monitor_ctl);
 int fsm_sys_init(void);
+#ifdef CUST_FT_EE_TRIGGER_REBOOT
+int ccci_get_ap_debug_level(void);
+#endif
 
 struct ccci_fsm_ctl *fsm_get_entity_by_device_number(dev_t dev_n);
 struct ccci_fsm_ctl *fsm_get_entity_by_md_id(int md_id);

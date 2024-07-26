@@ -149,6 +149,8 @@ static void md_cd_exception(struct ccci_modem *md, enum HIF_EX_STAGE stage)
 
 	CCCI_ERROR_LOG(md->index, TAG, "MD exception HIF %d\n", stage);
 	ccci_event_log("md%d:MD exception HIF %d\n", md->index, stage);
+
+	__pm_wakeup_event(md->trm_wake_lock, jiffies_to_msecs(50 * HZ));
 	/* in exception mode, MD won't sleep, so we do not
 	 * need to request MD resource first
 	 */
@@ -213,6 +215,8 @@ static void polling_ready(struct ccci_modem *md, int step)
 		if (md_info->channel_id & (1 << step)) {
 			CCCI_DEBUG_LOG(md->index, TAG,
 				"poll RCHNUM %d\n", md_info->channel_id);
+			ccif_write32(md_info->ap_ccif_base,
+				APCCIF_ACK, (1 << step));
 			return;
 		}
 		msleep(time_once);
@@ -228,12 +232,15 @@ static int md_cd_ee_handshake(struct ccci_modem *md, int timeout)
 	 * D2H_EXCEPTION_CLEARQ_DONE together
 	 */
 	/*polling_ready(md_ctrl, D2H_EXCEPTION_INIT);*/
+	__pm_wakeup_event(md->trm_wake_lock, jiffies_to_msecs(20 * HZ));
 	md_cd_exception(md, HIF_EX_INIT);
+	__pm_wakeup_event(md->trm_wake_lock, jiffies_to_msecs(20 * HZ));
 	polling_ready(md, D2H_EXCEPTION_INIT_DONE);
 	md_cd_exception(md, HIF_EX_INIT_DONE);
-
+	__pm_wakeup_event(md->trm_wake_lock, jiffies_to_msecs(20 * HZ));
 	polling_ready(md, D2H_EXCEPTION_CLEARQ_DONE);
 	md_cd_exception(md, HIF_EX_CLEARQ_DONE);
+	__pm_wakeup_event(md->trm_wake_lock, jiffies_to_msecs(20 * HZ));
 
 	polling_ready(md, D2H_EXCEPTION_ALLQ_RESET);
 	md_cd_exception(md, HIF_EX_ALLQ_RESET);
@@ -293,14 +300,11 @@ static inline int md_sys1_sw_init(struct ccci_modem *md)
 			md->md_wdt_irq_id, ret);
 		return ret;
 	}
-
-#if (MD_GENERATION >= 6297)
 	ret = irq_set_irq_wake(md->md_wdt_irq_id, 1);
 	if (ret)
 		CCCI_ERROR_LOG(md->index, TAG,
 			"irq_set_irq_wake MD_WDT IRQ(%d) error %d\n",
 			md->md_wdt_irq_id, ret);
-#endif
 	return 0;
 }
 
@@ -413,6 +417,9 @@ static int md_cd_start(struct ccci_modem *md)
 	atomic_set(&md->reset_on_going, 0);
 
 	md->per_md_data.md_dbg_dump_flag = MD_DBG_DUMP_AP_REG;
+
+	/* Notify ATF update md sec smem info */
+	ccci_get_md_sec_smem_size_and_update();
 
 	/* 7. let modem go */
 	if (md->hw_info->plat_ptr->let_md_go)
@@ -598,6 +605,9 @@ static void debug_in_flight_mode(struct ccci_modem *md)
 static int md_cd_stop(struct ccci_modem *md, unsigned int stop_type)
 {
 	int ret = 0;
+	int i;
+	struct md_sys1_info *md_info = (struct md_sys1_info *)md->private_data;
+	unsigned int rx_ch_bitmap;
 
 	CCCI_NORMAL_LOG(md->index, TAG,
 		"modem is power off, stop_type=%d\n", stop_type);
@@ -619,6 +629,23 @@ static int md_cd_stop(struct ccci_modem *md, unsigned int stop_type)
 		cldma_plat_hw_reset(md->index);
 		cldma_plat_set_clk_cg(md->index, 0);
 	}
+
+	rx_ch_bitmap = ccif_read32(md_info->md_ccif_base, APCCIF_RCHNUM);
+	if (rx_ch_bitmap) {
+		CCCI_NORMAL_LOG(md->index, TAG,
+			"CCIF rx bitmap: 0x%x\n", rx_ch_bitmap);
+		for (i = 0; i < CCIF_CH_NUM; i++) {
+			/* Ack one by one */
+			if (rx_ch_bitmap & (1 << i))
+				ccif_write32(md_info->md_ccif_base,
+					APCCIF_ACK, (1 << i));
+		}
+		rx_ch_bitmap =
+			ccif_read32(md_info->md_ccif_base, APCCIF_RCHNUM);
+		CCCI_NORMAL_LOG(md->index, TAG,
+			"CCIF rx bitmap: 0x%x(after ack)\n", rx_ch_bitmap);
+	}
+
 	/* Check EMI after */
 	if (md->hw_info->plat_ptr->check_emi_state)
 		md->hw_info->plat_ptr->check_emi_state(md, 0);
@@ -788,6 +815,8 @@ static void config_ap_runtime_data_v2_1(struct ccci_modem *md,
 		ccci_md_get_smem_by_user_id(md->index,
 			SMEM_USER_RAW_RUNTIME_DATA);
 
+	int sec_smem_size = ccci_get_md_sec_smem_size_and_update();
+
 	ap_feature->head_pattern = AP_FEATURE_QUERY_PATTERN;
 	/*AP query MD feature set */
 
@@ -802,7 +831,7 @@ static void config_ap_runtime_data_v2_1(struct ccci_modem *md,
 	ap_feature->noncached_mpu_start_addr =
 		md->mem_layout.md_bank4_noncacheable_total.base_md_view_phy;
 	ap_feature->noncached_mpu_total_size =
-		md->mem_layout.md_bank4_noncacheable_total.size;
+		md->mem_layout.md_bank4_noncacheable_total.size + sec_smem_size;
 	ap_feature->cached_mpu_start_addr =
 		md->mem_layout.md_bank4_cacheable_total.base_md_view_phy;
 	ap_feature->cached_mpu_total_size =
@@ -1192,6 +1221,89 @@ static ssize_t md_cd_dump_store(struct ccci_modem *md,
 	return count;
 }
 
+static ssize_t md_cd_control_show(struct ccci_modem *md, char *buf)
+{
+	int count = 0;
+
+	count = snprintf(buf, 256,
+		"support: cldma_reset cldma_stop ccif_assert md_type trace_sample\n");
+	if (count < 0 || count >= 256) {
+		CCCI_ERROR_LOG(md->index, TAG,
+			"%s-%d:snprintf fail,count=%d\n", __func__, __LINE__, count);
+		return -1;
+	}
+	return count;
+}
+
+static ssize_t md_cd_control_store(struct ccci_modem *md,
+	const char *buf, size_t count)
+{
+	int size = 0;
+
+	if (md->hif_flag&(1<<CLDMA_HIF_ID)) {
+		if (md->hw_info->plat_ptr->lock_cldma_clock_src) {
+			if (strncmp(buf, "cldma_reset", count - 1) == 0) {
+				CCCI_NORMAL_LOG(md->index, TAG,
+					"reset CLDMA\n");
+				md->hw_info->plat_ptr->lock_cldma_clock_src(1);
+				ccci_hif_stop(CLDMA_HIF_ID);
+				md_cd_clear_all_queue(1 << CLDMA_HIF_ID, OUT);
+				md_cd_clear_all_queue(1 << CLDMA_HIF_ID, IN);
+				ccci_hif_start(CLDMA_HIF_ID);
+				md->hw_info->plat_ptr->lock_cldma_clock_src(0);
+			}
+			if (strncmp(buf, "cldma_stop", count - 1) == 0) {
+				CCCI_NORMAL_LOG(md->index, TAG, "stop CLDMA\n");
+				md->hw_info->plat_ptr->lock_cldma_clock_src(1);
+				ccci_hif_stop(CLDMA_HIF_ID);
+				md->hw_info->plat_ptr->lock_cldma_clock_src(0);
+			}
+		}
+	}
+	if (strncmp(buf, "ccif_assert", count - 1) == 0) {
+		CCCI_NORMAL_LOG(md->index, TAG,
+			"use CCIF to force MD assert\n");
+		md->ops->force_assert(md, CCIF_INTERRUPT);
+	}
+	if (strncmp(buf, "ccif_reset", count - 1) == 0) {
+		CCCI_NORMAL_LOG(md->index, TAG, "reset AP MD1 CCIF\n");
+		ccci_hif_debug(CCIF_HIF_ID, CCCI_HIF_DEBUG_RESET, NULL, -1);
+	}
+	if (strncmp(buf, "ccci_trm", count - 1) == 0) {
+		CCCI_NORMAL_LOG(md->index, TAG, "TRM triggered\n");
+		/* ccci_md_send_msg_to_user(md, CCCI_MONITOR_CH,
+		 * CCCI_MD_MSG_RESET_REQUEST, 0);
+		 */
+	}
+	size = strlen("md_type=");
+	if (strncmp(buf, "md_type=", size) == 0) {
+		md->per_md_data.config.load_type_saving = buf[size] - '0';
+		CCCI_NORMAL_LOG(md->index, TAG, "md_type_store %d\n",
+			md->per_md_data.config.load_type_saving);
+		/* ccci_md_send_msg_to_user(md, CCCI_MONITOR_CH,
+		 * CCCI_MD_MSG_STORE_NVRAM_MD_TYPE, 0);
+		 */
+	}
+	size = strlen("trace_sample=");
+	if (strncmp(buf, "trace_sample=", size) == 0) {
+		trace_sample_time = (buf[size] - '0') * 100000000;
+		CCCI_NORMAL_LOG(md->index, TAG,
+			"trace_sample_time %u\n", trace_sample_time);
+	}
+	size = strlen("md_dbg_dump=");
+	if (strncmp(buf, "md_dbg_dump=", size)
+		== 0 && size < count - 1) {
+		size = kstrtouint(buf+size, 16,
+				&md->per_md_data.md_dbg_dump_flag);
+		if (size)
+			md->per_md_data.md_dbg_dump_flag = MD_DBG_DUMP_ALL;
+		CCCI_NORMAL_LOG(md->index, TAG, "md_dbg_dump 0x%X\n",
+			md->per_md_data.md_dbg_dump_flag);
+	}
+
+	return count;
+}
+
 static ssize_t md_cd_parameter_show(struct ccci_modem *md, char *buf)
 {
 	int count = 0;
@@ -1223,6 +1335,7 @@ static ssize_t md_cd_parameter_store(struct ccci_modem *md,
 }
 CCCI_MD_ATTR(NULL, debug, 0660, md_cd_debug_show, md_cd_debug_store);
 CCCI_MD_ATTR(NULL, dump, 0660, md_cd_dump_show, md_cd_dump_store);
+CCCI_MD_ATTR(NULL, control, 0660, md_cd_control_show, md_cd_control_store);
 CCCI_MD_ATTR(NULL, parameter, 0660, md_cd_parameter_show,
 	md_cd_parameter_store);
 
@@ -1243,6 +1356,13 @@ static void md_cd_sysfs_init(struct ccci_modem *md)
 		CCCI_ERROR_LOG(md->index, TAG,
 			"fail to add sysfs node %s %d\n",
 			ccci_md_attr_dump.attr.name, ret);
+
+	ccci_md_attr_control.modem = md;
+	ret = sysfs_create_file(&md->kobj, &ccci_md_attr_control.attr);
+	if (ret)
+		CCCI_ERROR_LOG(md->index, TAG,
+			"fail to add sysfs node %s %d\n",
+			ccci_md_attr_control.attr.name, ret);
 
 	ccci_md_attr_parameter.modem = md;
 	ret = sysfs_create_file(&md->kobj, &ccci_md_attr_parameter.attr);

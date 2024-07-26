@@ -21,6 +21,10 @@
 #include "ccci_fsm.h"
 #include "ccci_ipc_task_ID.h"
 
+#ifdef CONFIG_MTK_SRIL_SUPPORT
+#include "modem_prj.h"
+#endif
+
 #define MAX_QUEUE_LENGTH 32
 
 unsigned int port_char_dev_poll(struct file *fp,
@@ -66,6 +70,15 @@ static const struct file_operations char_dev_fops = {
 	.poll = &port_char_dev_poll,/*use port char self API*/
 	.mmap = &port_dev_mmap,
 };
+
+#ifdef CONFIG_MTK_SRIL_SUPPORT
+const struct file_operations *get_port_char_ops(void)
+{
+	return &char_dev_fops;
+}
+EXPORT_SYMBOL(get_port_char_ops);
+#endif
+
 static int port_char_init(struct port_t *port)
 {
 	struct cdev *dev = NULL;
@@ -179,6 +192,9 @@ static int port_char_recv_skb(struct port_t *port, struct sk_buff *skb)
 		port->rx_ch != CCCI_FS_RX &&
 		port->rx_ch != CCCI_RPC_RX &&
 		port->rx_ch != CCCI_UDC_RX &&
+#ifdef CONFIG_MTK_SRIL_SUPPORT
+		port->rx_ch != CCCI_CIQ_RX &&
+#endif
 		!(port->rx_ch == CCCI_IPC_RX &&
 		port->minor ==
 		AP_IPC_LWAPROXY + CCCI_IPC_MINOR_BASE)))
@@ -212,9 +228,28 @@ void port_char_dump_info(struct port_t *port, unsigned int flag)
 			port->rx_pkg_cnt, port->rx_drop_cnt,
 			port->tx_ch, port->tx_pkg_cnt);
 }
+
+#ifdef CONFIG_MTK_SRIL_SUPPORT
+void port_char_md_state_notify(struct port_t *port, unsigned int state)
+{
+	if ((port->rx_ch == CCCI_RIL_IPC0_RX || port->rx_ch == CCCI_RIL_IPC1_RX)
+		&& (state == GATED || state == BOOT_WAITING_FOR_HS2
+			|| state == READY || state == RESET
+			|| state == EXCEPTION)) {
+		wake_up_all(&port->rx_wq);
+		port->md_state_changed = 1;
+		pr_err("mif: %s port: %d state: %d\n",
+			__func__, port->rx_ch, state);
+	}
+}
+#endif
+
 struct port_ops char_port_ops = {
 	.init = &port_char_init,
 	.recv_skb = &port_char_recv_skb,
 	.dump_info = &port_char_dump_info,
+#ifdef CONFIG_MTK_SRIL_SUPPORT
+	.md_state_notify = &port_char_md_state_notify
+#endif
 };
 

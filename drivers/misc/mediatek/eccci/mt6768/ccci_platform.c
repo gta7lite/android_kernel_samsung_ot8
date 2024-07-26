@@ -24,6 +24,14 @@
 #include <mt-plat/mtk_lpae.h>
 #endif
 
+#include "modem_secure_base.h"
+
+#include <linux/arm-smccc.h>
+
+
+#define MTK_SIP_CCCI_CONTROL_ARCH32		0x82000505
+#define MTK_SIP_CCCI_CONTROL_ARCH64		0xC2000505
+
 #define TAG "plat"
 
 int Is_MD_EMI_voilation(void)
@@ -44,6 +52,28 @@ unsigned int ccci_get_md_debug_mode(struct ccci_modem *md)
 }
 EXPORT_SYMBOL(ccci_get_md_debug_mode);
 
+int ccci_get_md_sec_smem_size_and_update(void)
+{
+#ifdef ENABLE_MD_SEC_SMEM
+	struct arm_smccc_res res;
+
+#ifdef __aarch64__
+	arm_smccc_smc(MTK_SIP_CCCI_CONTROL_ARCH64,
+				UPDATE_MD_SEC_SMEM, 0, 0, 0, 0, 0, 0, &res);
+#else
+	arm_smccc_smc(MTK_SIP_CCCI_CONTROL_ARCH32,
+				UPDATE_MD_SEC_SMEM, 0, 0, 0, 0, 0, 0, &res);
+#endif
+	CCCI_NORMAL_LOG(-1, TAG,
+		"%s:size=0x%x\n", __func__, (int)res.a0);
+
+	return (int)res.a0;
+#else
+
+	return 0;
+#endif
+}
+EXPORT_SYMBOL(ccci_get_md_sec_smem_size_and_update);
 
 #ifdef FEATURE_LOW_BATTERY_SUPPORT
 static int ccci_md_low_power_notify(struct ccci_modem *md,

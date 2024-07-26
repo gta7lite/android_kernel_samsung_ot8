@@ -181,6 +181,7 @@ struct ccci_modem {
 	struct md_hw_info *hw_info;
 
 	struct ccci_per_md per_md_data;
+	unsigned int ccci_drv_trigger_upload;
 };
 
 extern struct ccci_modem *modem_sys[MAX_MD_NUM];
@@ -260,4 +261,7 @@ extern u32 mt_irq_get_pending(unsigned int irq);
 extern int gf_port_list_reg[GF_PORT_LIST_MAX];
 extern int gf_port_list_unreg[GF_PORT_LIST_MAX];
 extern int ccci_ipc_set_garbage_filter(struct ccci_modem *md, int reg);
+#ifdef CUST_FT_EE_TRIGGER_REBOOT
+extern int ccci_get_ap_debug_level(void);
+#endif
 #endif	/* __CCCI_MODEM_H__ */

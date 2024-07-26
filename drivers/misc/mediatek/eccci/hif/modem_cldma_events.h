@@ -162,10 +162,9 @@ TRACE_EVENT(cldma_tx,
 		unsigned long long tx_cost_time,
 		unsigned long long tx_bytes,
 		unsigned long long sample_time,
-		unsigned long long sample_txbytes,
-		unsigned int ipid),
+		unsigned long long sample_txbytes),
 	TP_ARGS(queue_no, ccci_ch, free_slot, tx_interal, tx_cost_time,
-		tx_bytes, sample_time, sample_txbytes, ipid),
+		tx_bytes, sample_time, sample_txbytes),
 	TP_STRUCT__entry(__field(int, queue_no)
 		__field(int, ccci_ch)
 		__field(unsigned int, free_slot)
@@ -174,7 +173,6 @@ TRACE_EVENT(cldma_tx,
 		__field(unsigned long long, tx_bytes)
 		__field(unsigned long long, sample_time)
 		__field(unsigned long long, sample_txbytes)
-		__field(unsigned int, ipid)
 	),
 	TP_fast_assign(__entry->queue_no = queue_no;
 		__entry->ccci_ch = ccci_ch;
@@ -184,14 +182,13 @@ TRACE_EVENT(cldma_tx,
 		__entry->tx_bytes = tx_bytes;
 		__entry->sample_time = sample_time;
 		__entry->sample_txbytes = sample_txbytes;
-		__entry->ipid = ipid;
 	),
-	TP_printk("q%u	ch%d	%u	%llu	%llu	%llu	%llu	%llu 0x%x",
+	TP_printk("q%u	ch%d	%u	%llu	%llu	%llu	%llu	%llu",
 		__entry->queue_no,
 		__entry->ccci_ch, __entry->free_slot,
 		__entry->tx_interal,
 		__entry->tx_cost_time, __entry->tx_bytes,
-		__entry->sample_time, __entry->sample_txbytes, __entry->ipid)
+		__entry->sample_time, __entry->sample_txbytes)
 	);
 
 TRACE_EVENT(cldma_tx_done,
