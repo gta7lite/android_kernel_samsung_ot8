@@ -17,10 +17,8 @@
 #include <mt-plat/upmu_common.h>
 #endif
 #include "vibrator.h"
-#include "vibrator_hal.h"
-#include <linux/regulator/consumer.h>
-#define T    "vibrator"
 
+#define T    "vibrator"
 struct vibrator_hw *pvib_cust;
 
 #define OC_INTR_INIT_DELAY      (3)
@@ -28,8 +26,7 @@ struct vibrator_hw *pvib_cust;
 void vibr_Enable_HW(void)
 {
 #ifdef CONFIG_MTK_PMIC_CHIP_MT6357
-	if (regulator_enable(reg))
-		pr_notice("set vibr_reg enable failed!\n");
+	pmic_set_register_value(PMIC_RG_LDO_VIBR_EN, 1);
 #endif
 	mdelay(OC_INTR_INIT_DELAY);
 	pmic_enable_interrupt(INT_VIBR_OC, 1, "vibr");
@@ -39,8 +36,7 @@ void vibr_Disable_HW(void)
 {
 	pmic_enable_interrupt(INT_VIBR_OC, 0, "vibr");
 #ifdef CONFIG_MTK_PMIC_CHIP_MT6357
-	if (regulator_disable(reg))
-		pr_notice("set vibr_reg enable failed!\n");
+	pmic_set_register_value(PMIC_RG_LDO_VIBR_EN, 0);
 #endif
 }
 
