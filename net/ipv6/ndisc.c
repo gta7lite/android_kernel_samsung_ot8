@@ -73,6 +73,12 @@
 #include <linux/netfilter.h>
 #include <linux/netfilter_ipv6.h>
 
+#ifdef CONFIG_MTK_SRIL_SUPPORT
+#define NET_IF_NAME	"rmnet"
+#else
+#define NET_IF_NAME	"ccmni"
+#endif
+
 static u32 ndisc_hash(const void *pkey,
 		      const struct net_device *dev,
 		      __u32 *hash_rnd);
@@ -1232,8 +1238,8 @@ static void ndisc_router_discovery(struct sk_buff *skb)
 	}
 
 	if ((sysctl_optr == MTK_IPV6_VZW_ALL ||
-	     sysctl_optr == MTK_IPV6_EX_RS_INTERVAL) &&
-	    (strncmp(in6_dev->dev->name, "ccmni", 2) == 0)) {
+	    sysctl_optr == MTK_IPV6_EX_RS_INTERVAL) &&
+	    (strncmp(in6_dev->dev->name, NET_IF_NAME, 2) == 0)) {
 		/*add for VzW feature : remove IF_RS_VZW_SENT flag*/
 		if (in6_dev->if_flags & IF_RS_VZW_SENT)
 			in6_dev->if_flags &= ~IF_RS_VZW_SENT;

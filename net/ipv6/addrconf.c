@@ -100,6 +100,12 @@
 #define IPV6_MAX_STRLEN \
 	sizeof("ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255")
 
+#ifdef CONFIG_MTK_SRIL_SUPPORT
+#define NET_IF_NAME	"rmnet"
+#else
+#define NET_IF_NAME	"ccmni"
+#endif
+
 static inline u32 cstamp_delta(unsigned long cstamp)
 {
 	return (cstamp - INITIAL_JIFFIES) * 100UL / HZ;
@@ -327,8 +333,8 @@ static int inet6_fill_nora(struct sk_buff *skb, struct inet6_dev *idev,
 	struct in6_addr addr;
 
 	if ((sysctl_optr == MTK_IPV6_VZW_ALL ||
-	     sysctl_optr == MTK_IPV6_EX_RS_INTERVAL) &&
-	    (strncmp(idev->dev->name, "ccmni", 2) == 0)) {
+	    sysctl_optr == MTK_IPV6_EX_RS_INTERVAL) &&
+		(strncmp(idev->dev->name, NET_IF_NAME, 2) == 0)) {
 		/*This ifi_flags refers to the dev flag in kernel,
 		 *but hereI use it as a valid flag. When ifi_flags
 		 *is zero , it means RA refesh Fail, And When
@@ -2335,7 +2341,7 @@ static int addrconf_ifid_ip6tnl(u8 *eui, struct net_device *dev)
 static int ipv6_generate_eui64(u8 *eui, struct net_device *dev)
 {
 	/* MTK_NET_CHANGES */
-	if (strncmp(dev->name, "ccmni", 2) == 0)
+	if (strncmp(dev->name, NET_IF_NAME, 2) == 0)
 		return -1;
 	switch (dev->type) {
 	case ARPHRD_ETHER:
@@ -3974,7 +3980,7 @@ static void addrconf_rs_timer(struct timer_list *t)
 		write_lock(&idev->lock);
 
 		if (sysctl_optr == MTK_IPV6_VZW_ALL &&
-		    (strncmp(dev->name, "ccmni", 2) == 0))
+		    (strncmp(dev->name, NET_IF_NAME, 2) == 0))
 			idev->rs_interval = idev->cnf.rtr_solicit_interval;
 		else
 			idev->rs_interval = rfc3315_s14_backoff_update
@@ -4295,7 +4301,7 @@ static void addrconf_dad_completed(struct inet6_ifaddr *ifp, bool bump_id,
 		write_lock_bh(&ifp->idev->lock);
 		spin_lock(&ifp->lock);
 		if (sysctl_optr == MTK_IPV6_VZW_ALL &&
-		    (strncmp(dev->name, "ccmni", 2) == 0))
+		    (strncmp(dev->name, NET_IF_NAME, 2) == 0))
 			ifp->idev->rs_interval =
 				ifp->idev->cnf.rtr_solicit_interval;
 		else
@@ -4557,7 +4563,7 @@ static void calc_next_vzw(struct inet6_ifaddr *ifp_vzw,
 			  unsigned long *next_vzw, unsigned long age_vzw,
 			  bool is_expires_vzw, u32 min_lft_vzw)
 {
-	if (strncmp(ifp_vzw->idev->dev->name, "ccmni", 2) == 0) {
+	if (strncmp(ifp_vzw->idev->dev->name, NET_IF_NAME, 2) == 0) {
 		if (is_expires_vzw ||
 		    (rt_vzw && (rt_vzw->fib6_flags & RTF_EXPIRES))) {
 			if (!(ifp_vzw->idev->if_flags & IF_RS_VZW_SENT) &&
@@ -4602,8 +4608,8 @@ restart:
 			struct fib6_info *rt = NULL;
 
 			if ((sysctl_optr == MTK_IPV6_VZW_ALL ||
-			     sysctl_optr == MTK_IPV6_EX_RS_INTERVAL) &&
-			    (strncmp(ifp->idev->dev->name, "ccmni", 2) == 0))
+				sysctl_optr == MTK_IPV6_EX_RS_INTERVAL) &&
+				(strncmp(ifp->idev->dev->name, NET_IF_NAME, 2) == 0))
 				rt = calc_lft_vzw(ifp, &min_lft);
 			/* When setting preferred_lft to a value not zero or
 			 * infinity, while valid_lft is infinity
@@ -4625,8 +4631,8 @@ restart:
 				goto restart;
 			} else if (ifp->prefered_lft == INFINITY_LIFE_TIME) {
 				if ((sysctl_optr == MTK_IPV6_VZW_ALL ||
-				     sysctl_optr == MTK_IPV6_EX_RS_INTERVAL) &&
-				    (strncmp(ifp->idev->dev->name, "ccmni", 2) == 0)) {
+					sysctl_optr == MTK_IPV6_EX_RS_INTERVAL) &&
+					(strncmp(ifp->idev->dev->name, NET_IF_NAME, 2) == 0)) {
 					/*Patch for VzW
 					 *prefered_lft is INFINITY scenario
 					 *ccmni interface will send RS when
@@ -4693,8 +4699,8 @@ restart:
 				if (time_before(ifp->tstamp + ifp->prefered_lft * HZ, next))
 					next = ifp->tstamp + ifp->prefered_lft * HZ;
 				if ((sysctl_optr == MTK_IPV6_VZW_ALL ||
-				     sysctl_optr == MTK_IPV6_EX_RS_INTERVAL) &&
-				    (strncmp(ifp->idev->dev->name, "ccmni", 2) == 0)) {
+					sysctl_optr == MTK_IPV6_EX_RS_INTERVAL) &&
+					(strncmp(ifp->idev->dev->name, NET_IF_NAME, 2) == 0)) {
 					/*patch for VzW
 					 *prefered_lft is NOT INFINITY scenario
 					 *ccmni interface will send RS when time
@@ -5692,7 +5698,7 @@ update_lft:
 		idev->if_flags |= IF_RS_SENT;
 
 		if (sysctl_optr == MTK_IPV6_VZW_ALL &&
-		    (strncmp(dev->name, "ccmni", 2) == 0))
+		    (strncmp(dev->name, NET_IF_NAME, 2) == 0))
 			idev->rs_interval = idev->cnf.rtr_solicit_interval;
 		else
 			idev->rs_interval = rfc3315_s14_backoff_init
