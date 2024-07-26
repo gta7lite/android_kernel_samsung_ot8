@@ -1358,7 +1358,12 @@ static void mmc_select_driver_type(struct mmc_card *card)
 							   card->ext_csd.hs200_max_dtr,
 							   card_drv_type, &drv_type);
 
-	card->drive_strength = drive_strength;
+	// hs04 code for DEAL6398A-1104 by sunxunou at 20220929 start
+	if (card->cid.manfid == CID_MANFID_MICRON)
+		card->drive_strength = 0x01;	//strong driver strength(0x1, 33 ohm)
+	else
+		card->drive_strength = drive_strength;
+	// hs04 code for DEAL6398A-1104 by sunxunou at 20220929 end
 
 	if (drv_type)
 		mmc_set_driver_type(card->host, drv_type);
@@ -2088,9 +2093,12 @@ static int _mmc_suspend(struct mmc_host *host, bool is_suspend)
 		goto out;
 
 	if (mmc_can_poweroff_notify(host->card) &&
-		((host->caps2 & MMC_CAP2_FULL_PWR_CYCLE) || !is_suspend))
+		((host->caps2 & MMC_CAP2_FULL_PWR_CYCLE) || !is_suspend)) {
 		err = mmc_poweroff_notify(host->card, notify_type);
-	else if (mmc_can_sleep(host->card))
+		/* Add a delay before power off */
+		if (!err)
+			mmc_delay(2);
+	} else if (mmc_can_sleep(host->card))
 		err = mmc_sleep(host);
 	else if (!mmc_host_is_spi(host))
 		err = mmc_deselect_cards(host);

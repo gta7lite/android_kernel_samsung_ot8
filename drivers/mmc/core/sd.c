@@ -791,8 +791,7 @@ try_again:
 			retries--;
 			goto try_again;
 		} else if (err) {
-			retries = 0;
-			goto try_again;
+			return err;
 		}
 	}
 
@@ -1097,7 +1096,9 @@ free_card:
 static void mmc_sd_remove(struct mmc_host *host)
 {
 	mmc_remove_card(host->card);
+	mmc_claim_host(host);
 	host->card = NULL;
+	mmc_release_host(host);
 }
 
 /*
@@ -1140,15 +1141,17 @@ static int _mmc_sd_suspend(struct mmc_host *host)
 
 	mmc_claim_host(host);
 
-	if (mmc_card_suspended(host->card))
-		goto out;
+	if (host->card) {
+		if (mmc_card_suspended(host->card))
+			goto out;
 
-	if (!mmc_host_is_spi(host))
-		err = mmc_deselect_cards(host);
+		if (!mmc_host_is_spi(host))
+			err = mmc_deselect_cards(host);
 
-	if (!err) {
-		mmc_power_off(host);
-		mmc_card_set_suspended(host->card);
+		if (!err) {
+			mmc_power_off(host);
+			mmc_card_set_suspended(host->card);
+		}
 	}
 
 out:
@@ -1165,8 +1168,12 @@ static int mmc_sd_suspend(struct mmc_host *host)
 
 	err = _mmc_sd_suspend(host);
 	if (!err) {
-		pm_runtime_disable(&host->card->dev);
-		pm_runtime_set_suspended(&host->card->dev);
+		/* hs14 code for AL6528A-453 by gaochao at 20221108 start */
+		if (host->card) {
+			pm_runtime_disable(&host->card->dev);
+			pm_runtime_set_suspended(&host->card->dev);
+		}
+		/* hs14 code for AL6528A-453 by gaochao at 20221108 end */
 	}
 
 	return err;
@@ -1200,6 +1207,9 @@ out:
 static int mmc_sd_resume(struct mmc_host *host)
 {
 	pm_runtime_enable(&host->card->dev);
+/* HS03S code added for SR-AL5625-01-233 by zhaoxiangxiang at 20210430 start */
+	host->caps |= MMC_CAP_AGGRESSIVE_PM;
+/* HS03S code added for SR-AL5625-01-233 by zhaoxiangxiang at 20210430 end */
 	return 0;
 }
 
@@ -1217,7 +1227,9 @@ static int mmc_sd_runtime_suspend(struct mmc_host *host)
 	if (err)
 		pr_err("%s: error %d doing aggressive suspend\n",
 			mmc_hostname(host), err);
-
+/* HS03S code added for SR-AL5625-01-233 by zhaoxiangxiang at 20210430 start */
+	host->caps &= ~MMC_CAP_AGGRESSIVE_PM;
+/* HS03S code added for SR-AL5625-01-233 by zhaoxiangxiang at 20210430 end */
 	return err;
 }
 
@@ -1322,6 +1334,8 @@ err:
 	mmc_detach_bus(host);
 
 	pr_err("%s: error %d whilst initialising SD card\n",
+		mmc_hostname(host), err);
+	ST_LOG("%s: error %d whilst initialising SD card\n",
 		mmc_hostname(host), err);
 
 	return err;
