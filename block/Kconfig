@@ -245,4 +245,9 @@ config BLK_MQ_RDMA
 	depends on BLOCK && INFINIBAND
 	default y
 
+config BLOCK_SUPPORT_STLOG
+	bool "Enable storage log"
+	depends on BLOCK && PROC_STLOG
+	default y
+
 source block/Kconfig.iosched
