@@ -3307,15 +3307,55 @@ exit:
 	spin_unlock_irqrestore(&musb->lock, flags);
 }
 
+/*HS03s for SR-AL5625-01-373 by wenyaqi at 20210429 start*/
+void unset_qh_ready(struct usb_hcd *hcd, struct usb_host_endpoint *hep)
+{
+	u8 is_in = hep->desc.bEndpointAddress & USB_DIR_IN;
+	struct musb *musb = hcd_to_musb(hcd);
+	struct musb_qh *qh;
+
+	if (hep == &pre_hep) {
+		struct musb_hw_ep *hw_ep;
+		int epnum = usb_endpoint_num(&hep->desc);
+
+		hw_ep = musb->endpoints + epnum;
+
+		if (is_in)
+			qh = hw_ep->in_qh;
+		else
+			qh = hw_ep->out_qh;
+
+		DBG(2, "qh:%p, ep%d%s hep<%p>\n",
+			qh, epnum, is_in ? "in" : "out", hep);
+
+		if (qh == NULL)
+			return;
+
+		qh->is_ready = 0;
+	}
+}
+
 void musb_h_pre_disable(struct musb *musb)
 {
 	int i = 0;
+	unsigned long flags;
 	struct usb_hcd *hcd = musb_to_hcd(musb);
 
-	DBG(0, "disable all endpoints\n");
+	DBG(0, "1st, unset qh ready first\n");
 	if (hcd == NULL)
 		return;
 
+	spin_lock_irqsave(& musb->lock, flags);
+	for (i = 0; i < musb->nr_endpoints; i++) {
+		pre_hep.desc.bEndpointAddress = (i | USB_DIR_IN);
+		unset_qh_ready(hcd, &pre_hep);
+		pre_hep.desc.bEndpointAddress = (i | USB_DIR_OUT);
+		unset_qh_ready(hcd, &pre_hep);
+	}
+	spin_unlock_irqrestore(&musb->lock, flags);
+
+	DBG(0, "2nd, disable all endpoints\n");
+/*HS03s for SR-AL5625-01-373 by wenyaqi at 20210429 end*/
 	for (i = 0; i < musb->nr_endpoints; i++) {
 		pre_hep.desc.bEndpointAddress = (i | USB_DIR_IN);
 		musb_h_disable(hcd, &pre_hep);

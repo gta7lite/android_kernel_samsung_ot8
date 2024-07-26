@@ -11,24 +11,7 @@
 #endif
 
 #include <linux/interrupt.h>
-#include <musb.h>
-
-#ifdef USB2_PHY_V2
-#define USB_PHY_OFFSET 0x300
-#else
-#define USB_PHY_OFFSET 0x800
-#endif
-
-#define USBPHY_READ32(offset) \
-	readl((void __iomem *)(((unsigned long)\
-		mtk_musb->xceiv->io_priv)+USB_PHY_OFFSET+offset))
-#define USBPHY_WRITE32(offset, value) \
-	writel(value, (void __iomem *)\
-		(((unsigned long)mtk_musb->xceiv->io_priv)+USB_PHY_OFFSET+offset))
-#define USBPHY_SET32(offset, mask) \
-	USBPHY_WRITE32(offset, (USBPHY_READ32(offset)) | (mask))
-#define USBPHY_CLR32(offset, mask) \
-	USBPHY_WRITE32(offset, (USBPHY_READ32(offset)) & (~(mask)))
+#include "../musb.h"
 
 struct mt_usb_work {
 	struct delayed_work dwork;
@@ -108,6 +91,12 @@ extern u8 USB_PHY_Read_Register8(u8 addr);
 #endif
 
 #ifdef CONFIG_MTK_UART_USB_SWITCH
+extern void __iomem *ap_gpio_base;
+extern bool in_uart_mode;
+#endif
+
+#define FRA (48)
+#define PARA (28)
 
 #define RG_GPIO_SELECT (0x600)
 #define GPIO_SEL_OFFSET (4)
@@ -116,10 +105,57 @@ extern u8 USB_PHY_Read_Register8(u8 addr);
 #define GPIO_SEL_UART1 (0x2 << GPIO_SEL_OFFSET)
 #define GET_GPIO_SEL_VAL(x) ((x & GPIO_SEL_MASK) >> GPIO_SEL_OFFSET)
 
-extern void __iomem *ap_gpio_base;
-extern bool in_uart_mode;
-#endif
+#define VAL_MAX_WIDTH_2	0x3
+#define VAL_MAX_WIDTH_3	0x7
+#define OFFSET_RG_USB20_VRT_VREF_SEL 0x4
+#define SHFT_RG_USB20_VRT_VREF_SEL 12
+#define OFFSET_RG_USB20_TERM_VREF_SEL 0x4
+#define SHFT_RG_USB20_TERM_VREF_SEL 8
+#define OFFSET_RG_USB20_PHY_REV6 0x18
+#define SHFT_RG_USB20_PHY_REV6 30
+/*HS03s for DEVAL5625-8 by wangzikang at 20210615 start*/
+#ifdef CONFIG_HQ_PROJECT_HS03S
+#define U2_VRT_REF 0x7
+#define U2_TERM_REF 0x7
+#define U2_HSTX_SRCTRL 0x7
+#define U2_ENHANCE 0x3
+#define HOST_U2_VRT_REF 0x7
+#define HOST_U2_TERM_REF 0x7
+#define HOST_U2_HSTX_SRCTRL 0x7
+#define HOST_U2_ENHANCE 0x3
+#endif /*ELSE CONFIG_HQ_PROJECT_HS03S*/
+#ifdef CONFIG_HQ_PROJECT_HS04
+#define U2_VRT_REF 0x7
+#define U2_TERM_REF 0x7
+#define U2_HSTX_SRCTRL 0x7
+#define U2_ENHANCE 0x3
+#define HOST_U2_VRT_REF 0x7
+#define HOST_U2_TERM_REF 0x7
+#define HOST_U2_HSTX_SRCTRL 0x7
+#define HOST_U2_ENHANCE 0x3
+#endif /*ELSE CONFIG_HQ_PROJECT_HS04*/
+#ifdef CONFIG_HQ_PROJECT_OT8
+/*HS03s for DEVAL5625-8 by wangzikang at 20210615 end*/
+/*HS03s for DEVAL5625-8 by wenyaqi at 20210425 start*/
+/* Tab A7 lite_T for AX3565TDEV-739 by duanweiping at 20221029 start */
+#define U2_VRT_REF 0x7
+#define U2_TERM_REF 0x5
+#define U2_HSTX_SRCTRL 0x7
+#define U2_ENHANCE 0x3
+#define HOST_U2_VRT_REF 0x4
+#define HOST_U2_TERM_REF 0x4
+#define HOST_U2_HSTX_SRCTRL 0x5
+#define HOST_U2_ENHANCE 0x1
+/* Tab A7 lite_T for AX3565TDEV-739 by duanweiping at 20221029 start */
+/*HS03s for DEVAL5625-8 by wenyaqi at 20210425 end*/
+/*HS03s for DEVAL5625-8 by wangzikang at 20210615 start*/
+#endif /*END CONFIG_HQ_PROJECT_OT8*/
+/*HS03s for DEVAL5625-8 by wangzikang at 20210615 end*/
 extern int usb20_phy_init_debugfs(void);
+#define PHY_IDLE_MODE       0
+#define PHY_DEV_ACTIVE      1
+#define PHY_HOST_ACTIVE     2
+extern void set_usb_phy_mode(int mode);
 #ifdef CONFIG_USB_MTK_OTG
 extern void mt_usb_otg_init(struct musb *musb);
 extern void mt_usb_otg_exit(struct musb *musb);
@@ -134,7 +170,6 @@ extern bool usb_enable_clock(bool enable);
 extern bool usb_prepare_clock(bool enable);
 extern void usb_prepare_enable_clock(bool enable);
 extern void mt_usb_dev_disconnect(void);
-extern void set_usb_phy_clear(void);
 
 /* usb host mode wakeup */
 #define USB_WAKEUP_DEC_CON1	0x404
