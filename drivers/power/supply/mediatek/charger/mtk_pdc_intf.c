@@ -7,6 +7,9 @@
 #include <linux/mutex.h>
 #include <linux/delay.h>
 #include "mtk_charger_intf.h"
+/* hs14 code for SR-AL6528A-01-322 by wenyaqi at 2022/09/15 start */
+#include "mtk_charger_init.h"
+/* hs14 code for SR-AL6528A-01-322 by wenyaqi at 2022/09/15 end */
 
 #define PD_VBUS_IR_DROP_THRESHOLD 1200
 
@@ -501,6 +504,12 @@ int mtk_pdc_get_setting(struct charger_manager *info, int *newvbus, int *newcur,
 
 	pd_max_watt = cap->max_mv[idx] * (cap->ma[idx]
 			/ 100 * (100 - info->data.ibus_err) - 100);
+	/* hs14 code for SR-AL6528A-01-322 by wenyaqi at 2022/09/15 start */
+	if (cap->max_mv[idx] > PD_VOLTAGE_THR &&
+		cap->max_mv[idx] < (PD_VBUS_UPPER_BOUND /1000)) {
+		pd_max_watt = cap->max_mv[idx] * (cap->ma[idx] - 10);
+	}
+	/* hs14 code for SR-AL6528A-01-322 by wenyaqi at 2022/09/15 end */
 	now_max_watt = cap->max_mv[idx] * ibus + chg2_watt;
 	pd_min_watt = cap->max_mv[pd->pd_buck_idx] * cap->ma[pd->pd_buck_idx]
 			/ 100 * (100 - info->data.ibus_err)

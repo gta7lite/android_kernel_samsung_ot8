@@ -18,7 +18,9 @@
 #define MTK_CHR_EXIST			1
 #define KEEP_100_PERCENT		1
 #define R_FG_VALUE				5	/* mOhm */
-#define EMBEDDED_SEL			0
+/*HS03s for SR-AL5625-01-374 by wenyaqi at 20210429 start*/
+#define EMBEDDED_SEL			1
+/*HS03s for SR-AL5625-01-374 by wenyaqi at 20210429 end*/
 #define PMIC_SHUTDOWN_CURRENT	20	/* 0.01 mA */
 #define FG_METER_RESISTANCE		100
 #define CAR_TUNE_VALUE			100 /*1.00 */
@@ -431,7 +433,15 @@ int g_temperature[MAX_TABLE] = {
 #define BAT_NTC_47 0
 
 #if (BAT_NTC_10 == 1)
+#if defined(CONFIG_HQ_PROJECT_HS03S)
+#define RBAT_PULL_UP_R             16900
+#elif defined(CONFIG_HQ_PROJECT_HS04)
+#define RBAT_PULL_UP_R             16900
+#elif defined(CONFIG_HQ_PROJECT_OT8)
+#define RBAT_PULL_UP_R             390000
+#else
 #define RBAT_PULL_UP_R             24000
+#endif
 #endif
 
 #if (BAT_NTC_47 == 1)
@@ -443,6 +453,109 @@ int g_temperature[MAX_TABLE] = {
 #define BIF_NTC_R 16000
 
 #if (BAT_NTC_10 == 1)
+#if defined(CONFIG_HQ_PROJECT_HS03S)
+struct fuelgauge_temperature Fg_Temperature_Table[21] = {
+		{-40 , 205200},
+		{-35 , 154800},
+		{-30 , 117900},
+		{-25 , 90690 },
+		{-20 , 70370 },
+		{-15 , 55070 },
+		{-10 , 43440 },
+		{-5	 , 34530 },
+		{0	 , 27640 },
+		{5	 , 22270 },
+		{10	 , 18060 },
+		{15	 , 14740 },
+		{20	 , 12110 },
+		{25	 , 10000 },
+		{30	 , 8309  },
+		{35	 , 6941  },
+		{40	 , 5828  },
+		{45	 , 4916  },
+		{50	 , 4165  },
+		{55	 , 3543  },
+		{60	 , 3027  }
+};
+#elif defined(CONFIG_HQ_PROJECT_HS04)
+struct fuelgauge_temperature Fg_Temperature_Table[21] = {
+		{-40 , 205200},
+		{-35 , 154800},
+		{-30 , 117900},
+		{-25 , 90690 },
+		{-20 , 70370 },
+		{-15 , 55070 },
+		{-10 , 43440 },
+		{-5	 , 34530 },
+		{0	 , 27640 },
+		{5	 , 22270 },
+		{10	 , 18060 },
+		{15	 , 14740 },
+		{20	 , 12110 },
+		{25	 , 10000 },
+		{30	 , 8309  },
+		{35	 , 6941  },
+		{40	 , 5828  },
+		{45	 , 4916  },
+		{50	 , 4165  },
+		{55	 , 3543  },
+		{60	 , 3027  }
+};
+#elif defined(CONFIG_HQ_PROJECT_OT8)
+struct fuelgauge_temperature Fg_Temperature_Table[25] = {
+		{-40, 4397100},
+		{-35, 3088600},
+		{-30, 2197200},
+		{-25, 1581880},
+		{-20, 1151040},
+		{-15, 846580},
+		{-10, 628990},
+		{-5, 471630},
+		{0, 357010},
+		{5, 272500},
+		{10, 209710},
+		{15, 162650},
+		{20, 127080},
+		{25, 100000},
+		{30, 79222},
+		{35, 63167},
+		{40, 50677},
+		{45, 40904},
+		{50, 33195},
+		{55, 27091},
+		{60, 22224},
+		{65, 18323},
+		{70, 15184},
+		{75, 12635},
+		{80, 10566}
+};
+#elif defined(CONFIG_HQ_PROJECT_O22)
+/* hs14 code for  SR-AL6528A-01-313 by zhouyuhang at 20220907 start*/
+struct fuelgauge_temperature Fg_Temperature_Table[21] = {
+		{-40, 205200},
+		{-35, 154800},
+		{-30, 117900},
+		{-25, 90690},
+		{-20, 70370},
+		{-15, 55070},
+		{-10, 43440},
+		{-5, 34530},
+		{0, 27640},
+		{5, 22270},
+		{10, 18060},
+		{15, 14740},
+		{20, 12110},
+		{25, 10000},
+		{30, 8309},
+		{35, 6941},
+		{40, 5828},
+		{45, 4916},
+		{50, 4165},
+		{55, 3543},
+		{60, 3027}
+};
+/* hs14 code for  SR-AL6528A-01-313 by zhouyuhang at 20220907 end*/
+#else
 struct fuelgauge_temperature Fg_Temperature_Table[21] = {
 		{-40, 195652},
 		{-35, 148171},
@@ -466,6 +579,7 @@ struct fuelgauge_temperature Fg_Temperature_Table[21] = {
 		{55, 3535},
 		{60, 3014}
 };
+#endif
 #endif
 
 #if (BAT_NTC_47 == 1)

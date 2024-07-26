@@ -13,10 +13,11 @@ config MTK_SMART_BATTERY
 
 config MTK_GAUGE_VERSION
 	int "MediaTek Fuel Gauge version"
-	default 20
+	default 0
 	help
 	  Select MTK Gauge Master version
 	  30: Gauge Master 3.0
+	  20: Gauge Master 2.0
 
 config MTK_DISABLE_GAUGE
 	bool "disable Gauge Master 3.0"
@@ -35,3 +36,9 @@ config MTK_ADDITIONAL_BATTERY_TABLE
 	  Table number is five.
 	  Set No to disable the fifth battery table
 	  Table number is four.
+
+# hs14 code for  SR-AL6528A-01-313 by zhouyuhang at 20220907 start
+config BATTERY_ID_ADC
+	bool "battery_id_adc"
+	default n
+# hs14 code for  SR-AL6528A-01-313 by zhouyuhang at 20220907 end

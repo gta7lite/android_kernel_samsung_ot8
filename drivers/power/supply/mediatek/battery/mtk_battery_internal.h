@@ -40,7 +40,7 @@
 /* ============================================================ */
 #define BAT_VOLTAGE_LOW_BOUND 3400
 #define BAT_VOLTAGE_HIGH_BOUND 3450
-#define LOW_TMP_BAT_VOLTAGE_LOW_BOUND 3350
+#define LOW_TMP_BAT_VOLTAGE_LOW_BOUND 3250
 #define SHUTDOWN_TIME 40
 #define AVGVBAT_ARRAY_SIZE 30
 #define INIT_VOLTAGE 3450
@@ -226,6 +226,7 @@ enum Fg_kernel_cmds {
 	FG_KERNEL_CMD_CHG_DECIMAL_RATE,
 	FG_KERNEL_CMD_FORCE_BAT_TEMP,
 	FG_KERNEL_CMD_SEND_BH_DATA,
+	FG_KERNEL_CMD_GET_DYNAMIC_CV,
 
 	FG_KERNEL_CMD_FROM_USER_NUMBER
 
@@ -281,6 +282,7 @@ enum Fg_data_type {
 	FG_DATA_TYPE_NUMBER
 };
 
+#define DATA_SIZE 2048
 struct fgd_cmd_param_t_6 {
 	unsigned int type;
 	unsigned int total_size;
@@ -332,6 +334,7 @@ enum daemon_cmd_int_data {
 	FG_SET_OCV_SOC = FG_SET_ANCHOR + 14,
 	FG_SET_CON0_SOFF_VALID = FG_SET_ANCHOR + 15,
 	FG_SET_ZCV_INTR_EN = FG_SET_ANCHOR + 16,
+	FG_SET_DYNAMIC_CV = FG_SET_ANCHOR + 17,
 	FG_SET_DATA_MAX,
 };
 
@@ -372,6 +375,10 @@ struct fuel_gauge_custom_data {
 	int r_fg_value;
 	int com_r_fg_value;
 	int mtk_chr_exist;
+
+	/* Dynamic cv*/
+	int dynamic_cv_factor;
+	int charger_ieoc;
 
 	/* Aging Compensation 1*/
 	int aging_one_en;
@@ -604,10 +611,10 @@ struct FUELGAUGE_CHARGE_PSEUDO100_S {
 };
 
 struct FUELGAUGE_PROFILE_STRUCT {
-	unsigned int mah;
+	int mah;
 	unsigned short voltage;
 	unsigned short resistance; /* Ohm*/
-	unsigned int percentage;
+	int percentage;
 	struct FUELGAUGE_CHARGER_STRUCT charge_r;
 };
 
@@ -659,6 +666,14 @@ struct battery_data {
 	/* Add for Battery Service */
 	int BAT_batt_vol;
 	int BAT_batt_temp;
+/* hs14 code for SR-AL6528A-01-261 | SR-AL6528A-01-343 by chengyuanhang at 2022/10/11 start */
+#ifndef HQ_FACTORY_BUILD
+	int cust_batt_cap;
+	/* hs14 code for AL6528A-1055 by qiaodan at 2023/01/18 start */
+	const char *cust_batt_type;
+	/* hs14 code for AL6528A-1055 by qiaodan at 2023/01/18 end */
+#endif
+/* hs14 code for SR-AL6528A-01-261 | SR-AL6528A-01-343 by chengyuanhang at 2022/10/11 end */
 };
 
 struct BAT_EC_Struct {
@@ -810,9 +825,12 @@ struct mtk_battery {
 
 /*battery status*/
 	int soc;
+	int precise_soc;
 	int ui_soc;
+	int precise_ui_soc;
 	int d_saved_car;
 	int tbat_precise;
+	int dynamic_cv;
 
 /*battery flag*/
 	bool init_flag;
@@ -933,12 +951,20 @@ struct mtk_battery {
 	struct timespec last_nafg_update_time;
 	bool is_nafg_broken;
 
+	/* bootmode */
+	u32 bootmode;
+	u32 boottype;
 	/* battery temperature table */
 	int no_bat_temp_compensate;
 	int enable_tmp_intr_suspend;
 	struct battery_temperature_table rbat;
 
 	struct fgd_cmd_param_t_custom fg_data;
+/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 start */
+#ifdef HQ_FACTORY_BUILD
+	int batt_cap_control;
+#endif
+/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 end */
 };
 
 
@@ -993,6 +1019,7 @@ extern int battery_get_charger_zcv(void);
 extern bool is_fg_disabled(void);
 extern int battery_notifier(int event);
 extern bool set_charge_power_sel(enum CHARGE_SEL select);
+extern void battery_set_charger_constant_voltage(u32 cv);
 
 /* pmic */
 extern int pmic_get_battery_voltage(void);

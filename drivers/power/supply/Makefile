@@ -45,6 +45,45 @@ obj-$(CONFIG_MTK_PUMP_EXPRESS_PLUS_20_SUPPORT) += mtk_pe2.o mtk_pe2_hal.o
 obj-$(CONFIG_MTK_PUMP_EXPRESS_PLUS_SUPPORT) += mtk_pe.o mtk_pe_hal.o
 obj-$(CONFIG_MTK_PUMP_EXPRESS_40_SUPPORT) += mtk_pe4.o mtk_pe4_hal.o
 obj-$(CONFIG_CHARGER_MT6357) += mt6357-pulse-charger.o
+# HS03s for SR-AL5625-01-509 by wenyaqi at 20210527 start
+obj-$(CONFIG_CHARGER_BQ2560X) += bq2560x_charger.o
+# HS03s for SR-AL5625-01-509 by wenyaqi at 20210527 end
+# HS03s for SR-AL5625-01-510 by wenyaqi at 20210531 start
+obj-$(CONFIG_CHARGER_SGM41511) += sgm41511_charger.o
+# HS03s for SR-AL5625-01-510 by wenyaqi at 20210531 end
+# hs03s_NM code for SR-AL5625-01-646 by shixuanxuan at 20220414 start
+obj-$(CONFIG_CHARGER_SGM41513) += sgm41513_charger.o
+# hs03s_NM code for SR-AL5625-01-646 by shixuanxuan at 20220414 end
+# HS03s for SR-AL5625-01-543 by wenyaqi at 20210611 start
+obj-$(CONFIG_CHARGER_ETA6953) += eta6953_charger.o
+# HS03s for SR-AL5625-01-543 by wenyaqi at 20210611 end
+# HS03s for SR-AL5625-01-542 by wenyaqi at 20210609 start
+obj-$(CONFIG_CHARGER_SY6974) += sy6974_charger.o
+# HS03s for SR-AL5625-01-542 by wenyaqi at 20210609 end
+#HS04_T for DEAL6398A-1879 by shixuanxuan at 20221012 start
+obj-$(CONFIG_CHARGER_UPM6910) += upm6910_charger.o
+#HS04_T for DEAL6398A-1879 by shixuanxuan at 20221012 end
+# HS03s for SR-AL5625-01-249 by wenyaqi at 20210425 start
+obj-$(CONFIG_AFC_CHARGER) += afc_charger_intf.o
+# HS03s for SR-AL5625-01-249 by wenyaqi at 20210425 end
+
+# TabA7 Lite code for OT8-2093 PD and PE init before mtk_charger by wenyaqi at 20210128 start
+obj-$(CONFIG_MTK_CHARGER) += mtk_pd_adapter.o mtk_pd.o mtk_pd_hal.o
+# hs04 code for DEVAL6398A-13 by shixuanxuan at 20220707 start
+ifeq ($(CONFIG_HQ_PROJECT_HS04),y)
+obj-$(CONFIG_MTK_CHARGER) += charger_class.o mtk_basic_charger.o mtk_charger.o mtk_charger_algorithm_class.o mtk_charger_intf.o adapter_class.o mtk_pulse_charger.o
+endif
+ifeq ($(CONFIG_HQ_PROJECT_OT8),y)
+obj-$(CONFIG_MTK_CHARGER) += charger_class.o mtk_basic_charger.o mtk_charger.o mtk_charger_algorithm_class.o mtk_charger_intf.o adapter_class.o mtk_pulse_charger.o vbus_ctrl.o
+endif
+ifeq ($(CONFIG_HQ_PROJECT_HS03S),y)
+obj-$(CONFIG_MTK_CHARGER) += charger_class.o mtk_basic_charger.o mtk_charger.o mtk_charger_algorithm_class.o mtk_charger_intf.o adapter_class.o mtk_pulse_charger.o vbus_ctrl.o
+endif
+# hs04 code for DEVAL6398A-13 by shixuanxuan at 20220707 end
+# TabA7 Lite code for OT8-2093 PD and PE init before mtk_charger by wenyaqi at 20210128 end
+# HS03s for SR-AL5625-01-251 by wenyaqi at 20210425 start
+obj-$(CONFIG_BATTERY_ID_ADC) += battery_id_adc.o
+# HS03s for SR-AL5625-01-251 by wenyaqi at 20210425 end
 endif
 
 
@@ -126,13 +165,17 @@ obj-$(CONFIG_CHARGER_BQ24190)	+= bq24190_charger.o
 obj-$(CONFIG_CHARGER_BQ24257)	+= bq24257_charger.o
 obj-$(CONFIG_CHARGER_BQ24735)	+= bq24735-charger.o
 obj-$(CONFIG_CHARGER_BQ25890)	+= bq25890_charger.o
-obj-$(CONFIG_CHARGER_SC8551)	+= sc8551.o
 obj-$(CONFIG_CHARGER_SMB347)	+= smb347-charger.o
 obj-$(CONFIG_CHARGER_TPS65090)	+= tps65090-charger.o
 obj-$(CONFIG_CHARGER_TPS65217)	+= tps65217_charger.o
 obj-$(CONFIG_AXP288_FUEL_GAUGE) += axp288_fuel_gauge.o
 obj-$(CONFIG_AXP288_CHARGER)	+= axp288_charger.o
 
+# HS03s for SR-AL5628-01-162 by zhangjiangbin at 20220915 start
+obj-$(CONFIG_CHARGER_HARDINFO) += hardinfo_charger.o
+# HS03s for SR-AL5628-01-162 by zhangjiangbin at 20220915 end
+
 ifeq ($(CONFIG_CUSTOM_BATTERY_EXTERNAL_CHANNEL),y)
 	obj-y += k6885v1_64_alpha/
 endif
+obj-$(CONFIG_CHARGER_SM5714) += sm/sm5714/

@@ -196,22 +196,6 @@ config CHARGER_BQ25601
 	  and config MTK_SWCHR_SUPPORT
 	  Set to Yes if BQ25601 is used.
 
-config CHARGER_BQ25890
-	bool "CHARGER_BQ25890"
-	help
-	  This is to enable MediaTek supports to BQ25890.
-	  It depends on config MTK_SMART_BATTERY
-	  and config MTK_SWCHR_SUPPORT
-	  Set to Yes if BQ25890 is used.
-
-config CHARGER_SGM41511
-	bool "CHARGER_SGM41511"
-	help
-	  This is to enable MediaTek supports to SGM41511.
-	  It depends on config MTK_SMART_BATTERY
-	  and config MTK_SWCHR_SUPPORT
-	  Set to Yes if SGM41511 is used.
-
 config LOAD_SWITCH_RT9750
 	bool "Load Switch Driver for Richtek RT9750"
 	depends on MTK_CHARGER
@@ -221,9 +205,47 @@ config LOAD_SWITCH_RT9750
 	  which is good for direct charge.
 	  It depends on config MTK_CHARGER.
 
-config CHARGER_MM8013
-	bool "CHARGER MM8013"
+# AL6528A code for SR-AL6528A-01-307 by wenyaqi at 2022/08/30 start
+config CHARGER_SGM41513
+	bool "CHARGER_SGM41513"
+	depends on MTK_CHARGER
 	help
-	  Say Y to enable
-	  mm8013 driver.
-	  Set to Yes if MM8013 is used.
+	  Say Yes to enable
+	  SGM41513 driver.
+# AL6528A code for SR-AL6528A-01-307 by wenyaqi at 2022/08/30 end
+
+# hs14 code for SR-AL6528A-01-305 by gaozhengwei at 2022/09/01 start
+config CHARGER_SC8960X
+	tristate "SC SC8960X battery charger driver"
+	depends on I2C
+	default n
+	help
+	  Say Y to enable support for SC SC8960X charger
+# hs14 code for SR-AL6528A-01-305 by gaozhengwei at 2022/09/01 end
+
+# hs14 code for SR-AL6528A-01-304 by gaozhengwei at 2022/09/07 start
+config CHARGER_UPM6910
+	bool "CHARGER_UPM6910"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable
+	  UPM6910 driver.
+# hs14 code for SR-AL6528A-01-304 by gaozhengwei at 2022/09/07 end
+
+# hs14 code for SR-AL6528A-01-305 by shanxinkai at 2022/09/19 start
+config CHARGER_VBUS
+	bool "CHARGER_VBUS"
+	depends on MTK_CHARGER
+	default n
+	help
+	  Say Y to enable support for vbus ctrl
+# hs14 code for SR-AL6528A-01-305 by shanxinkai at 2022/09/19 end
+
+# hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 start
+config AFC_CHARGER
+	bool "Using AFC device driver"
+	default n
+	help
+	  If you say yes here you will get support for
+	  the AFC device driver.
+# hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 end

@@ -42,8 +42,12 @@
 #include <mt-plat/v1/mtk_charger.h>
 #include <pmic.h>
 #include <tcpm.h>
+#include <tcpci_core.h>
 
 #include "mtk_charger_intf.h"
+#ifdef CONFIG_MT6360_PMU_CHARGER
+extern bool mt6360_get_is_host(void);
+#endif
 
 struct tag_bootmode {
 	u32 size;
@@ -93,6 +97,9 @@ struct chg_type_info {
 	bool ignore_usb;
 	bool plugin;
 	bool bypass_chgdet;
+#ifdef CONFIG_MTK_TYPEC_WATER_DETECT
+	bool water_detected;
+#endif
 #ifdef CONFIG_MACH_MT6771
 	struct power_supply *chr_psy;
 	struct notifier_block psy_nb;
@@ -115,10 +122,12 @@ static const char * const mtk_chg_type_name[] = {
 	"Charging USB Host",
 	"Non-standard Charger",
 	"Standard Charger",
+	"Apple 2.4A Charger",
 	"Apple 2.1A Charger",
 	"Apple 1.0A Charger",
 	"Apple 0.5A Charger",
 	"Wireless Charger",
+	"Samsung Charger",
 };
 
 static void dump_charger_name(enum charger_type type)
@@ -129,9 +138,11 @@ static void dump_charger_name(enum charger_type type)
 	case CHARGING_HOST:
 	case NONSTANDARD_CHARGER:
 	case STANDARD_CHARGER:
+	case APPLE_2_4A_CHARGER:
 	case APPLE_2_1A_CHARGER:
 	case APPLE_1_0A_CHARGER:
 	case APPLE_0_5A_CHARGER:
+	case SAMSUNG_CHARGER:
 		pr_info("%s: charger type: %d, %s\n", __func__, type,
 			mtk_chg_type_name[type]);
 		break;
@@ -154,6 +165,13 @@ struct mt_charger {
 	struct power_supply_desc usb_desc;
 	struct power_supply_config usb_cfg;
 	struct power_supply *usb_psy;
+/* hs14 code for SR-AL6528A-01-245 by wenyaqi at 2022/10/02 start */
+#ifndef HQ_FACTORY_BUILD	//ss version
+	struct power_supply_desc otg_desc;
+	struct power_supply_config otg_cfg;
+	struct power_supply *otg_psy;
+#endif
+/* hs14 code for SR-AL6528A-01-245 by wenyaqi at 2022/10/02 end */
 	struct chg_type_info *cti;
 	#ifdef CONFIG_EXTCON_USB_CHG
 	struct usb_extcon_info *extcon_info;
@@ -161,6 +179,14 @@ struct mt_charger {
 	#endif
 	bool chg_online; /* Has charger in or not */
 	enum charger_type chg_type;
+
+	/* hs14 code for SR-AL6528A-01-299 by gaozhengwei at 2022/09/02 start */
+	bool input_suspend;
+	/* hs14 code for SR-AL6528A-01-299 by gaozhengwei at 2022/09/02 end */
+
+	/* hs14 code for  SR-AL6528A-01-259 by zhouyuhang at 2022/09/15 start*/
+	bool shipmode_flag;
+	/* hs14 code for  SR-AL6528A-01-259 by zhouyuhang at 2022/09/15 end*/
 };
 
 static int mt_charger_online(struct mt_charger *mtk_chg)
@@ -170,6 +196,9 @@ static int mt_charger_online(struct mt_charger *mtk_chg)
 	struct device_node *boot_node = NULL;
 	struct tag_bootmode *tag = NULL;
 	int boot_mode = 11;//UNKNOWN_BOOT
+#ifdef CONFIG_KPOC_GET_SOURCE_CAP_TRY
+	struct chg_type_info *cti = mtk_chg->cti;
+#endif
 	dev = mtk_chg->dev;
 	if (dev != NULL){
 		boot_node = of_parse_phandle(dev->of_node, "bootmode", 0);
@@ -193,10 +222,26 @@ static int mt_charger_online(struct mt_charger *mtk_chg)
 		if (boot_mode == KERNEL_POWER_OFF_CHARGING_BOOT ||
 		    boot_mode == LOW_POWER_OFF_CHARGING_BOOT) {
 			pr_notice("%s: Unplug Charger/USB\n", __func__);
-			pr_notice("%s: system_state=%d\n", __func__,
-				system_state);
-			if (system_state != SYSTEM_POWER_OFF)
-				kernel_power_off();
+/* hs14 code for AL6528ADEU-342 by wenyaqi at 2022/10/11 start */
+#if defined(CONFIG_HQ_PROJECT_O22)
+				pr_notice("%s: system_state=%d\n", __func__,
+					system_state);
+				if (system_state != SYSTEM_POWER_OFF)
+					return ret;
+#endif
+/* hs14 code for AL6528ADEU-342 by wenyaqi at 2022/10/11 end */
+#ifdef CONFIG_KPOC_GET_SOURCE_CAP_TRY
+			pr_info("%s error_recovery_once = %d\n", __func__,
+				cti->tcpc->pd_port.error_recovery_once);
+			if (cti->tcpc->pd_port.error_recovery_once != 1) {
+#endif /*CONFIG_KPOC_GET_SOURCE_CAP_TRY*/
+				pr_notice("%s: system_state=%d\n", __func__,
+					system_state);
+				if (system_state != SYSTEM_POWER_OFF)
+					kernel_power_off();
+#ifdef CONFIG_KPOC_GET_SOURCE_CAP_TRY
+			}
+#endif
 		}
 	}
 
@@ -208,6 +253,19 @@ static int mt_charger_get_property(struct power_supply *psy,
 	enum power_supply_property psp, union power_supply_propval *val)
 {
 	struct mt_charger *mtk_chg = power_supply_get_drvdata(psy);
+	/* hs14 code for SR-AL6528A-445 by shanxinkai at 2022/10/28 start */
+	int ret;
+	/* hs14 code for SR-AL6528A-445 by shanxinkai at 2022/10/28 end */
+
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 start */
+#ifdef CONFIG_AFC_CHARGER
+	struct charger_manager *info = ssinfo;
+#endif
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 end */
+
+/* hs14 code for  SR-AL6528A-01-339 by shanxinkai at 2022/09/30 start*/
+	int chr_type = 0;
+/* hs14 code for  SR-AL6528A-01-339 by shanxinkai at 2022/09/30 end*/
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
@@ -242,14 +300,150 @@ static int mt_charger_get_property(struct power_supply *psy,
 			pr_info("%s: Charger Type: CHARGER_UNKNOWN\n", __func__);
 			break;
 		default:
+	/* AL6528A code for SR-AL6528A-01-303 by wenyaqi at 2022/08/31 start */
+			break;
+		}
 		break;
-	}
+	/* AL6528A code for SR-AL6528A-01-303 by wenyaqi at 2022/08/31 end */
+/* hs14 code for SR-AL6528A-01-242 by shanxinkai at 2022/10/12 start */
+#ifndef HQ_FACTORY_BUILD	//ss version
+	case POWER_SUPPLY_PROP_BATT_SLATE_MODE:
+#endif
+/* hs14 code for SR-AL6528A-01-242 by shanxinkai at 2022/10/12 end */
+	/* hs14 code for SR-AL6528A-01-299 by gaozhengwei at 2022/09/02 start */
+	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
+		val->intval = mtk_chg->input_suspend;
+		break;
+	/* hs14 code for SR-AL6528A-01-299 by gaozhengwei at 2022/09/02 end */
+
+	/* hs14 code for  SR-AL6528A-01-259 by zhouyuhang at 2022/09/15 start*/
+	case POWER_SUPPLY_PROP_SHIPMODE:
+		val->intval = mtk_chg->shipmode_flag;
+		break;
+	case POWER_SUPPLY_PROP_SHIPMODE_REG:
+	/* hs14 code for  SR-AL6528A-01-259 by zhouyuhang at 2022/09/28 start*/
+		if (mtk_chg->cti == NULL)
+			return -EINVAL;
+	/* hs14 code for  SR-AL6528A-01-259 by zhouyuhang at 2022/09/28 end*/
+		val->intval = charger_manager_get_shipmode(mtk_chg->cti->chg_consumer, MAIN_CHARGER);
+		pr_err("get ship mode reg = %d\n", val->intval);
+		break;
+	/* hs14 code for  SR-AL6528A-01-259 by zhouyuhang at 2022/09/15 end*/
+
+	/* hs14 code for  SR-AL6528A-01-339 by shanxinkai at 2022/09/30 start*/
+	case POWER_SUPPLY_PROP_CHARGE_STATUS:
+		if (mtk_chg->cti == NULL)
+			return -EINVAL;
+		charger_manager_get_chr_type(mtk_chg->cti->chg_consumer, MAIN_CHARGER, &chr_type);
+		val->intval = chr_type;
+		break;
+	/* hs14 code for  SR-AL6528A-01-339 by shanxinkai at 2022/09/30 end*/
+	/* hs14 code for SR-AL6528A-445 by shanxinkai at 2022/10/28 start */
+	case POWER_SUPPLY_PROP_DUMP_CHARGER_IC:
+		if (mtk_chg->cti == NULL)
+			return -EINVAL;
+		ret = charger_manager_dump_charger_ic(mtk_chg->cti->chg_consumer, MAIN_CHARGER);
+		if (ret < 0) {
+			val->intval = 0;
+		} else {
+			val->intval = 1;
+		}
+		break;
+	/* hs14 code for SR-AL6528A-445 by shanxinkai at 2022/10/28 end */
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 start */
+#ifdef CONFIG_AFC_CHARGER
+	case POWER_SUPPLY_PROP_HV_CHARGER_STATUS:
+		if (info == NULL)
+			return -EINVAL;
+		if (info->hv_disable)
+			val->intval = 0;
+		else {
+			if (ss_fast_charger_status(info))
+				val->intval = 1;
+			else
+				val->intval = 0;
+		}
+		break;
+	case POWER_SUPPLY_PROP_AFC_RESULT:
+		if (info == NULL)
+			return -EINVAL;
+		if (info->afc_sts >= AFC_5V)
+			val->intval = 1;
+		else
+			val->intval = 0;
+		break;
+	case POWER_SUPPLY_PROP_HV_DISABLE:
+		if (info == NULL)
+			return -EINVAL;
+		val->intval = info->hv_disable;
+		break;
+#endif
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 end */
+#ifndef HQ_FACTORY_BUILD
+
+	/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 start */
+	case POWER_SUPPLY_PROP_STORE_MODE:
+		if (info == NULL) {
+			return -EINVAL;
+		}
+		val->intval = info->store_mode;
+		break;
+	/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 end */
+#endif
+/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 start */
+#ifdef HQ_FACTORY_BUILD
+	case POWER_SUPPLY_PROP_BATT_CAP_CONTROL:
+		val->intval = info->batt_cap_control;
+		break;
+#endif
+/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 end */
 	default:
 		return -EINVAL;
 	}
 
 	return 0;
 }
+
+/* hs14 code for SR-AL6528A-01-299 by gaozhengwei at 2022/09/02 start */
+static int mt_charger__property_is_writeable(struct power_supply *psy,
+					       enum power_supply_property psp)
+{
+	switch (psp) {
+	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
+		return 1;
+	/* hs14 code for  SR-AL6528A-01-259 by zhouyuhang at 2022/09/15 start*/
+	case POWER_SUPPLY_PROP_SHIPMODE:
+		return 1;
+	/* hs14 code for  SR-AL6528A-01-259 by zhouyuhang at 2022/09/15 end*/
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 start */
+#ifdef CONFIG_AFC_CHARGER
+	case POWER_SUPPLY_PROP_AFC_RESULT:
+		return 1;
+	case POWER_SUPPLY_PROP_HV_DISABLE:
+		return 1;
+#endif
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 end */
+/* hs14 code for SR-AL6528A-01-242 by shanxinkai at 2022/10/12 start */
+#ifndef HQ_FACTORY_BUILD	//ss version
+	case POWER_SUPPLY_PROP_BATT_SLATE_MODE:
+		return 1;
+	/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 start */
+	case POWER_SUPPLY_PROP_STORE_MODE:
+		return 1;
+	/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 end */
+#endif
+/* hs14 code for SR-AL6528A-01-242 by shanxinkai at 2022/10/12 end */
+/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 start */
+#ifdef HQ_FACTORY_BUILD
+	case POWER_SUPPLY_PROP_BATT_CAP_CONTROL:
+		return 1;
+#endif
+/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 end */
+	default:
+		return 0;
+	}
+}
+/* hs14 code for SR-AL6528A-01-299 by gaozhengwei at 2022/09/02 end */
 
 #ifdef CONFIG_EXTCON_USB_CHG
 static void usb_extcon_detect_cable(struct work_struct *work)
@@ -274,6 +468,13 @@ static int mt_charger_set_property(struct power_supply *psy,
 	#ifdef CONFIG_EXTCON_USB_CHG
 	struct usb_extcon_info *info;
 	#endif
+	bool is_host = 0;
+
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 start */
+#ifdef CONFIG_AFC_CHARGER
+	struct charger_manager *pinfo = ssinfo;
+#endif
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 end */
 
 	pr_info("%s\n", __func__);
 
@@ -301,13 +502,90 @@ static int mt_charger_set_property(struct power_supply *psy,
 			charger_manager_force_disable_power_path(
 				cti->chg_consumer, MAIN_CHARGER, true);
 		break;
+/* hs14 code for SR-AL6528A-01-242 by shanxinkai at 2022/10/12 start */
+#ifndef HQ_FACTORY_BUILD	//ss version
+	case POWER_SUPPLY_PROP_BATT_SLATE_MODE:
+#endif
+/* hs14 code for SR-AL6528A-01-242 by shanxinkai at 2022/10/12 end */
+	/* hs14 code for SR-AL6528A-01-299 by gaozhengwei at 2022/09/02 start */
+	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
+		/* hs14 code for SR-AL6528A-01-244 by qiaodan at 2022/11/23 start */
+		if (pinfo == NULL) {
+			return -EINVAL;
+		}
+		mtk_chg->input_suspend = val->intval;
+		pinfo->input_suspend_flag = mtk_chg->input_suspend;
+		pr_err("%s: set input_suspend value = %d\n",__func__, pinfo->input_suspend_flag);
+		/* hs14 code for SR-AL6528A-01-244 by qiaodan at 2022/11/23 end */
+		if (val->intval)
+			charger_manager_input_suspend(cti->chg_consumer,
+				MAIN_CHARGER,
+				true);
+		else
+			charger_manager_input_suspend(cti->chg_consumer,
+				MAIN_CHARGER,
+				false);
+		break;
+	/* hs14 code for SR-AL6528A-01-299 by gaozhengwei at 2022/09/02 end */
+
+	/* hs14 code for  SR-AL6528A-01-259 by qiaodan at 2022/10/17 start*/
+	case POWER_SUPPLY_PROP_SHIPMODE:
+		mtk_chg->shipmode_flag = val->intval;
+		if (mtk_chg->cti == NULL) {
+			return -EINVAL;
+		}
+		charger_manager_set_shipmode(mtk_chg->cti->chg_consumer, MAIN_CHARGER);
+		pr_err("%s: enable shipmode val = %d\n",__func__, val->intval);
+		break;
+	/* hs14 code for  SR-AL6528A-01-259 by qiaodan at 2022/10/17 end*/
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 start */
+#ifdef CONFIG_AFC_CHARGER
+	case POWER_SUPPLY_PROP_AFC_RESULT:
+		if (pinfo == NULL)
+			return -EINVAL;
+		is_afc_result(pinfo, val->intval);
+		break;
+	case POWER_SUPPLY_PROP_HV_DISABLE:
+		if (pinfo == NULL)
+			return -EINVAL;
+		pinfo->hv_disable = val->intval;
+		break;
+#endif
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 end */
+#ifndef HQ_FACTORY_BUILD
+	/* hs14 code for SR-AL6528A-01-244 by qiaodan at 2022/11/23 start */
+	case POWER_SUPPLY_PROP_STORE_MODE:
+		if (pinfo == NULL) {
+			return -EINVAL;
+		}
+		pinfo->store_mode = val->intval;
+		break;
+	/* hs14 code for SR-AL6528A-01-244 by qiaodan at 2022/11/23 end */
+#endif
+/* hs14 code for SR-AL6528A-01-244 by qiaodan at 2022/11/23 start */
+#ifdef HQ_FACTORY_BUILD
+	case POWER_SUPPLY_PROP_BATT_CAP_CONTROL:
+		if (pinfo == NULL) {
+			return -EINVAL;
+		}
+		if (val->intval)
+			pinfo->batt_cap_control = true;
+		else
+			pinfo->batt_cap_control = false;
+		break;
+#endif
+/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/23 end */
 	default:
 		return -EINVAL;
 	}
 
 	dump_charger_name(mtk_chg->chg_type);
 
-	if (!cti->ignore_usb) {
+#ifdef CONFIG_MT6360_PMU_CHARGER
+	is_host = mt6360_get_is_host();
+#endif
+
+	if (!cti->ignore_usb && !is_host) {
 		/* usb */
 		if ((mtk_chg->chg_type == STANDARD_HOST) ||
 			(mtk_chg->chg_type == CHARGING_HOST) ||
@@ -367,6 +645,9 @@ static int mt_usb_get_property(struct power_supply *psy,
 	enum power_supply_property psp, union power_supply_propval *val)
 {
 	struct mt_charger *mtk_chg = power_supply_get_drvdata(psy);
+	/* hs14 code for SR-AL6528A-01-300 by wenyaqi at 2022/09/08 start */
+	struct power_supply *typec_port = NULL;
+	/* hs14 code for SR-AL6528A-01-300 by wenyaqi at 2022/09/08 end */
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
@@ -382,6 +663,21 @@ static int mt_usb_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		val->intval = 5000000;
 		break;
+	/* AL6528A code for SR-AL6528A-01-301 by gaozhengwei at 2022/08/31 start */
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+		val->intval = battery_get_vbus();;
+		break;
+	/* AL6528A code for SR-AL6528A-01-301 by gaozhengwei at 2022/08/31 end */
+	/* hs14 code for SR-AL6528A-01-300 by wenyaqi at 2022/09/08 start */
+	case POWER_SUPPLY_PROP_TYPEC_CC_ORIENTATION:
+		typec_port = power_supply_get_by_name("typec_port");
+		if (!typec_port) {
+			return -EINVAL;
+			break;
+		}
+		power_supply_get_property(typec_port, POWER_SUPPLY_PROP_TYPEC_CC_ORIENTATION, val);
+		break;
+	/* hs14 code for SR-AL6528A-01-300 by wenyaqi at 2022/09/08 end */
 	default:
 		return -EINVAL;
 	}
@@ -389,8 +685,58 @@ static int mt_usb_get_property(struct power_supply *psy,
 	return 0;
 }
 
+/* hs14 code for SR-AL6528A-01-245 by wenyaqi at 2022/10/02 start */
+#ifndef HQ_FACTORY_BUILD	//ss version
+extern bool ss_musb_is_host(void);
+static int mt_otg_get_property(struct power_supply *psy,
+	enum power_supply_property psp, union power_supply_propval *val)
+{
+	switch (psp) {
+	case POWER_SUPPLY_PROP_ONLINE:
+		val->intval = ss_musb_is_host();
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+#endif
+/* hs14 code for SR-AL6528A-01-245 by wenyaqi at 2022/10/02 end */
+
 static enum power_supply_property mt_charger_properties[] = {
 	POWER_SUPPLY_PROP_ONLINE,
+	/* hs14 code for SR-AL6528A-01-299 by gaozhengwei at 2022/09/02 start */
+	POWER_SUPPLY_PROP_INPUT_SUSPEND,
+	/* hs14 code for SR-AL6528A-01-299 by gaozhengwei at 2022/09/02 end */
+
+	/* hs14 code for SR-AL6528A-01-259 by zhouyuhang at 2022/09/15 start*/
+	POWER_SUPPLY_PROP_SHIPMODE,
+	POWER_SUPPLY_PROP_SHIPMODE_REG,
+	/* hs14 code for  SR-AL6528A-01-259 by zhouyuhang at 2022/09/15 end*/
+	/* hs14 code for SR-AL6528A-445 by shanxinkai at 2022/10/28 start */
+	POWER_SUPPLY_PROP_DUMP_CHARGER_IC,
+	/* hs14 code for SR-AL6528A-445 by shanxinkai at 2022/10/28 end */
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 start */
+#ifdef CONFIG_AFC_CHARGER
+	POWER_SUPPLY_PROP_HV_CHARGER_STATUS,
+	POWER_SUPPLY_PROP_AFC_RESULT,
+	POWER_SUPPLY_PROP_HV_DISABLE,
+#endif
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 end */
+#ifndef HQ_FACTORY_BUILD
+/* hs14 code for SR-AL6528A-01-242 by shanxinkai at 2022/10/12 start */
+	POWER_SUPPLY_PROP_BATT_SLATE_MODE,
+/* hs14 code for SR-AL6528A-01-242 by shanxinkai at 2022/10/12 end */
+/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 start */
+	POWER_SUPPLY_PROP_STORE_MODE,
+/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 end */
+#endif
+/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 start */
+#ifdef HQ_FACTORY_BUILD
+	POWER_SUPPLY_PROP_BATT_CAP_CONTROL,
+#endif
+/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 end */
 };
 
 static enum power_supply_property mt_ac_properties[] = {
@@ -401,7 +747,21 @@ static enum power_supply_property mt_usb_properties[] = {
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_VOLTAGE_MAX,
+	/* AL6528A code for SR-AL6528A-01-301 by gaozhengwei at 2022/08/31 start */
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+	/* AL6528A code for SR-AL6528A-01-301 by gaozhengwei at 2022/08/31 end */
+	/* hs14 code for SR-AL6528A-01-300 by wenyaqi at 2022/09/08 start */
+	POWER_SUPPLY_PROP_TYPEC_CC_ORIENTATION,
+	/* hs14 code for SR-AL6528A-01-300 by wenyaqi at 2022/09/08 end */
 };
+
+/* hs14 code for SR-AL6528A-01-245 by wenyaqi at 2022/10/02 start */
+#ifndef HQ_FACTORY_BUILD	//ss version
+static enum power_supply_property mt_otg_properties[] = {
+	POWER_SUPPLY_PROP_ONLINE,
+};
+#endif
+/* hs14 code for SR-AL6528A-01-245 by wenyaqi at 2022/10/02 end */
 
 static void tcpc_power_off_work_handler(struct work_struct *work)
 {
@@ -418,6 +778,14 @@ static void charger_in_work_handler(struct work_struct *work)
 #ifdef CONFIG_TCPC_CLASS
 static void plug_in_out_handler(struct chg_type_info *cti, bool en, bool ignore)
 {
+#ifdef CONFIG_MTK_TYPEC_WATER_DETECT
+	if (cti->water_detected && cti->tcpc_kpoc) {
+		pr_info("%s: water detected in KPOC, bypass bc1.2\n",
+			__func__);
+		return;
+	}
+#endif
+
 	mutex_lock(&cti->chgdet_lock);
 	if (cti->chgdet_en == en)
 		goto skip;
@@ -483,6 +851,16 @@ static int pd_tcp_notifier_call(struct notifier_block *pnb,
 		    noti->typec_state.old_state == TYPEC_ATTACHED_AUDIO)
 			&& noti->typec_state.new_state == TYPEC_UNATTACHED) {
 			if (cti->tcpc_kpoc) {
+#ifdef CONFIG_KPOC_GET_SOURCE_CAP_TRY
+				pr_info("%s error_recovery_once = %d\n", __func__,
+					cti->tcpc->pd_port.error_recovery_once);
+				if (cti->tcpc->pd_port.error_recovery_once == 1) {
+					pr_info("%s KPOC error recovery once\n",
+					__func__);
+					plug_in_out_handler(cti, false, false);
+					break;
+				}
+#endif /*CONFIG_KPOC_GET_SOURCE_CAP_TRY*/
 				vbus = battery_get_vbus();
 				pr_info("%s KPOC Plug out, vbus = %d\n",
 					__func__, vbus);
@@ -507,6 +885,14 @@ static int pd_tcp_notifier_call(struct notifier_block *pnb,
 			plug_in_out_handler(cti, false, true);
 		}
 		break;
+#ifdef CONFIG_MTK_TYPEC_WATER_DETECT
+	case TCP_NOTIFY_WD_STATUS:
+		if (noti->wd_status.water_detected)
+			cti->water_detected = true;
+		else
+			cti->water_detected = false;
+		break;
+#endif
 	}
 	return NOTIFY_OK;
 }
@@ -549,6 +935,9 @@ static int chgdet_task_threadfn(void *data)
 			cti->bypass_chgdet = false;
 			goto bypass_chgdet;
 		}
+		/* hs14 code for P221116-03489 by wenyaqi at 2022/11/23 start */
+		charger_manager_bypass_chgdet(cti->chg_consumer, MAIN_CHARGER, false);
+		/* hs14 code for P221116-03489 by wenyaqi at 2022/11/23 end */
 
 #ifdef CONFIG_MTK_EXTERNAL_CHARGER_TYPE_DETECT
 		if (cti->chg_consumer)
@@ -559,6 +948,9 @@ static int chgdet_task_threadfn(void *data)
 #endif
 		goto pm_relax;
 bypass_chgdet:
+		/* hs14 code for P221116-03489 by wenyaqi at 2022/11/23 start */
+		charger_manager_bypass_chgdet(cti->chg_consumer, MAIN_CHARGER, true);
+		/* hs14 code for P221116-03489 by wenyaqi at 2022/11/23 end */
 		val.intval = attach;
 		ret = power_supply_set_property(psy, POWER_SUPPLY_PROP_ONLINE,
 						&val);
@@ -611,7 +1003,7 @@ static void init_extcon_work(struct work_struct *work)
 #endif
 
 #ifdef CONFIG_MACH_MT6771
-static int mt6370_psy_notifier(struct notifier_block *nb,
+static int mtk_6370_psy_notifier(struct notifier_block *nb,
 				unsigned long event, void *data)
 {
 	struct power_supply *psy = data;
@@ -623,25 +1015,18 @@ static int mt6370_psy_notifier(struct notifier_block *nb,
 	union power_supply_propval pval;
 	int ret;
 
-	if (event != PSY_EVENT_PROP_CHANGED) {
-		pr_info("%s, event not equal\n", __func__);
+	cti->chr_psy = power_supply_get_by_name("mt6370_pmu_charger");
+	if (IS_ERR_OR_NULL(cti->chr_psy)) {
+		pr_info("fail to get chr_psy\n");
+		cti->chr_psy = NULL;
 		return NOTIFY_DONE;
 	}
 
-	if (IS_ERR_OR_NULL(cti->chr_psy)) {
-		cti->chr_psy = power_supply_get_by_name("mt6370_pmu_charger");
-		if (IS_ERR_OR_NULL(cti->chr_psy)) {
-			pr_info("fail to get chr_psy\n");
-			cti->chr_psy = NULL;
-			return NOTIFY_DONE;
-		}
-	} else
-		pr_info("%s, get mt6370 psy success, event(%d)\n", __func__, event);
-
 	/*psy is mt6370, type_psy is charger_type psy*/
-	if (psy != cti->chr_psy) {
-		pr_info("power supply not equal\n");
+	if (event != PSY_EVENT_PROP_CHANGED || psy != cti->chr_psy) {
+		pr_info("event or power supply not equal\n");
 		return NOTIFY_DONE;
+
 	}
 
 	type_psy = power_supply_get_by_name("charger");
@@ -731,6 +1116,9 @@ static int mt_charger_probe(struct platform_device *pdev)
 	mt_chg->chg_desc.num_properties = ARRAY_SIZE(mt_charger_properties);
 	mt_chg->chg_desc.set_property = mt_charger_set_property;
 	mt_chg->chg_desc.get_property = mt_charger_get_property;
+	/* hs14 code for SR-AL6528A-01-299 by gaozhengwei at 2022/09/02 start */
+	mt_chg->chg_desc.property_is_writeable = mt_charger__property_is_writeable;
+	/* hs14 code for SR-AL6528A-01-299 by gaozhengwei at 2022/09/02 end */
 	mt_chg->chg_cfg.drv_data = mt_chg;
 
 	mt_chg->ac_desc.name = "ac";
@@ -746,6 +1134,17 @@ static int mt_charger_probe(struct platform_device *pdev)
 	mt_chg->usb_desc.num_properties = ARRAY_SIZE(mt_usb_properties);
 	mt_chg->usb_desc.get_property = mt_usb_get_property;
 	mt_chg->usb_cfg.drv_data = mt_chg;
+
+/* hs14 code for SR-AL6528A-01-245 by wenyaqi at 2022/10/02 start */
+#ifndef HQ_FACTORY_BUILD	//ss version
+	mt_chg->otg_desc.name = "otg";
+	mt_chg->otg_desc.type = POWER_SUPPLY_TYPE_OTG;
+	mt_chg->otg_desc.properties = mt_otg_properties;
+	mt_chg->otg_desc.num_properties = ARRAY_SIZE(mt_otg_properties);
+	mt_chg->otg_desc.get_property = mt_otg_get_property;
+	mt_chg->otg_cfg.drv_data = mt_chg;
+#endif
+/* hs14 code for SR-AL6528A-01-245 by wenyaqi at 2022/10/02 end */
 
 	mt_chg->chg_psy = power_supply_register(&pdev->dev,
 		&mt_chg->chg_desc, &mt_chg->chg_cfg);
@@ -773,6 +1172,19 @@ static int mt_charger_probe(struct platform_device *pdev)
 		ret = PTR_ERR(mt_chg->usb_psy);
 		goto err_usb_psy;
 	}
+
+/* hs14 code for SR-AL6528A-01-245 by wenyaqi at 2022/10/02 start */
+#ifndef HQ_FACTORY_BUILD	//ss version
+	mt_chg->otg_psy = power_supply_register(&pdev->dev, &mt_chg->otg_desc,
+		&mt_chg->otg_cfg);
+	if (IS_ERR(mt_chg->otg_psy)) {
+		dev_notice(&pdev->dev, "Failed to register power supply: %ld\n",
+			PTR_ERR(mt_chg->otg_psy));
+		ret = PTR_ERR(mt_chg->otg_psy);
+		goto err_otg_psy;
+	}
+#endif
+/* hs14 code for SR-AL6528A-01-245 by wenyaqi at 2022/10/02 end */
 
 	cti = devm_kzalloc(&pdev->dev, sizeof(*cti), GFP_KERNEL);
 	if (!cti) {
@@ -802,7 +1214,7 @@ static int mt_charger_probe(struct platform_device *pdev)
 				boot_mode = tag->bootmode;
 		}
 	}
-	//ret = get_boot_mode();
+//	ret = get_boot_mode();
 	if (boot_mode == KERNEL_POWER_OFF_CHARGING_BOOT ||
 	    boot_mode == LOW_POWER_OFF_CHARGING_BOOT)
 		cti->tcpc_kpoc = true;
@@ -833,14 +1245,10 @@ static int mt_charger_probe(struct platform_device *pdev)
 	device_init_wakeup(&pdev->dev, true);
 
 #ifdef CONFIG_MACH_MT6771
-	cti->psy_nb.notifier_call = mt6370_psy_notifier;
+	cti->psy_nb.notifier_call = mtk_6370_psy_notifier;
 	ret = power_supply_reg_notifier(&cti->psy_nb);
 	if (ret)
 		pr_info("fail to register notifer\n");
-
-	cti->chr_psy = power_supply_get_by_name("mt6370_pmu_charger");
-	if (IS_ERR_OR_NULL(cti->chr_psy))
-		pr_info("%s, fail to get chr_psy\n", __func__);
 #endif
 
 	#ifdef CONFIG_EXTCON_USB_CHG
@@ -861,6 +1269,12 @@ static int mt_charger_probe(struct platform_device *pdev)
 err_get_tcpc_dev:
 	devm_kfree(&pdev->dev, cti);
 err_no_mem:
+/* hs14 code for SR-AL6528A-01-245 by wenyaqi at 2022/10/02 start */
+#ifndef HQ_FACTORY_BUILD	//ss version
+	power_supply_unregister(mt_chg->otg_psy);
+err_otg_psy:
+#endif
+/* hs14 code for SR-AL6528A-01-245 by wenyaqi at 2022/10/02 end */
 	power_supply_unregister(mt_chg->usb_psy);
 err_usb_psy:
 	power_supply_unregister(mt_chg->ac_psy);

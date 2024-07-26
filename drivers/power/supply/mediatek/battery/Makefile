@@ -20,6 +20,10 @@ subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/include/mt-plat
 subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/pmic/include
 subdir-ccflags-y += -Werror -I$(srctree)/drivers/power/supply/mediatek/misc
 
+# hs14 code for  SR-AL6528A-01-313 by zhouyuhang at 20220907 start
+obj-$(CONFIG_BATTERY_ID_ADC) += battery_id_adc.o
+# hs14 code for  SR-AL6528A-01-313 by zhouyuhang at 20220907 end
+
 ifeq ($(CONFIG_MTK_GAUGE_VERSION),30)
 	obj-y += mtk_battery.o mtk_power_misc.o mtk_gauge_coulomb_service.o mtk_gauge_class.o mtk_battery_recovery.o mtk_battery_core.o
 endif
