@@ -33,12 +33,15 @@ enum REGULATOR_VOLTAGE {
 	REGULATOR_VOLTAGE_2900 = 2900000,
 };
 
+/*hs14 code for SR-AL5628-01-161 Universal macro adaptation by lisizhou at 2022/9/23 start*/
 enum REGULATOR_TYPE {
 	REGULATOR_TYPE_VCAMA,
 	REGULATOR_TYPE_VCAMD,
 	REGULATOR_TYPE_VCAMIO,
+	REGULATOR_TYPE_VCAMAF,
 	REGULATOR_TYPE_MAX_NUM
 };
+/*hs14 code for SR-AL5628-01-161 Universal macro adaptation by lisizhou at 2022/9/23 end*/
 
 struct REGULATOR_CTRL {
 	char *pregulator_type;

@@ -930,7 +930,7 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 {
 	struct ACDK_SENSOR_FEATURECONTROL_STRUCT *pFeatureCtrl;
 	struct IMGSENSOR_SENSOR *psensor;
-	unsigned int FeatureParaLen = 0, Patternmode = 0;
+	unsigned int FeatureParaLen, Patternmode = 0;
 	void *pFeaturePara = NULL;
 	struct ACDK_KD_SENSOR_SYNC_STRUCT *pSensorSyncInfo = NULL;
 	signed int ret = 0;
@@ -1075,6 +1075,7 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 	{
 		struct IMGSENSOR_SENSOR_LIST *psensor_list =
 			(struct IMGSENSOR_SENSOR_LIST *)pFeaturePara;
+
 		/* NOTICE: MUINT32 (*init)(struct SENSOR_FUNCTION_STRUCT **pfFunc) */
 		/* Not used and don't use due to A32+K64 no support ioctl of address type */
 		if (FeatureParaLen < (1 * sizeof(MUINT32) + 32 * sizeof(MUINT8))) {
@@ -1955,9 +1956,7 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 					((void *)pData, (void __user *)usr_ptr,
 					sizeof(struct SET_SENSOR_PATTERN_SOLID_COLOR))) {
 					kfree(pData);
-					kfree(pFeaturePara);
 					PK_DBG("[CAMERA_HW]ERROR: copy_from_user fail\n");
-					return -EFAULT;
 				}
 				//pr_debug("%x %x %x %x",pData->COLOR_R,pData->COLOR_Gr,
 				//pData->COLOR_Gb,pData->COLOR_B);

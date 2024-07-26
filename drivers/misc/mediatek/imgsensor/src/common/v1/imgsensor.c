@@ -48,7 +48,10 @@
 #include "imgsensor_clk.h"
 #include "imgsensor.h"
 
-#define PDAF_DATA_SIZE 4096
+/*hs14 code for SR-AL6528A-01-54 by chengzhi at 2022-9-24 start*/
+//#define PDAF_DATA_SIZE 4096
+#define PDAF_DATA_SIZE 10240
+/*hs14 code for SR-AL6528A-01-54 by chengzhi at 2022-9-24 end*/
 
 #ifdef CONFIG_MTK_SMI_EXT
 static int current_mmsys_clk = MMSYS_CLK_MEDIUM;
@@ -78,7 +81,111 @@ MUINT32 last_id;
 
 /*prevent imgsensor race condition in vulunerbility test*/
 struct mutex imgsensor_mutex;
+#ifdef CONFIG_HQ_PROJECT_HS03S
+	/* hs03s code for AR-AL5625-01-502 by xuxianwei at 2021/05/27 start */
+/*hs03s_NM code for SL6215DEV-4183 by liluling at 2022/4/15 start*/
+	extern char *cameraMateriaNumber[4];
+	static char *cameraMateriaNumber_define[][2]={
+	/*main camera*/
+		{"hi1336_txd_mipi_raw", "HQ20208296000"},
+		{"gc13053_ly_mipi_raw", "HQ20208298000"},
+		{"s5k3l6_ofilm_mipi_raw", "HQ20208297000"},
+		{"ov13b10_dd_mipi_raw", "HQ20208302000"},
+		{"ov13b10_qt_mipi_raw", "HQ20208331000"},
+		{"hi1336_txds_mipi_raw", "HQ20208330000"},
+		{"ov13b10_xl_mipi_raw",	"HQ20208332000"},
+		{"hi1336_hlt_mipi_raw", "HQ20207953000"},
+		{"sc1300cs_ly_mipi_raw", "HQ20208934000"},
+	/*front camera*/
+		{"hi556_txd_mipi_raw",	"HQ20208294000"},
+		{"hi556_ofilm_mipi_raw","HQ20208295000"},
+		{"gc5035_dd_mipi_raw",	"HQ20208301000"},
+		{"gc5035_ly_mipi_raw",  "HQ20208299000"},
+		{"gc5035_xl_mipi_raw",  "HQ20208333000"},
+		{"sc500cs_dd_mipi_raw",  "HQ20208933000"},
+	/*macro camera*/
+		{"gc02m1_cxt_mipi_raw","HQ20208304000"},
+		{"ov02b10_ly_mipi_raw","HQ20208303000"},
+		{"gc02m1_jk_mipi_raw","HQ20208293000"},
+		{"gc02m1_hlt_mipi_raw","HQ20208300000"},
+		{"sc201cs_cxt_macro_mipi_raw","HQ20208932000"},
+	/*depth camera*/
+		{"gc2375h_cxt_mipi_raw","HQ20207875000"},
+		{"gc02m1b_ly_mipi_raw",	"HQ20207879000"},
+		{"ov02b1b_jk_mipi_raw",	"HQ20207899000"},
+		{"gc2375h_sjc_mipi_raw","HQ20207971000"},
+		{"sc201cs_cxt_mipi_raw","HQ20208935000"},
+		{"NULL","NULL"}	//must keep this line exist
+	};
+	/* hs03s code for AR-AL5625-01-502 by xuxianwei at 2021/05/27 end */
+/*hs03s_NM code for SL6215DEV-4183 by liluling at 2022/4/15 end */
+#endif
 
+/*hs04 code for DEVAL6398A-46 by renxinglin at  2022/10/14 start*/
+#ifdef CONFIG_HQ_PROJECT_HS04
+	extern char *cameraMateriaNumber[4];
+	static char *cameraMateriaNumber_define[][2]={
+        /*main camera*/
+        {"o2101_sc1300csly_back_mipi_raw", "HQ20208934000"},
+        {"o2102_hi1336txd_back_mipi_raw", "HQ20209056000"},
+        {"o2103_ov13b10hlt_back_mipi_raw", "HQ2020905A000"},
+        {"o2104_hi1336sjc_back_mipi_raw", "HQ2020905B000"},
+        /*front camera*/
+        {"o2101_hi556txd_front_mipi_raw",  "HQ20208294000"},
+        {"o2102_ov05a10hlt_front_mipi_raw",  "HQ20209058000"},
+        {"o2103_sc520syx_front_mipi_raw",  "HQ2020905D000"},
+		{"o2104_hi556wtxd_front_mipi_raw",  "HQ20209059000"},
+        /*depth camera*/
+        {"o2101_sc201cscxt_depth_mipi_raw", "HQ20208935000"},
+        {"o2102_gc2375hhlt_depth_mipi_raw", "HQ20209057000"},
+        {"o2103_sp2507hcxt_depth_mipi_raw", "HQ20209055000"},
+        {"NULL","NULL"}	//must keep this line exist
+	};
+#endif
+/*hs04 code for DEVAL6398A-46 by renxinglin at  2022/10/14 end*/
+
+
+/*HS04 code for DEVAL6398A-9 Universal macro adaptation by chenjun at 2022/7/2 end*/
+
+/* A03s code for SR-AL5625-01-324 by xuxianwei at 2021/04/22 start */
+#if CAM_MODULE_INFO_CONFIG
+   extern char *cameraModuleInfo[4];
+#endif
+#ifdef CONFIG_HQ_PROJECT_HS03S
+/* hs03s code for AR-AL5625-01-502 by xuxianwei at 2021/05/27 start */
+static void materianumber_judge(char *sensor_name,int meterial_index){
+	int index = 0;
+	for(index=0;(0!=strcmp("NULL",cameraMateriaNumber_define[index][0]));index++)
+	{
+		if(strcmp(sensor_name,cameraMateriaNumber_define[index][0]) == 0)
+		{
+			cameraMateriaNumber[meterial_index]=cameraMateriaNumber_define[index][1];
+			PK_DBG("sensor_name is %s,cameraMateriaNumber is %s",sensor_name,cameraMateriaNumber[meterial_index]);
+			break;
+		}
+	}
+}
+/* hs03s code for AR-AL5625-01-502 by xuxianwei at 2021/05/27 end */
+#endif
+/* A03s code for SR-AL5625-01-324 by xuxianwei at 2021/04/22 end */
+
+/*HS04 code for DEVAL6398A-9 Universal macro adaptation by chenjun at 2022/7/2 start*/
+#ifdef CONFIG_HQ_PROJECT_HS04
+static void materianumber_judge(char *sensor_name,int meterial_index){
+	int index = 0;
+	for(index=0;(0!=strcmp("NULL",cameraMateriaNumber_define[index][0]));index++)
+	{
+		if(strcmp(sensor_name,cameraMateriaNumber_define[index][0]) == 0)
+		{
+			cameraMateriaNumber[meterial_index]=cameraMateriaNumber_define[index][1];
+			PK_DBG("sensor_name is %s,cameraMateriaNumber is %s",sensor_name,cameraMateriaNumber[meterial_index]);
+			break;
+		}
+	}
+}
+#endif
+
+/*HS04 code for DEVAL6398A-9 Universal macro adaptation by chenjun at 2022/7/2 end*/
 
 DEFINE_MUTEX(pinctrl_mutex);
 DEFINE_MUTEX(oc_mutex);
@@ -192,7 +299,23 @@ imgsensor_sensor_open(struct IMGSENSOR_SENSOR *psensor)
 			return -EIO;
 		}
 		/* wait for power stable */
+		/*HS04 code for DEVAL6398A-9 Universal macro adaptation by chenjun at 2022/7/2 start*/
+#ifdef CONFIG_HQ_PROJECT_HS03S
 		mDELAY(5);
+		pr_info("[hs03s E] camera poweron delay 5ms");
+#endif
+#ifdef CONFIG_HQ_PROJECT_HS04
+		mDELAY(5);
+		pr_info("[hs04 E] camera poweron delay 5ms");
+#endif
+#ifdef CONFIG_HQ_PROJECT_O22
+		mDELAY(5);
+		pr_info("[hs04 E] camera poweron delay 5ms");
+#endif
+#ifdef CONFIG_HQ_PROJECT_OT8
+		mDELAY(20);
+#endif
+		/*HS04 code for DEVAL6398A-9 Universal macro adaptation by chenjun at 2022/7/2 end*/
 
 		IMGSENSOR_PROFILE(&psensor_inst->profile_time,
 		    "kdCISModulePowerOn");
@@ -411,9 +534,11 @@ imgsensor_sensor_close(struct IMGSENSOR_SENSOR *psensor)
 
 		psensor_func->psensor_inst = psensor_inst;
 
+		/* A03s code for CAM-AL5625-01-247 by lisizhou at 2021/05/10 start */
 		if (pgimgsensor->imgsensor_oc_irq_enable != NULL)
 			pgimgsensor->imgsensor_oc_irq_enable(
 					psensor->inst.sensor_idx, false);
+		/* A03s code for CAM-AL5625-01-247 by lisizhou at 2021/05/10 end */
 
 		ret = psensor_func->SensorClose();
 		if (ret != ERROR_NONE) {
@@ -445,6 +570,29 @@ static inline int imgsensor_check_is_alive(struct IMGSENSOR_SENSOR *psensor)
 	MUINT32 retLen = sizeof(MUINT32);
 
 	IMGSENSOR_PROFILE_INIT(&psensor_inst->profile_time);
+#ifdef CONFIG_HQ_PROJECT_HS03S
+/* HS03s code for P210619-01144 by chenjun at 2021/07/15 start */
+	if (pgimgsensor->imgsensor_oc_irq_enable != NULL)
+	pgimgsensor->imgsensor_oc_irq_enable(
+			psensor->inst.sensor_idx, false);
+	pr_info("[hs03s I]disable vcama oc before power on");
+/* HS03s code for P210619-01144 by chenjun at 2021/07/15 end */
+#endif
+
+/*HS04 code for DEVAL6398A-9 Universal macro adaptation by chenjun at 2022/7/2 start*/
+#ifdef CONFIG_HQ_PROJECT_HS04
+	if (pgimgsensor->imgsensor_oc_irq_enable != NULL)
+	pgimgsensor->imgsensor_oc_irq_enable(
+			psensor->inst.sensor_idx, false);
+	pr_info("[hs04 I]disable vcama oc before power on");
+#endif
+#ifdef CONFIG_HQ_PROJECT_O22
+	if (pgimgsensor->imgsensor_oc_irq_enable != NULL)
+	pgimgsensor->imgsensor_oc_irq_enable(
+			psensor->inst.sensor_idx, false);
+	pr_info("[hs04 I]disable vcama oc before power on");
+#endif
+/*HS04 code for DEVAL6398A-9 Universal macro adaptation by chenjun at 2022/7/2 end*/
 
 	err = imgsensor_hw_power(&pgimgsensor->hw,
 				psensor,
@@ -594,7 +742,48 @@ int imgsensor_set_driver(struct IMGSENSOR_SENSOR *psensor)
 					    psensor->inst.sensor_idx,
 					    drv_idx,
 					    psensor_inst->psensor_name);
+/* A03s code for SR-AL5625-01-324 by xuxianwei at 2021/04/22 start */
+/* A03s code for SR-AL5625-01-59 by xuxianwei at 2021/05/06 start */
+#if CAM_MODULE_INFO_CONFIG
+/*HS04 code for DEVAL6398A-9 Universal macro adaptation by chenjun at 2022/7/2 start*/
+#ifdef CONFIG_HQ_PROJECT_HS03S
+					if(psensor->inst.sensor_idx == 4){
+						cameraModuleInfo[psensor->inst.sensor_idx-1] = psensor_inst->psensor_name;
+						materianumber_judge(psensor_inst->psensor_name,(psensor->inst.sensor_idx-1));
+						PK_DBG("sensor_name is %s,camera_id is %d -1,cameraMateriaNumber is %s",
+						psensor_inst->psensor_name,psensor->inst.sensor_idx,cameraMateriaNumber[psensor->inst.sensor_idx-1]);
+					}else{
+						cameraModuleInfo[psensor->inst.sensor_idx] = psensor_inst->psensor_name;
+						materianumber_judge(psensor_inst->psensor_name,psensor->inst.sensor_idx);
+						PK_DBG("sensor_name is %s,camera_id is %d,cameraMateriaNumber is %s",
+						psensor_inst->psensor_name,psensor->inst.sensor_idx,cameraMateriaNumber[psensor->inst.sensor_idx]);
+					}
+#endif
+#ifdef CONFIG_HQ_PROJECT_HS04
+					if(psensor->inst.sensor_idx == 4){
+						cameraModuleInfo[psensor->inst.sensor_idx-1] = psensor_inst->psensor_name;
+						materianumber_judge(psensor_inst->psensor_name,(psensor->inst.sensor_idx-1));
+						PK_DBG("sensor_name is %s,camera_id is %d -1,cameraMateriaNumber is %s",
+						psensor_inst->psensor_name,psensor->inst.sensor_idx,cameraMateriaNumber[psensor->inst.sensor_idx-1]);
+					}else{
+						cameraModuleInfo[psensor->inst.sensor_idx] = psensor_inst->psensor_name;
+						materianumber_judge(psensor_inst->psensor_name,psensor->inst.sensor_idx);
+						PK_DBG("sensor_name is %s,camera_id is %d,cameraMateriaNumber is %s",
+						psensor_inst->psensor_name,psensor->inst.sensor_idx,cameraMateriaNumber[psensor->inst.sensor_idx]);
+					}
+#endif
 
+#ifdef CONFIG_HQ_PROJECT_OT8
+					if(psensor->inst.sensor_idx == 4){
+						cameraModuleInfo[psensor->inst.sensor_idx-1] = psensor_inst->psensor_name;
+					}else{
+						cameraModuleInfo[psensor->inst.sensor_idx] = psensor_inst->psensor_name;
+					}
+#endif
+/*HS04 code for DEVAL6398A-9 Universal macro adaptation by chenjun at 2022/7/2 end*/
+#endif
+/* A03s code for SR-AL5625-01-59 by xuxianwei at 2021/05/06 end */
+/* A03s code for SR-AL5625-01-324 by xuxianwei at 2021/04/22 start */		
 					ret = drv_idx;
 					break;
 				}
@@ -1504,6 +1693,7 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 	case SENSOR_FEATURE_GET_SENSOR_PDAF_CAPACITY:
 	case SENSOR_FEATURE_GET_SENSOR_HDR_CAPACITY:
 	case SENSOR_FEATURE_GET_MIPI_PIXEL_RATE:
+	case SENSOR_FEATURE_GET_AWB_REQ_BY_SCENARIO:
 	case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
 	case SENSOR_FEATURE_GET_PIXEL_RATE:
 	case SENSOR_FEATURE_SET_PDAF:
@@ -1588,6 +1778,7 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 	case SENSOR_FEATURE_GET_SENSOR_PDAF_CAPACITY:
 	case SENSOR_FEATURE_GET_SENSOR_HDR_CAPACITY:
 	case SENSOR_FEATURE_GET_MIPI_PIXEL_RATE:
+	case SENSOR_FEATURE_GET_AWB_REQ_BY_SCENARIO:
 	case SENSOR_FEATURE_GET_PIXEL_RATE:
 	{
 		MUINT32 *pValue = NULL;
@@ -2342,6 +2533,7 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 	case SENSOR_FEATURE_GET_SENSOR_PDAF_CAPACITY:
 	case SENSOR_FEATURE_GET_SENSOR_HDR_CAPACITY:
 	case SENSOR_FEATURE_GET_MIPI_PIXEL_RATE:
+	case SENSOR_FEATURE_GET_AWB_REQ_BY_SCENARIO:
 	case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
 	case SENSOR_FEATURE_GET_PIXEL_RATE:
 	case SENSOR_FEATURE_SET_ISO:
@@ -2697,6 +2889,8 @@ static long imgsensor_ioctl(
 			    pBuff,
 			    (void *)a_u4Param,
 			    _IOC_SIZE(a_u4Command))) {
+
+				kfree(pBuff);
 				PK_DBG(
 				    "[CAMERA SENSOR] ioctl copy from user failed\n");
 				i4RetValue =  -EFAULT;
@@ -2790,6 +2984,7 @@ static long imgsensor_ioctl(
 		    copy_to_user((void __user *) a_u4Param,
 						  pBuff,
 						_IOC_SIZE(a_u4Command))) {
+		kfree(pBuff);
 		PK_DBG("[CAMERA SENSOR] ioctl copy to user failed\n");
 		i4RetValue =  -EFAULT;
 		goto CAMERA_HW_Ioctl_EXIT;

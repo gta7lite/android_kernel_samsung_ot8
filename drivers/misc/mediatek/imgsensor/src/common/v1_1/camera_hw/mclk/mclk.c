@@ -141,8 +141,11 @@ static enum IMGSENSOR_RETURN mclk_set(
 		? pinst->drive_current[sensor_idx]
 		: MCLK_STATE_DISABLE;
 
+		if (state_index < 0)
+			return IMGSENSOR_RETURN_ERROR;
+
 		ppinctrl_state =
-pinst->ppinctrl_state[(unsigned int)sensor_idx][(unsigned int)state_index];
+			pinst->ppinctrl_state[sensor_idx][state_index];
 		/*
 		 * pr_debug(
 		 *	"%s : idx %d pin %d state %d driv_current %d\n",

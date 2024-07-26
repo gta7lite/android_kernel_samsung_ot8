@@ -292,7 +292,8 @@ enum IMGSENSOR_RETURN imgsensor_i2c_init(
 		enum IMGSENSOR_I2C_DEV device)
 {
 	if (!pi2c_cfg ||
-			device >= IMGSENSOR_I2C_DEV_MAX_NUM)
+			device >= IMGSENSOR_I2C_DEV_MAX_NUM ||
+			device < IMGSENSOR_I2C_DEV_0)
 		return IMGSENSOR_RETURN_ERROR;
 
 	pi2c_cfg->pinst       = &gi2c.inst[device];
@@ -432,8 +433,8 @@ enum IMGSENSOR_RETURN imgsensor_i2c_write(
 		static DEFINE_RATELIMIT_STATE(ratelimit, 1 * HZ, 30);
 
 		if (__ratelimit(&ratelimit))
-			pr_info("NOTICE: I2C id %d write failed (%d)! speed(0=%d) (0x%x)\n",
-				id, i2c_ret, speed, *pwrite_data);
+			pr_info("I2C write failed (%d)! speed(0=%d) (0x%x)\n",
+				i2c_ret, speed, *pwrite_data);
 		ret = IMGSENSOR_RETURN_ERROR;
 	}
 
