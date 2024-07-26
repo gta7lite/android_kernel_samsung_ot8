@@ -13,6 +13,25 @@
 #include <linux/device.h>
 #include <linux/mod_devicetable.h>
 
+#define MAX_CNT_U64		0xFFFFFFFFFF
+#define MAX_CNT_U32		0x7FFFFFFF
+#define STATUS_MASK		(R1_ERROR | R1_CC_ERROR | R1_CARD_ECC_FAILED |\
+						R1_WP_VIOLATION | R1_OUT_OF_RANGE)
+
+/* Only [0:4] bits in response are reserved. The other bits shouldn't be used */
+#define HALT_UNHALT_ERR         0x00000001
+#define CQ_EN_DIS_ERR           0x00000002
+#define RPMB_SWITCH_ERR         0x00000004
+#define HW_RST			0x00000008
+#define STATUS_ERR_MASK		(HALT_UNHALT_ERR | CQ_EN_DIS_ERR |\
+							RPMB_SWITCH_ERR | HW_RST)
+
+#define MAX_REQ_TYPE_INDEX	5		// sbc, cmd, data, stop, busy
+#define MAX_ERR_TYPE_INDEX	2		// timeout, crc
+#define MAX_ERR_LOG_INDEX	(MAX_REQ_TYPE_INDEX * MAX_ERR_TYPE_INDEX)
+
+struct mmc_blk_request;
+
 struct mmc_cid {
 	unsigned int		manfid;
 	char			prod_name[8];
@@ -239,6 +258,25 @@ struct mmc_part {
 #define MMC_BLK_DATA_AREA_RPMB	(1<<3)
 };
 
+struct mmc_card_error_log {
+	char type[MAX_REQ_TYPE_INDEX];
+	int err_type;
+	u32	status;
+	u64	first_issue_time;
+	u64	last_issue_time;
+	u32	count;
+	u32	ge_cnt;			// status[19] : general error or unknown error_count
+	u32	cc_cnt;			// status[20] : internal card controller error_count
+	u32	ecc_cnt;		// status[21] : ecc error_count
+	u32	wp_cnt;			// status[26] : write protection error_count
+	u32	oor_cnt;		// status[31] : out of range error
+	u32	noti_cnt;		// uevent notification count
+	u32	halt_cnt;		// cq halt / unhalt fail
+	u32	cq_cnt;		// cq enable / disable fail
+	u32	rpmb_cnt;	// RPMB switch fail
+	u32	hw_rst_cnt;	// reset count
+};
+
 /*
  * MMC device
  */
@@ -315,6 +353,8 @@ struct mmc_card {
 
 	unsigned int		bouncesz;	/* Bounce buffer size */
 	struct workqueue_struct *complete_wq;	/* Private workqueue */
+	
+	struct mmc_card_error_log err_log[MAX_ERR_LOG_INDEX];
 };
 
 static inline bool mmc_large_sector(struct mmc_card *card)
@@ -323,6 +363,7 @@ static inline bool mmc_large_sector(struct mmc_card *card)
 }
 
 bool mmc_card_is_blockaddr(struct mmc_card *card);
+void mmc_card_error_logging(struct mmc_card *card, struct mmc_blk_request *brq, u32 status);
 
 #define mmc_card_mmc(c)		((c)->type == MMC_TYPE_MMC)
 #define mmc_card_sd(c)		((c)->type == MMC_TYPE_SD)

@@ -179,10 +179,6 @@
 #define MTK_SIP_APUSYS_CONTROL \
 	MTK_SIP_SMC_CMD(0x51E)
 
-/* dptx related SMC call */
-#define MTK_SIP_DP_CONTROL \
-	MTK_SIP_SMC_CMD(0x523)
-
 /* TMEM */
 #define MTK_SIP_KERNEL_TMEM_CONTROL \
 	MTK_SIP_SMC_CMD(0x524)

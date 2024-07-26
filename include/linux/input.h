@@ -186,6 +186,10 @@ struct input_dev {
 	unsigned int users;
 	bool going_away;
 
+	unsigned int users_private;
+	bool disabled;
+	bool lowpower_mode;
+
 	struct device dev;
 
 	struct list_head	h_list;
