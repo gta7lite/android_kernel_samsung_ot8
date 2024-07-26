@@ -91,7 +91,7 @@ static void mddpwh_sm_enable(struct mddp_app_t *app)
 
 static void mddpwh_sm_rsp_enable_ok(struct mddp_app_t *app)
 {
-	struct mddp_dev_rsp_enable_t            enable = {0};
+	struct mddp_dev_rsp_enable_t            enable;
 
 	atomic_or(MDDP_FEATURE_MDDP_WH, &app->feature);
 
@@ -106,7 +106,7 @@ static void mddpwh_sm_rsp_enable_ok(struct mddp_app_t *app)
 
 static void mddpwh_sm_rsp_enable_fail(struct mddp_app_t *app)
 {
-	struct mddp_dev_rsp_enable_t    enable = {0};
+	struct mddp_dev_rsp_enable_t    enable;
 
 	// 1. Send RSP to WiFi
 	if (app->drv_hdlr.change_state != NULL)
@@ -181,7 +181,7 @@ static void mddpwh_sm_act(struct mddp_app_t *app)
 
 static void mddpwh_sm_rsp_act_ok(struct mddp_app_t *app)
 {
-	struct mddp_dev_rsp_act_t       act = {0};
+	struct mddp_dev_rsp_act_t       act;
 
 	// 1. Send RSP to WiFi
 	if (app->drv_hdlr.change_state != NULL)
@@ -222,7 +222,7 @@ static void mddpwh_sm_deact(struct mddp_app_t *app)
 
 static void mddpwh_sm_rsp_deact(struct mddp_app_t *app)
 {
-	struct mddp_dev_rsp_deact_t     deact = {0};
+	struct mddp_dev_rsp_deact_t     deact;
 
 	mddp_netfilter_unhook();
 	mddp_f_dev_del_wan_dev(app->ap_cfg.ul_dev_name);
