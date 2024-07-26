@@ -1304,7 +1304,7 @@ static irqreturn_t mt6359_oc_irq(int irq, void *data)
 	struct regulator_dev *rdev = (struct regulator_dev *)data;
 	struct mt6359_regulator_info *info = rdev_get_drvdata(rdev);
 
-	if (info == NULL || info->oc_work.timer.function == NULL)
+	if (info == NULL)
 		return IRQ_NONE;
 	disable_irq_nosync(info->irq);
 	if (!regulator_is_enabled_regmap(rdev))
@@ -1384,6 +1384,9 @@ static int mt6359_regulator_probe(struct platform_device *pdev)
 						mt_regulators->desc.name);
 		if (mt_regulators->irq < 0)
 			continue;
+
+		INIT_DELAYED_WORK(&mt_regulators->oc_work,
+				  mt6359_oc_irq_enable_work);
 		ret = devm_request_threaded_irq(&pdev->dev, mt_regulators->irq,
 						NULL, mt6359_oc_irq,
 						IRQF_TRIGGER_HIGH,
@@ -1394,8 +1397,6 @@ static int mt6359_regulator_probe(struct platform_device *pdev)
 				   mt_regulators->desc.name, ret);
 			continue;
 		}
-		INIT_DELAYED_WORK(&mt_regulators->oc_work,
-				  mt6359_oc_irq_enable_work);
 	}
 
 	return 0;
