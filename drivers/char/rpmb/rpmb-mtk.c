@@ -40,6 +40,10 @@
 #include "mmc_ops.h"
 #include "core.h"
 #include "card.h"
+#ifdef CONFIG_TEEGRIS_TEE_SUPPORT
+#include "tee_client_api.h"
+#include "tzdev.h"
+#endif
 
 #if defined(CONFIG_MMC_MTK_PRO)
 #include "mtk_sd.h"
@@ -52,20 +56,24 @@
 #include <linux/of_platform.h>
 static struct mmc_host *mtk_mmc_host[] = {NULL};
 #endif
-
+#ifndef CONFIG_TEEGRIS_TEE_SUPPORT
 #ifdef CONFIG_SCSI_UFS_MEDIATEK
 #include "ufs-mediatek.h"
+#endif
 #endif
 #include <mt-plat/mtk_boot.h>
 
 /* #define __RPMB_MTK_DEBUG_MSG */
 /* #define __RPMB_MTK_DEBUG_HMAC_VERIFY */
+#if defined(CONFIG_TEEGRIS_TEE_SUPPORT) || defined(CONFIG_TRUSTONIC_TEE_SUPPORT)
+#include "drrpmb_Api.h"
+#include "drrpmb_gp_Api.h"
+static struct dciMessage_t *rpmb_gp_dci;
+#endif
 
 /* TEE usage */
 #ifdef CONFIG_TRUSTONIC_TEE_SUPPORT
 #include "mobicore_driver_api.h"
-#include "drrpmb_Api.h"
-#include "drrpmb_gp_Api.h"
 
 #ifndef CONFIG_TEE
 static struct mc_uuid_t rpmb_uuid = RPMB_UUID;
@@ -77,8 +85,40 @@ static struct dciMessage_t *rpmb_dci;
 static struct mc_uuid_t rpmb_gp_uuid = RPMB_GP_UUID;
 static struct mc_session_handle rpmb_gp_session = {0};
 static u32 rpmb_gp_devid = MC_DEVICE_ID_DEFAULT;
-static struct dciMessage_t *rpmb_gp_dci;
 
+#endif
+
+#ifdef CONFIG_TEEGRIS_TEE_SUPPORT
+#include <core/iwsock.h>
+
+#define RPMB_SOCKET_NAME "rpmb_socket"
+
+#define TEEGRIS_MAX_RPMB_TRANSFER_BLK (32)
+#define TEEGRIS_MAX_RPMB_REQUEST_SIZE (512 * TEEGRIS_MAX_RPMB_TRANSFER_BLK)
+
+#define RPMB_IPC_MAGIC			0x11111111
+#define RPMB_REQUEST_MAGIC		0x44444444
+#define RPMB_REPLY_MAGIC		0x66666666
+
+struct rpmb_req {
+	uint16_t type;
+	uint16_t addr;
+	uint16_t blks;
+	uint8_t frame[0];
+};
+
+struct rpmb_ctx {
+	void *wsm_vaddr;
+	struct rpmb_req *req;
+};
+
+#ifdef CONFIG_SCSI_UFS_MEDIATEK
+struct rpmb_dev *ufs_mtk_rpmb_get_raw_dev(void);
+#endif
+
+static struct task_struct *iwsock_th;
+static DEFINE_MUTEX(rpmb_mutex);
+static int dt_get_boot_type(void);
 #endif
 
 /*
@@ -309,7 +349,7 @@ static void rpmb_dump_frame(u8 *data_frame)
  */
 int emmc_rpmb_switch(struct mmc_card *card, struct emmc_rpmb_blk_data *md)
 {
-	int ret;
+	int ret = 0;
 	struct emmc_rpmb_blk_data *main_md = dev_get_drvdata(&card->dev);
 
 	if (main_md->part_curr == md->part_type)
@@ -522,7 +562,7 @@ out:
 int emmc_rpmb_req_handle(struct mmc_card *card, struct emmc_rpmb_req *rpmb_req)
 {
 	struct emmc_rpmb_blk_data *md = NULL, *part_md;
-	int ret;
+	int ret = 0;
 	struct emmc_rpmb_data *rpmb;
 	struct list_head *pos;
 
@@ -531,6 +571,10 @@ int emmc_rpmb_req_handle(struct mmc_card *card, struct emmc_rpmb_req *rpmb_req)
 		return -ENOMEM;
 	/* rpmb_dump_frame(rpmb_req->data_frame); */
 	md = dev_get_drvdata(&card->dev);
+
+	if (md == NULL)
+		return -ENODEV;
+
 	list_for_each(pos, &md->rpmbs) {
 		rpmb = list_entry(pos, struct emmc_rpmb_data, node);
 		if (rpmb) {
@@ -589,7 +633,7 @@ int emmc_rpmb_req_set_key(struct mmc_card *card, u8 *key)
 {
 	struct emmc_rpmb_req rpmb_req;
 	struct s_rpmb *rpmb_frame;
-	int ret;
+	int ret = 0;
 	u8 user_key;
 
 	if (get_user(user_key, key))
@@ -688,7 +732,7 @@ int rpmb_req_get_wc_ufs(u8 *key, u32 *wc, u8 *frame)
 	struct rpmb_dev *rawdev_ufs_rpmb;
 	u8 nonce[RPMB_SZ_NONCE] = {0};
 	u8 hmac[RPMB_SZ_MAC];
-	int ret, i;
+	int ret = 0, i = 0;
 
 	MSG(INFO, "%s start!!!\n", __func__);
 
@@ -840,7 +884,7 @@ int rpmb_req_read_data_ufs(u8 *frame, u32 blk_cnt)
 {
 	struct rpmb_data data;
 	struct rpmb_dev *rawdev_ufs_rpmb;
-	int ret;
+	int ret = 0;
 
 	rawdev_ufs_rpmb = ufs_mtk_rpmb_get_raw_dev();
 
@@ -877,7 +921,7 @@ int rpmb_req_write_data_ufs(u8 *frame, u32 blk_cnt)
 {
 	struct rpmb_data data;
 	struct rpmb_dev *rawdev_ufs_rpmb;
-	int ret;
+	int ret = 0;
 #ifdef __RPMB_MTK_DEBUG_HMAC_VERIFY
 	u8 *key_mac;
 #endif
@@ -949,7 +993,7 @@ int rpmb_req_program_key_ufs(u8 *frame, u32 blk_cnt)
 {
 	struct rpmb_data data;
 	struct rpmb_dev *rawdev_ufs_rpmb;
-	int ret;
+	int ret = 0;
 
 	rawdev_ufs_rpmb = ufs_mtk_rpmb_get_raw_dev();
 
@@ -1526,16 +1570,16 @@ int rpmb_req_ioctl_write_data_emmc(struct mmc_card *card,
 {
 	struct emmc_rpmb_req rpmb_req;
 	struct s_rpmb *rpmb_frame;
-	u32 tran_size = 0, left_size = param->data_len;
+	u32 tran_size, left_size = param->data_len;
 	u32 wc = 0xFFFFFFFF;
-	u16 iCnt = 0, total_blkcnt = 0, tran_blkcnt = 0, left_blkcnt = 0;
-	u16 blkaddr = 0;
+	u16 iCnt, total_blkcnt, tran_blkcnt, left_blkcnt;
+	u16 blkaddr;
 	u8 hmac[RPMB_SZ_MAC];
 	u8 *dataBuf, *dataBuf_start;
-	int i = 0, ret = 0;
+	int i, ret = 0;
 #ifdef RPMB_MULTI_BLOCK_ACCESS
 	u8 write_blks_one_time = 0;
-	u32 size_for_hmac = 0;
+	u32 size_for_hmac;
 #endif
 
 	MSG(INFO, "%s start!!!\n", __func__);
@@ -1787,15 +1831,15 @@ int rpmb_req_ioctl_read_data_emmc(struct mmc_card *card,
 	 * so I use dynamic alloc.
 	 */
 	struct s_rpmb *rpmb_frame;
-	u32 tran_size = 0, left_size = param->data_len;
-	u16 iCnt = 0, total_blkcnt = 0, tran_blkcnt = 0, left_blkcnt = 0;
-	u16 blkaddr = 0;
+	u32 tran_size, left_size = param->data_len;
+	u16 iCnt, total_blkcnt, tran_blkcnt, left_blkcnt;
+	u16 blkaddr;
 	u8 nonce[RPMB_SZ_NONCE] = {0};
 	u8 hmac[RPMB_SZ_MAC];
 	u8 *dataBuf, *dataBuf_start;
-	int i = 0, ret = 0;
+	int i, ret = 0;
 #ifdef RPMB_MULTI_BLOCK_ACCESS
-	u32 size_for_hmac = 0;
+	u32 size_for_hmac;
 #endif
 	MSG(INFO, "%s start!!!\n", __func__);
 
@@ -2403,7 +2447,7 @@ static int rpmb_gp_execute_emmc(u32 cmdId)
 int rpmb_listenDci(void *data)
 {
 	enum mc_result mc_ret;
-	u32 cmdId = 0;
+	u32 cmdId;
 
 	MSG(INFO, "%s: DCI listener.\n", __func__);
 
@@ -2542,7 +2586,7 @@ static int rpmb_open_session(void)
 int rpmb_gp_listenDci(void *data)
 {
 	enum mc_result mc_ret;
-	u32 cmdId = 0;
+	u32 cmdId;
 
 	MSG(ERR, "%s: DCI listener.\n", __func__);
 
@@ -2602,7 +2646,7 @@ static int rpmb_gp_open_session(void)
 	MSG(INFO, "%s start\n", __func__);
 
 	do {
-		msleep(2000);
+		msleep(500);
 
 		/* open device */
 		mc_ret = mc_open_device(rpmb_gp_devid);
@@ -2670,9 +2714,9 @@ static int rpmb_gp_open_session(void)
 		else
 			break;
 
-	} while (cnt < 60);
+	} while (cnt < 240);
 
-	if (cnt >= 60)
+	if (cnt >= 240)
 		MSG(ERR, "%s, open session failed!!!\n", __func__);
 
 
@@ -2684,7 +2728,7 @@ static int rpmb_gp_open_session(void)
 
 static int rpmb_thread(void *context)
 {
-	int ret = 0;
+	int ret;
 
 	MSG(INFO, "%s start\n", __func__);
 
@@ -2697,6 +2741,359 @@ static int rpmb_thread(void *context)
 	MSG(INFO, "%s rpmb_gp_open_session, ret = %x\n", __func__, ret);
 
 	return 0;
+}
+#endif
+
+#ifdef CONFIG_TEEGRIS_TEE_SUPPORT
+static struct rpmb_ctx *create_rpmb_ctx(void)
+{
+	struct rpmb_ctx *ctx;
+
+	ctx = kzalloc(sizeof(struct rpmb_ctx), GFP_KERNEL);
+	if (!ctx) {
+		MSG(ERR, "%s rpmb context alloc failed\n", __func__);
+		return ERR_PTR(-ENOMEM);
+	}
+	return ctx;
+}
+
+static int init_rpmb_wsm(struct rpmb_ctx *ctx)
+{
+	ctx->wsm_vaddr = kzalloc(sizeof(struct rpmb_req) + TEEGRIS_MAX_RPMB_REQUEST_SIZE, GFP_KERNEL);
+	if (!ctx->wsm_vaddr) {
+		MSG(ERR, "%s failed to alloc rpmb wsm\n", __func__);
+		return -ENOMEM;
+	}
+
+	MSG(INFO, "%s rpmb dma ddr : virt(%pK)\n",
+			__func__, (uint64_t)ctx->wsm_vaddr);
+
+	ctx->req = (struct rpmb_req *)ctx->wsm_vaddr;
+	return 0;
+}
+
+static struct sock_desc *accept_swd_connection(void)
+{
+	int ret = 0;
+	struct sock_desc *rpmb_conn;
+	struct sock_desc *srpmb_listen;
+
+	srpmb_listen = tz_iwsock_socket(1, 0);
+	if (IS_ERR(srpmb_listen)) {
+		MSG(ERR, "failed to create iwd socket, err = %ld\n", PTR_ERR(srpmb_listen));
+		return srpmb_listen;
+	}
+	MSG(INFO, "Created socket\n");
+
+	ret = tz_iwsock_listen(srpmb_listen, RPMB_SOCKET_NAME);
+	if (ret) {
+		MSG(ERR, "failed make iwd socket listening, err = %d\n", ret);
+		rpmb_conn = ERR_PTR(ret);
+		goto out;
+	}
+	MSG(INFO, "Make socket listening\n");
+
+	/* Accept connection */
+	rpmb_conn = tz_iwsock_accept(srpmb_listen);
+	if (IS_ERR(rpmb_conn)) {
+		MSG(ERR, "failed to accept connection, err = %ld\n", PTR_ERR(rpmb_conn));
+		goto out;
+	}
+	MSG(INFO, "Accepted connection\n");
+out:
+	tz_iwsock_release(srpmb_listen);
+
+	return rpmb_conn;
+}
+
+static int register_rpmb_wsm(struct rpmb_ctx *ctx, struct sock_desc *rpmb_conn)
+{
+	int ret = 0;
+	ssize_t len;
+	uint64_t sock_data;
+
+	len = tz_iwsock_read(rpmb_conn, &sock_data, sizeof(sock_data), 0);
+	if (len > 0 && len != sizeof(sock_data)) {
+		MSG(ERR, "failed to receive request, invalid len = %zd\n", len);
+		return -EMSGSIZE;
+	} else if (!len) {
+		MSG(ERR, "connection was reset by peer\n");
+		return -ECONNRESET;
+	} else if (len < 0) {
+		ret = len;
+		MSG(ERR, "error while receiving request from SWd, err = %u\n", ret);
+		return ret;
+	}
+	if (sock_data != RPMB_IPC_MAGIC) {
+		MSG(ERR, "received invalied request data = %llx\n", sock_data);
+		return -EINVAL;
+	}
+
+	sock_data = virt_to_phys(ctx->wsm_vaddr);
+	len = tz_iwsock_write(rpmb_conn, &sock_data, sizeof(sock_data), 0);
+	if (len != sizeof(sock_data)) {
+		ret = len >= 0 ? -EMSGSIZE : len;
+		MSG(ERR, "failed to send reply, err = %d\n", ret);
+		return ret;
+	}
+	MSG(INFO, "%s registered WSM success\n", __func__);
+
+	return 0;
+}
+
+static int rpmb_wait_request(struct sock_desc *rpmb_conn)
+{
+	int ret = 0;
+	ssize_t len;
+	unsigned int sock_data;
+
+	MSG(INFO, "%s Read wait\n", __func__);
+	len = tz_iwsock_read(rpmb_conn, &sock_data, sizeof(sock_data), 0);
+	if (len > 0 && len != sizeof(sock_data)) {
+		MSG(ERR, "%s failed to receive request, invalid len = %zd\n", __func__, len);
+		return -EMSGSIZE;
+	} else if (!len) {
+		MSG(ERR, "%s connection was reset by peer\n", __func__);
+		return -ECONNRESET;
+	} else if (len < 0) {
+		ret = len;
+		MSG(ERR, "%s error while receiving request from SWd, err = %u\n", __func__, ret);
+		return ret;
+	}
+	MSG(INFO, "%s Read request\n", __func__);
+
+	if (sock_data != RPMB_REQUEST_MAGIC) {
+		MSG(ERR, "%s received invalied request data = %u\n", __func__, sock_data);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int rpmb_send_reply(struct sock_desc *rpmb_conn)
+{
+	int ret = 0;
+	ssize_t len;
+	unsigned int sock_data;
+
+	sock_data = RPMB_REPLY_MAGIC;
+
+	len = tz_iwsock_write(rpmb_conn, &sock_data, sizeof(sock_data), 0);
+	if (len != sizeof(sock_data)) {
+		ret = len >= 0 ? -EMSGSIZE : len;
+		MSG(ERR, "%s failed to send reply, err = %d\n", __func__, ret);
+		return ret;
+	}
+	MSG(INFO, "%s Sent reply\n", __func__);
+
+	return 0;
+}
+
+static inline void release_rpmb_sock(struct sock_desc *rpmb_conn)
+{
+	tz_iwsock_release(rpmb_conn);
+}
+
+static inline void release_rpmb_wsm(struct rpmb_ctx *ctx)
+{
+	kfree(ctx->wsm_vaddr);
+}
+
+static inline void destroy_rpmb_ctx(struct rpmb_ctx *ctx)
+{
+	kfree(ctx);
+}
+
+#ifdef CONFIG_SCSI_UFS_MEDIATEK
+static void rpmb_iwsock_execute_ufs(struct rpmb_ctx *ctx)
+{
+	int ret = 0;
+
+	switch (ctx->req->type) {
+	case RPMB_READ_DATA:
+
+		MSG(DBG_INFO, "%s: DCI_RPMB_CMD_READ_DATA\n", __func__);
+
+		ret = rpmb_req_read_data_ufs(ctx->req->frame,
+					ctx->req->blks);
+		break;
+	case RPMB_GET_WRITE_COUNTER:
+
+		MSG(DBG_INFO, "%s: DCI_RPMB_CMD_GET_WCNT\n", __func__);
+
+		ret = rpmb_req_get_wc_ufs(NULL, NULL,
+					ctx->req->frame);
+		break;
+	case RPMB_WRITE_DATA:
+
+		MSG(DBG_INFO, "%s: DCI_RPMB_CMD_WRITE_DATA\n", __func__);
+
+		ret = rpmb_req_write_data_ufs(ctx->req->frame,
+						ctx->req->blks);
+
+		break;
+	default:
+		MSG(ERR, "%s: receive an unknown command id(%d).\n",
+				__func__, ctx->req->type);
+		break;
+	}
+
+	if (ret)
+		MSG(ERR, "%s: Error ret(%d).\n", __func__, ret);
+}
+#endif
+
+
+static void rpmb_iwsock_execute_emmc(struct rpmb_ctx *ctx)
+{
+	int ret = 0, cnt = 0;
+	struct mmc_card *card;
+	struct emmc_rpmb_req rpmb_req;
+
+#if defined(CONFIG_MMC_MTK_PRO)
+	if (!mtk_msdc_host[0] || !mtk_msdc_host[0]->mmc
+		|| !mtk_msdc_host[0]->mmc->card) {
+		MSG(ERR, "%s: ret= %x\n", __func__, -EFAULT);
+	}
+	card = mtk_msdc_host[0]->mmc->card;
+#elif defined(CONFIG_MMC_MTK)
+	if (!mtk_mmc_host[0] || !mtk_mmc_host[0]->card)
+		MSG(ERR, "%s: ret= %x\n", __func__, -EFAULT);
+	card = mtk_mmc_host[0]->card;
+#endif
+
+	/* max wait time 20s */
+	while (!card || !dev_get_drvdata(&card->dev)) {
+		msleep(100);
+#if defined(CONFIG_MMC_MTK_PRO)
+		card = mtk_msdc_host[0]->mmc->card;
+#elif defined(CONFIG_MMC_MTK)
+		card = mtk_mmc_host[0]->card;
+#endif
+		if (cnt++ > 200)
+			return;
+	};
+
+	switch (ctx->req->type) {
+	case RPMB_READ_DATA:
+		MSG(INFO, "%s: DCI_RPMB_CMD_READ_DATA.\n", __func__);
+
+		rpmb_req.type = RPMB_READ_DATA;
+		rpmb_req.blk_cnt = ctx->req->blks;
+		rpmb_req.addr = ctx->req->addr;
+		rpmb_req.data_frame = ctx->req->frame;
+
+		ret = emmc_rpmb_req_handle(card, &rpmb_req);
+		if (ret)
+			MSG(ERR, "%s, emmc_rpmb_req_handle failed!!(%x)\n",
+					__func__, ret);
+
+		break;
+
+	case RPMB_GET_WRITE_COUNTER:
+		MSG(INFO, "%s: DCI_RPMB_CMD_GET_WCNT.\n", __func__);
+
+		rpmb_req.type = RPMB_GET_WRITE_COUNTER;
+		rpmb_req.blk_cnt = ctx->req->blks;
+		rpmb_req.addr = ctx->req->addr;
+		rpmb_req.data_frame = ctx->req->frame;
+
+		ret = emmc_rpmb_req_handle(card, &rpmb_req);
+		if (ret)
+			MSG(ERR, "%s, emmc_rpmb_req_handle failed!!(%x)\n",
+					__func__, ret);
+
+		break;
+
+	case RPMB_WRITE_DATA:
+		MSG(INFO, "%s: DCI_RPMB_CMD_WRITE_DATA.\n", __func__);
+
+		rpmb_req.type = RPMB_WRITE_DATA;
+		rpmb_req.blk_cnt = ctx->req->blks;
+		rpmb_req.addr = ctx->req->addr;
+		rpmb_req.data_frame = ctx->req->frame;
+
+		ret = emmc_rpmb_req_handle(card, &rpmb_req);
+		if (ret)
+			MSG(ERR, "%s, emmc_rpmb_req_handle failed!!(%x)\n",
+					__func__, ret);
+
+		break;
+	default:
+		MSG(ERR, "%s: receive an unknown command id(%d).\n",
+				__func__, ctx->req->type);
+		break;
+	}
+
+	if (ret)
+		MSG(ERR, "%s: Error ret(%d).\n", __func__, ret);
+}
+
+static int rpmb_iwsock_thread(void *context)
+{
+	int ret = 0;
+	int boot_type;
+
+	struct rpmb_ctx *ctx;
+	struct sock_desc *rpmb_conn;
+
+	MSG(INFO, "%s teegris iwsock thread start\n", __func__);
+
+	ctx = create_rpmb_ctx();
+	if (IS_ERR(ctx)) {
+		MSG(ERR, "%s failed to alloc context error:%ld\n", __func__, PTR_ERR(ctx));
+		return PTR_ERR(ctx);
+	}
+
+	ret = init_rpmb_wsm(ctx);
+	if (ret) {
+		MSG(ERR, "failed to initialize wsm\n");
+		goto destroy_ctx;
+	}
+
+	rpmb_conn = accept_swd_connection();
+	if (IS_ERR(rpmb_conn)) {
+		MSG(ERR, "%s failed to connect swd error:%ld\n", __func__, PTR_ERR(rpmb_conn));
+		ret = PTR_ERR(rpmb_conn);
+		goto release_wsm;
+	}
+
+	ret = register_rpmb_wsm(ctx, rpmb_conn);
+	if (ret) {
+		MSG(ERR, "%s failed to register wsm\n", __func__);
+		goto release_sock;
+	}
+
+	/* rpmb kthread main function */
+	while (!kthread_should_stop()) {
+		ret = rpmb_wait_request(rpmb_conn);
+		if (ret)
+			goto release_sock;
+
+		boot_type = dt_get_boot_type();
+		mutex_lock(&rpmb_mutex);
+		if (boot_type == BOOTDEV_SDMMC)
+			rpmb_iwsock_execute_emmc(ctx);
+#ifdef CONFIG_SCSI_UFS_MEDIATEK
+		else if (boot_type == BOOTDEV_UFS)
+			rpmb_iwsock_execute_ufs(ctx);
+#endif
+		mutex_unlock(&rpmb_mutex);
+
+		ret = rpmb_send_reply(rpmb_conn);
+		if (ret) {
+			MSG(ERR, "rpmb send reply error : %d\n", ret);
+			goto release_sock;
+		}
+	}
+
+release_sock:
+	release_rpmb_sock(rpmb_conn);
+release_wsm:
+	release_rpmb_wsm(ctx);
+destroy_ctx:
+	destroy_rpmb_ctx(ctx);
+	return ret;
 }
 #endif
 
@@ -2719,7 +3116,7 @@ long rpmb_ioctl_ufs(struct file *file, unsigned int cmd, unsigned long arg)
 	struct rpmb_ioc_param param;
 #if (defined(CONFIG_MICROTRUST_TEE_SUPPORT))
 	u32 rpmb_size = 0;
-	u32 arg_k = 0;
+	u32 arg_k;
 	struct rpmb_infor rpmbinfor;
 	struct rpmb_dev *rawdev_ufs_rpmb;
 
@@ -2940,11 +3337,11 @@ long rpmb_ioctl_emmc(struct file *file, unsigned int cmd, unsigned long arg)
 #endif
 
 #if (defined(CONFIG_MICROTRUST_TEE_SUPPORT))
-	u32 arg_k = 0;
+	u32 arg_k;
 	u32 rpmb_size = 0;
 	struct rpmb_infor rpmbinfor;
 	unsigned int *arg_p = (unsigned int *)arg;
-	unsigned int user_arg = 0;
+	unsigned int user_arg;
 
 	memset(&rpmbinfor, 0, sizeof(struct rpmb_infor));
 #endif
@@ -3290,13 +3687,359 @@ int mmc_rpmb_register(struct mmc_host *mmc)
 }
 EXPORT_SYMBOL_GPL(mmc_rpmb_register);
 #endif
+#ifdef CONFIG_TEEGRIS_TEE_SUPPORT
+#ifdef CONFIG_SCSI_UFS_MEDIATEK
+static void rpmb_gp_execute_ufs(u32 cmdId)
+{
+	int ret = 0;
+
+	switch (cmdId) {
+
+	case DCI_RPMB_CMD_READ_DATA:
+
+		MSG(DBG_INFO, "%s: DCI_RPMB_CMD_READ_DATA\n", __func__);
+
+		ret = rpmb_req_read_data_ufs(rpmb_gp_dci->request.frame,
+						rpmb_gp_dci->request.blks);
+
+		break;
+
+	case DCI_RPMB_CMD_GET_WCNT:
+
+		MSG(DBG_INFO, "%s: DCI_RPMB_CMD_GET_WCNT\n", __func__);
+
+		ret = rpmb_req_get_wc_ufs(NULL, NULL,
+						rpmb_gp_dci->request.frame);
+
+		break;
+
+	case DCI_RPMB_CMD_WRITE_DATA:
+
+		MSG(DBG_INFO, "%s: DCI_RPMB_CMD_WRITE_DATA\n", __func__);
+
+		ret = rpmb_req_write_data_ufs(rpmb_gp_dci->request.frame,
+						rpmb_gp_dci->request.blks);
+
+		break;
+
+#ifdef CFG_RPMB_KEY_PROGRAMED_IN_KERNEL
+	case DCI_RPMB_CMD_PROGRAM_KEY:
+		MSG(INFO, "%s: DCI_RPMB_CMD_PROGRAM_KEY.\n", __func__);
+		rpmb_dump_frame(rpmb_gp_dci->request.frame);
+
+		ret = rpmb_req_program_key_ufs(rpmb_gp_dci->request.frame, 1);
+
+		break;
+#endif
+
+	default:
+		MSG(ERR, "%s: receive an unknown command id(%d).\n",
+			__func__, cmdId);
+		break;
+
+	}
+
+	if (ret)
+		MSG(ERR, "%s: Error ret(%d).\n", __func__, ret);
+}
+#endif
+#if defined(CONFIG_MMC_MTK_PRO) || defined(CONFIG_MMC_MTK)
+static void rpmb_gp_execute_emmc(u32 cmdId)
+{
+	int ret = 0;
+	struct mmc_card *card;
+	struct emmc_rpmb_req rpmb_req;
+
+#if defined(CONFIG_MMC_MTK_PRO)
+	if (!mtk_msdc_host[0] || !mtk_msdc_host[0]->mmc
+		|| !mtk_msdc_host[0]->mmc->card) {
+		MSG(ERR, "%s: ret= %x\n", __func__, -EFAULT);
+		return;
+	}
+		card = mtk_msdc_host[0]->mmc->card;
+#elif defined(CONFIG_MMC_MTK)
+	if (!mtk_mmc_host[0] || !mtk_mmc_host[0]->card) {
+		MSG(ERR, "%s: ret= %x\n", __func__, -EFAULT);
+		return;
+	}
+	card = mtk_mmc_host[0]->card;
+#else
+	card = NULL;
+	MSG(ERR, "%s: ret= %x\n", __func__, -EFAULT);
+	return;
+#endif
+
+	switch (cmdId) {
+
+	case DCI_RPMB_CMD_READ_DATA:
+		MSG(INFO, "%s: DCI_RPMB_CMD_READ_DATA.\n", __func__);
+
+		rpmb_req.type = RPMB_READ_DATA;
+		rpmb_req.blk_cnt = rpmb_gp_dci->request.blks;
+		rpmb_req.addr = rpmb_gp_dci->request.addr;
+		rpmb_req.data_frame = rpmb_gp_dci->request.frame;
+
+		ret = emmc_rpmb_req_handle(card, &rpmb_req);
+		if (ret)
+			MSG(ERR, "%s, emmc_rpmb_req_handle failed!!(%x)\n",
+				__func__, ret);
+
+		break;
+
+	case DCI_RPMB_CMD_GET_WCNT:
+		MSG(INFO, "%s: DCI_RPMB_CMD_GET_WCNT.\n", __func__);
+
+		rpmb_req.type = RPMB_GET_WRITE_COUNTER;
+		rpmb_req.blk_cnt = rpmb_gp_dci->request.blks;
+		rpmb_req.addr = rpmb_gp_dci->request.addr;
+		rpmb_req.data_frame = rpmb_gp_dci->request.frame;
+
+		ret = emmc_rpmb_req_handle(card, &rpmb_req);
+		if (ret)
+			MSG(ERR, "%s, emmc_rpmb_req_handle failed!!(%x)\n",
+				__func__, ret);
+
+		break;
+
+	case DCI_RPMB_CMD_WRITE_DATA:
+		MSG(INFO, "%s: DCI_RPMB_CMD_WRITE_DATA.\n", __func__);
+
+		rpmb_req.type = RPMB_WRITE_DATA;
+		rpmb_req.blk_cnt = rpmb_gp_dci->request.blks;
+		rpmb_req.addr = rpmb_gp_dci->request.addr;
+		rpmb_req.data_frame = rpmb_gp_dci->request.frame;
+
+		ret = emmc_rpmb_req_handle(card, &rpmb_req);
+		if (ret)
+			MSG(ERR, "%s, emmc_rpmb_req_handle failed!!(%x)\n",
+				__func__, ret);
+
+		break;
+
+#ifdef CFG_RPMB_KEY_PROGRAMED_IN_KERNEL
+	case DCI_RPMB_CMD_PROGRAM_KEY:
+		MSG(INFO, "%s: DCI_RPMB_CMD_PROGRAM_KEY.\n", __func__);
+		rpmb_dump_frame(rpmb_gp_dci->request.frame);
+
+		rpmb_req.type = RPMB_PROGRAM_KEY;
+		rpmb_req.blk_cnt = rpmb_gp_dci->request.blks;
+		rpmb_req.addr = rpmb_gp_dci->request.addr;
+		rpmb_req.data_frame = rpmb_gp_dci->request.frame;
+
+		ret = emmc_rpmb_req_handle(card, &rpmb_req);
+		if (ret)
+			MSG(ERR, "%s, emmc_rpmb_req_handle failed!!(%x)\n",
+				__func__, ret);
+
+		break;
+#endif
+
+	default:
+		MSG(ERR, "%s: receive an unknown command id(%d).\n",
+			__func__, cmdId);
+		break;
+
+	}
+
+	if (ret)
+		MSG(ERR, "%s: Error ret(%d).\n", __func__, ret);
+}
+#endif
+TEEC_UUID uuid_client = {
+	.timeLow = 0x00000000,
+	.timeMid = 0x4D54,
+	.timeHiAndVersion = 0x4B5F,
+	.clockSeqAndNode = {0x42, 0x46, 0x72, 0x70, 0x6D, 0x62, 0x74, 0x61},
+};
+
+enum cmd_invoke {
+	CMD_WAITING_NOTIFY,
+	CMD_DONE_NOTIFY,
+	CMD_ERROR_NOTIFY,
+};
+
+struct TEE_GP_SESSION_DATA {
+	TEEC_Context context;
+	TEEC_Session session;
+	void *wsm_buffer;
+};
+
+static struct TEE_GP_SESSION_DATA *rpmb_gp_session;
+
+#define TEEGRIS_OPEN_SESSION_TMO       100
+TEEC_Result teegris_rpmb_open_session(TEEC_Context *context,
+	TEEC_Operation *operation, TEEC_Session *session)
+{
+	TEEC_Result res;
+	uint32_t returnOrigin;
+	int cnt = 0;
+
+	do {
+		res = TEEC_OpenSession(context, session, &uuid_client,
+					0, NULL, operation, &returnOrigin);
+		if (!res) {
+			MSG(INFO, "%s:open session success\n", __func__);
+			break;
+		}
+		cnt++;
+		if (cnt == TEEGRIS_OPEN_SESSION_TMO) {
+			MSG(ERR, "%s:open session fail,err:0x%x\n",
+				__func__, res);
+			break;
+		}
+		msleep(500);
+	} while (1);
+
+	return res;
+}
+
+static int check_tee_return(TEEC_Result res)
+{
+	if (res == TEEC_ERROR_TARGET_DEAD) {
+#ifdef CONFIG_MTK_ENG_BUILD
+		BUG();
+#endif
+		return 1;
+	} else if (res != TEEC_SUCCESS){
+		return 1;
+	}
+	return 0;
+}
+
+TEEC_Result teegris_rpmb_run(TEEC_Context *context)
+{
+	TEEC_Result res;
+	TEEC_Operation operation;
+	uint32_t returnOrigin;
+	u32 cmdId;
+	int boot_type;
+
+	memset(&operation, 0, sizeof(TEEC_Operation));
+
+	operation.paramTypes = TEEC_PARAM_TYPES(TEEC_VALUE_INOUT,
+				TEEC_NONE, TEEC_NONE, TEEC_NONE);
+
+	operation.params[0].value.a =
+		virt_to_phys(rpmb_gp_session->wsm_buffer) & 0xFFFFFFFF;
+	operation.params[0].value.b =
+		(virt_to_phys(rpmb_gp_session->wsm_buffer)) >> 32;
+
+	res = teegris_rpmb_open_session(context, &operation,
+		&rpmb_gp_session->session);
+	if (res)
+		goto exit;
+	while (1) {
+		MSG(ERR, "%s: wait swd notify\n", __func__);
+		/* wait swd notify */
+		res = TEEC_InvokeCommand(&rpmb_gp_session->session,
+			CMD_WAITING_NOTIFY, &operation, &returnOrigin);
+		if (res != TEEC_SUCCESS)
+			goto exit;
+
+		rpmb_gp_dci =
+			(struct dciMessage_t *)(rpmb_gp_session->wsm_buffer);
+
+		cmdId = rpmb_gp_dci->command.header.commandId;
+
+		MSG(ERR, "%s: cmd wait notify done!! cmdId = %x\n",
+			__func__, cmdId);
+
+		boot_type = dt_get_boot_type();
+		mutex_lock(&rpmb_mutex);
+		if (boot_type == BOOTDEV_SDMMC)
+			rpmb_gp_execute_emmc(cmdId);
+#ifdef CONFIG_SCSI_UFS_MEDIATEK
+		else if (boot_type == BOOTDEV_UFS)
+			rpmb_gp_execute_ufs(cmdId);
+#endif
+		mutex_unlock(&rpmb_mutex);
+
+		switch (cmdId) {
+		case DCI_RPMB_CMD_READ_DATA:
+		case DCI_RPMB_CMD_GET_WCNT:
+		case DCI_RPMB_CMD_WRITE_DATA:
+		case DCI_RPMB_CMD_PROGRAM_KEY:
+			res = TEEC_InvokeCommand(&rpmb_gp_session->session,
+				CMD_DONE_NOTIFY,
+				&operation,
+				&returnOrigin);
+			break;
+		default:
+			res = TEEC_InvokeCommand(&rpmb_gp_session->session,
+				CMD_ERROR_NOTIFY,
+				&operation,
+				&returnOrigin);
+			break;
+		}
+		if (res != TEEC_SUCCESS)
+			goto exit;
+	}
+
+exit:
+	TEEC_CloseSession(&rpmb_gp_session->session);
+	return res;
+}
+
+#define TEEGRIS_INIT_CONTEXT_TMO       100
+#define ALLOCATED_DCI_MSG_SIZE (PAGE_SIZE * 3)
+int teegris_rpmb_thread(void *data)
+{
+	int cnt = 0;
+	int recovery_cnt = 0;
+	TEEC_Result res = -1;
+
+recovery:
+	rpmb_gp_session =
+		kzalloc(sizeof(struct TEE_GP_SESSION_DATA), GFP_KERNEL);
+	if (!rpmb_gp_session) {
+		MSG(ERR, "failed to alloc rpmb_gp_session\n");
+		return -ENOMEM;
+	}
+
+	do {
+		res = TEEC_InitializeContext(NULL, &rpmb_gp_session->context);
+		if (!res)
+			break;
+		cnt++;
+		if (cnt == TEEGRIS_INIT_CONTEXT_TMO) {
+			MSG(ERR, "failed to init context,err:0x%x\n", res);
+			return res;
+		}
+		msleep(500);
+	} while (1);
+
+	rpmb_gp_session->wsm_buffer =
+		kzalloc(ALLOCATED_DCI_MSG_SIZE, GFP_KERNEL);
+	if (!rpmb_gp_session->wsm_buffer) {
+		MSG(ERR, "failed to allocate wsm buffer\n");
+		return -ENOMEM;
+	}
+
+	res = teegris_rpmb_run(&rpmb_gp_session->context);
+	if (check_tee_return(res)) {
+		kfree(rpmb_gp_session->wsm_buffer);
+		recovery_cnt++;
+		MSG(ERR, "RPMB recovery cnt %d\n", recovery_cnt);
+	}
+
+	MSG(ERR, "TEEC_FinalizeContex\n", res);
+
+	TEEC_FinalizeContext(&rpmb_gp_session->context);
+
+	kfree(rpmb_gp_session);
+
+	goto recovery;
+
+	return (res != TEEC_SUCCESS);
+}
+#endif
 
 static int __init rpmb_init(void)
 {
 	int alloc_ret = -1;
 	int cdev_ret = -1;
-	int major = -1;
-	dev_t dev = 0;
+	int major;
+	dev_t dev;
 	struct device *device = NULL;
 
 	MSG(INFO, "%s start\n", __func__);
@@ -3349,6 +4092,16 @@ static int __init rpmb_init(void)
 	open_th = kthread_run(rpmb_thread, NULL, "rpmb_open");
 	if (IS_ERR(open_th))
 		MSG(ERR, "%s, init kthread_run failed!\n", __func__);
+#endif
+
+#ifdef CONFIG_TEEGRIS_TEE_SUPPORT
+	open_th = kthread_run(teegris_rpmb_thread, NULL, "teegris rpmb");
+	if (IS_ERR(open_th))
+		MSG(ERR, "%s, init kthread_run failed!\n", __func__);
+
+	iwsock_th = kthread_run(rpmb_iwsock_thread, NULL, "rpmb_iwsock");
+	if (IS_ERR(iwsock_th))
+		MSG(ERR, "%s, rpmb iwsock kthread_run failed!\n", __func__);
 #endif
 
 #if (defined(CONFIG_MICROTRUST_TEE_SUPPORT))
