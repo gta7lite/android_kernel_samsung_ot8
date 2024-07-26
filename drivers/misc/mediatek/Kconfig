@@ -2,6 +2,14 @@ source "drivers/misc/mediatek/Kconfig.default"
 source "drivers/misc/mediatek/usb20/Kconfig"
 source "drivers/misc/mediatek/cqdma/Kconfig"
 
+config MTK_TC10_FEATURE
+	bool "MTK_TC10_FEATURE"
+	help
+	  MTK_TC10_FEATURE is defined specifically for MTK TC10 customer
+	  to do their kernel modification.
+	  Select "y" if the project is for TC10.
+	  Select "n" if unsure.
+
 config MTK_PLATFORM
 	string "MTK platform name"
 
@@ -226,7 +234,8 @@ config MTK_DISP_PLATFORM
 config MTK_SEC_VIDEO_PATH_SUPPORT
 	bool "Enable MTK Secure Video Path Support"
 	depends on MTK_IN_HOUSE_TEE_SUPPORT || TRUSTONIC_TEE_SUPPORT || \
-	           MTK_GOOGLE_TRUSTY_SUPPORT || MICROTRUST_TEE_SUPPORT
+	           MTK_GOOGLE_TRUSTY_SUPPORT || MICROTRUST_TEE_SUPPORT || \
+		   TEEGRIS_TEE_SUPPORT
 	help
 	  This enable MTK Secure Video Path function of Widevine Level1,
 	  HW protect the online secure video streaming by ARM/Trustzone
@@ -252,7 +261,8 @@ config MTK_SVP_ON_MTEE_SUPPORT
 config MTK_DRM_KEY_MNG_SUPPORT
 	bool "Enable MTK DRM Key Manager Support"
 	depends on MTK_IN_HOUSE_TEE_SUPPORT || TRUSTONIC_TEE_SUPPORT || \
-	           MTK_GOOGLE_TRUSTY_SUPPORT || MICROTRUST_TEE_SUPPORT
+	           MTK_GOOGLE_TRUSTY_SUPPORT || MICROTRUST_TEE_SUPPORT || \
+		   TEEGRIS_TEE_SUPPORT
 	help
 	  This enable MTK DRM Key Manager Support.
 	  the DRM key install function is used in the feature of SVP .etc
@@ -306,6 +316,7 @@ source "drivers/misc/mediatek/smi/Kconfig"
 source "drivers/misc/mediatek/jpeg/Kconfig"
 source "drivers/misc/mediatek/ccu/src/Kconfig"
 source "drivers/misc/mediatek/camera_security/Kconfig"
+source "drivers/misc/mediatek/tui/Kconfig"
 endmenu # MultiMedia
 
 menu "Sensors"
@@ -343,9 +354,16 @@ endmenu # CONN
 
 menu "Security"
 
+config TEEGRIS_TEE_SUPPORT
+	bool "TEEGRIS_TEE_SUPPORT"
+	default n
+	depends on TZDEV
+	help
+	 TEEGRIS_TEE_SUPPORT
+
 config MTK_TEE_GP_SUPPORT
 	bool "Enable MTK GlobalPlatform support in TEE related modules"
-	depends on (TRUSTONIC_TEE_SUPPORT) || (MICROTRUST_TEE_SUPPORT)
+	depends on (TRUSTONIC_TEE_SUPPORT) || (MICROTRUST_TEE_SUPPORT) || (TEEGRIS_TEE_SUPPORT)
 	help
 	  GlobalPlatform defines common/consistent APIs and this option
 	  enables TEE related modules to use GPAPIs. (depending on
@@ -361,6 +379,7 @@ endmenu # Security
 menu "Other Peripherals"
 source "drivers/misc/mediatek/extcon/Kconfig"
 source "drivers/misc/mediatek/typec/Kconfig"
+source "drivers/misc/mediatek/usb_offload/Kconfig"
 source "drivers/misc/mediatek/leds/Kconfig"
 source "drivers/misc/mediatek/gate_ic/Kconfig"
 source "drivers/misc/mediatek/irtx/Kconfig"
@@ -559,5 +578,4 @@ endmenu # Debug
 menu "Misc"
 source "drivers/misc/mediatek/ext_gic/Kconfig"
 source "drivers/misc/mediatek/cirq/Kconfig"
-source "drivers/misc/mediatek/timer/Kconfig"
 endmenu # Misc

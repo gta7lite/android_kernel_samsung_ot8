@@ -89,42 +89,6 @@ static int initAF(void)
 
 	if (*g_pAF_Opened == 1) {
 
-		int i4RetValue;
-		char puSendCmd1[2] = {(char)(0x80), (char)(0x00)};
-		char puSendCmd2[2] = {(char)(0x00), (char)(0x00)};
-		char puSendCmd3[2] = {(char)(0xEC), (char)(0xA3)};
-		char puSendCmd4[2] = {(char)(0xA1), (char)(0x15)};
-		char puSendCmd5[2] = {(char)(0xF2), (char)(0x00)};
-		char puSendCmd6[2] = {(char)(0xDC), (char)(0x51)};
-		/* char puSendCmd7[2] = {(char)(0x3F), (char)(0xF0)}; */
-
-		g_pstAF_I2Cclient->addr = AF_I2C_SLAVE_ADDR;
-		g_pstAF_I2Cclient->addr = g_pstAF_I2Cclient->addr >> 1;
-
-		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd1, 2);
-		if (i4RetValue < 0)
-			LOG_INF(" puSendCmd1 send failed.\n");
-
-		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd2, 2);
-		if (i4RetValue < 0)
-			LOG_INF(" puSendCmd2 send failed.\n");
-
-		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd3, 2);
-		if (i4RetValue < 0)
-			LOG_INF(" puSendCmd3 send failed.\n");
-
-		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd4, 2);
-		if (i4RetValue < 0)
-			LOG_INF(" puSendCmd4 send failed.\n");
-
-		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd5, 2);
-		if (i4RetValue < 0)
-			LOG_INF(" puSendCmd5 send failed.\n");
-
-		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd6, 2);
-		if (i4RetValue < 0)
-			LOG_INF(" puSendCmd6 send failed.\n");
-
 		spin_lock(g_pAF_SpinLock);
 		*g_pAF_Opened = 2;
 		spin_unlock(g_pAF_SpinLock);
@@ -211,7 +175,14 @@ int FP5510E2AF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 
 	if (*g_pAF_Opened == 2) {
 		LOG_INF("Wait\n");
-		s4AF_WriteReg(0x80); /* Power down mode */
+	        s4AF_WriteReg(200); /* Power down mode */
+                msleep(20);
+                s4AF_WriteReg(30);
+                msleep(20);
+                s4AF_WriteReg(10);
+                msleep(20);
+                s4AF_WriteReg(5);
+                msleep(20);
 	}
 
 	if (*g_pAF_Opened) {

@@ -175,7 +175,14 @@ int DW9714AF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 
 	if (*g_pAF_Opened == 2) {
 		LOG_INF("Wait\n");
-		s4AF_WriteReg(0x80); /* Power down mode */
+	        s4AF_WriteReg(200); /* Power down mode */
+                msleep(20);
+                s4AF_WriteReg(30);
+                msleep(20);
+                s4AF_WriteReg(10);
+                msleep(20);
+                s4AF_WriteReg(5);
+                msleep(20);
 	}
 
 	if (*g_pAF_Opened) {

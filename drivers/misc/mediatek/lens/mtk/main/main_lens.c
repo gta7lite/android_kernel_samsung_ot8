@@ -83,10 +83,87 @@ static struct stAF_OisPosInfo OisPosInfo;
 /* ------------------------- */
 
 static struct stAF_DrvList g_stAF_DrvList[MAX_NUM_OF_LENS] = {
-	{1, AFDRV_DW9718TAF, DW9718TAF_SetI2Cclient, DW9718TAF_Ioctl,
-	 DW9718TAF_Release, DW9718TAF_GetFileName, NULL},
+/*HS04 code for DEVAL6398A-9 Universal macro adaptation by chenjun at 2022/7/2 start*/
+#ifdef CONFIG_HQ_PROJECT_OT8
+/*TabA7 Lite code for SR-AX3565-01-320 by liuchengfei at 20201127 start*/
+	{1, AFDRV_GT9772AFHLT, GT9772AFHLT_SetI2Cclient, GT9772AFHLT_Ioctl,
+	 GT9772AFHLT_Release, GT9772AFHLT_GetFileName, NULL},
+/*TabA7 Lite code for SR-AX3565-01-320 by liuchengfei at 20201127 end*/
+/*gaozhenyu add for af start*/
+	{1, AFDRV_GT9769AF, GT9769AF_SetI2Cclient, GT9769AF_Ioctl,
+	 GT9769AF_Release, GT9769AF_GetFileName, NULL},
+/*gaozhenyu add for af end*/
+/* TabA7 Lite  code for SR-AX3565-01-320 by lisizhou at 20201129 start */
+	{1, AFDRV_VA26X802AF, VA26X802AF_SetI2Cclient, VA26X802AF_Ioctl,
+	 VA26X802AF_Release, VA26X802AF_GetFileName, NULL},
+/* TabA7 Lite  code for SR-AX3565-01-320 by lisizhou at 20201129 end */
+/*  TabA7 Lite code for SR-AX3565-01-875 by gaozhenyu at 2021/11/19 start */ 
+	{1, AFDRV_GT9769sAF, GT9769sAF_SetI2Cclient, GT9769sAF_Ioctl,
+	 GT9769sAF_Release, GT9769sAF_GetFileName, NULL},     
+/*  TabA7 Lite code for SR-AX3565-01-875 by gaozhenyu at 2021/11/19 end */
+/* TabA7 Lite code for SR-AX3565-01-906  by chenjun at 2022/02/19 start */
+	{1, AFDRV_FP5510MAIN6AF, FP5510MAIN6AF_SetI2Cclient, FP5510MAIN6AF_Ioctl,
+	 FP5510MAIN6AF_Release, FP5510MAIN6AF_GetFileName, NULL},
+/* TabA7 Lite code for SR-AX3565-01-906  by chenjun at 2022/02/19 end */
+/* A03s code for CAM-AL5625-01-247 by lisizhou at 2021/04/22 start */
+/*hs03s_NM code for SL6215DEV-4183 by liluling at 2022/4/15 start*/
+#endif
+/*HS04 code for DEVAL6398A-9 Universal macro adaptation by chenjun at 2022/7/2 end*/
+
+#ifdef CONFIG_HQ_PROJECT_HS03S
 	{1, AFDRV_GT9772AF, GT9772AF_SetI2Cclient, GT9772AF_Ioctl,
 	 GT9772AF_Release, GT9772AF_GetFileName, NULL},
+	 /* TabA7 Lite code for by SL6215DEV-4183 liluling at 2022/4/5 start */
+    {1, AFDRV_GT9773AF, GT9773AF_SetI2Cclient, GT9773AF_Ioctl,
+	 GT9773AF_Release, GT9773AF_GetFileName, NULL},
+/*hs03s_NM code for SL6215DEV-4183 by liluling at 2022/4/15 end */
+	{1, AFDRV_FP5519AF,FP5519AF_SetI2Cclient, FP5519AF_Ioctl,
+	 FP5519AF_Release, FP5519AF_GetFileName, NULL},	 
+/* A03s code for CAM-AL5625-01-247 by xuxianwei at 2021/05/18 start */
+	{1, AFDRV_CN3927OFILMAF, CN3927OFILMAF_SetI2Cclient, CN3927OFILMAF_Ioctl,
+	 CN3927OFILMAF_Release, CN3927OFILMAF_GetFileName, NULL},
+	{1, AFDRV_CN3927DDAF, CN3927DDAF_SetI2Cclient, CN3927DDAF_Ioctl,
+	 CN3927DDAF_Release, CN3927DDAF_GetFileName, NULL},
+	{1, AFDRV_CN3927XLAF, CN3927XLAF_SetI2Cclient, CN3927XLAF_Ioctl,
+	 CN3927XLAF_Release, CN3927XLAF_GetFileName, NULL},
+/* A03s code for CAM-AL5625-01-247 by xuxianwei at 2021/05/18 end */
+#endif
+
+/*hs04 code for DEVAL6398A-46 by renxinglin at  2022/10/14 start*/
+#ifdef CONFIG_HQ_PROJECT_HS04
+    //ADD AF FOR O2101
+    {1, AFDRV_O2101_GT9772AF, O2101_GT9772AF_SetI2Cclient, O2101_GT9772AF_Ioctl,
+     O2101_GT9772AF_Release, O2101_GT9772AF_GetFileName, NULL},
+    //ADD AF FOR O2102
+    {1, AFDRV_O2102_GT9769AF, O2102_GT9769AF_SetI2Cclient, O2102_GT9769AF_Ioctl,
+     O2102_GT9769AF_Release, O2102_GT9769AF_GetFileName, NULL},
+    //ADD AF FOR O2103
+    {1, AFDRV_O2103_PE916AF, O2103_PE916AF_SetI2Cclient, O2103_PE916AF_Ioctl,
+     O2103_PE916AF_Release, O2103_PE916AF_GetFileName, NULL},
+    //ADD AF FOR O2104
+    {1, AFDRV_O2104_GT9769AF, O2104_GT9769AF_SetI2Cclient, O2104_GT9769AF_Ioctl,
+     O2104_GT9769AF_Release, O2104_GT9769AF_GetFileName, NULL},
+#endif
+/*hs04 code for DEVAL6398A-46 by renxinglin at  2022/10/14 end*/
+/*hs14 code for AL6528ADEU-2675 by pengxutao at 2022/11/18 start*/
+#ifdef CONFIG_HQ_PROJECT_O22
+    //ADD AF FOR A1401AW8601WAF
+	{1, AFDRV_A1401AW8601WAF, A1401AW8601WAF_SetI2Cclient, A1401AW8601WAF_Ioctl,
+	 A1401AW8601WAF_Release, A1401AW8601WAF_GetFileName, NULL},
+	{1, AFDRV_A1402DW9767AF, A1402DW9767AF_SetI2Cclient, A1402DW9767AF_Ioctl,
+	 A1402DW9767AF_Release, A1402DW9767AF_GetFileName, NULL},
+	{1, AFDRV_A1403GT9778AF, A1403GT9778AF_SetI2Cclient, A1403GT9778AF_Ioctl,
+	A1403GT9778AF_Release, A1403GT9778AF_GetFileName, NULL},
+    {1, AFDRV_A1404AW8601WAF, A1404AW8601WAF_SetI2Cclient, A1404AW8601WAF_Ioctl,
+     A1404AW8601WAF_Release, A1404AW8601WAF_GetFileName, NULL},
+#endif
+/*hs14 code for AL6528ADEU-2675 by pengxutao at 2022/11/18 end*/
+/* hs04 code for SR-AL6398A-01-16 by liluling at 2022/07/05 end */
+/*HS04 code for DEVAL6398A-9 Universal macro adaptation by chenjun at 2022/7/2 end*/
+
+/* A03s code for CAM-AL5625-01-247 by lisizhou at 2021/04/22 end */
+	{1, AFDRV_DW9718TAF, DW9718TAF_SetI2Cclient, DW9718TAF_Ioctl,
+	 DW9718TAF_Release, DW9718TAF_GetFileName, NULL},
 	{1, AFDRV_AK7371AF, AK7371AF_SetI2Cclient, AK7371AF_Ioctl,
 	 AK7371AF_Release, AK7371AF_GetFileName, NULL},
 	{1, AFDRV_BU6424AF, BU6424AF_SetI2Cclient, BU6424AF_Ioctl,
@@ -124,32 +201,14 @@ static struct stAF_DrvList g_stAF_DrvList[MAX_NUM_OF_LENS] = {
 	 DW9839AF_Release, DW9839AF_GetFileName, NULL},
 	{1, AFDRV_FP5510E2AF, FP5510E2AF_SetI2Cclient, FP5510E2AF_Ioctl,
 	 FP5510E2AF_Release, FP5510E2AF_GetFileName, NULL},
+	{1, AFDRV_FP5529AF, FP5529AF_SetI2Cclient, FP5529AF_Ioctl,
+	 FP5529AF_Release, FP5529AF_GetFileName, NULL},
 	{1, AFDRV_DW9718AF, DW9718AF_SetI2Cclient, DW9718AF_Ioctl,
 	 DW9718AF_Release, DW9718AF_GetFileName, NULL},
 	{1, AFDRV_GT9764AF, GT9764AF_SetI2Cclient, GT9764AF_Ioctl,
 	GT9764AF_Release, GT9764AF_GetFileName, NULL},
-//#ifdef SUPPORT_GT9768AF
-	{1, AFDRV_GT9768AF, GT9768AF_SetI2Cclient, GT9768AF_Ioctl,
-	GT9768AF_Release, GT9768AF_GetFileName, NULL},
-//#endif
 	{1, AFDRV_LC898212AF, LC898212AF_SetI2Cclient, LC898212AF_Ioctl,
 	 LC898212AF_Release, LC898212AF_GetFileName, NULL},
-	{1, AFDRV_LC898214AF, LC898214AF_SetI2Cclient, LC898214AF_Ioctl,
-	 LC898214AF_Release, LC898214AF_GetFileName, NULL},
-	{1, AFDRV_LC898217AF, LC898217AF_SetI2Cclient, LC898217AF_Ioctl,
-	 LC898217AF_Release, LC898217AF_GetFileName, NULL},
-	{1, AFDRV_LC898217AFA, LC898217AFA_SetI2Cclient, LC898217AFA_Ioctl,
-	 LC898217AFA_Release, LC898217AFA_GetFileName, NULL},
-	{1, AFDRV_LC898217AFB, LC898217AFB_SetI2Cclient, LC898217AFB_Ioctl,
-	 LC898217AFB_Release, LC898217AFB_GetFileName, NULL},
-	{1, AFDRV_LC898217AFC, LC898217AFC_SetI2Cclient, LC898217AFC_Ioctl,
-	 LC898217AFC_Release, LC898217AFC_GetFileName, NULL},
-	{1, AFDRV_LC898229AF, LC898229AF_SetI2Cclient, LC898229AF_Ioctl,
-	 LC898229AF_Release, LC898229AF_GetFileName, NULL},
-	{1, AFDRV_LC898122AF, LC898122AF_SetI2Cclient, LC898122AF_Ioctl,
-	 LC898122AF_Release, LC898122AF_GetFileName, NULL},
-	{1, AFDRV_WV511AAF, WV511AAF_SetI2Cclient, WV511AAF_Ioctl,
-	 WV511AAF_Release, WV511AAF_GetFileName, NULL},
 };
 
 static struct stAF_DrvList *g_pstAF_CurDrv;
@@ -171,8 +230,8 @@ static struct pinctrl_state *vcamaf_pio_on;
 static struct pinctrl_state *vcamaf_pio_off;
 
 #define CAMAF_PMIC     "camaf_m1_pmic"
-#define CAMAF_GPIO_ON  "cam0_ldo_vcamaf_1"
-#define CAMAF_GPIO_OFF "cam0_ldo_vcamaf_0"
+#define CAMAF_GPIO_ON  "camaf_m1_gpio_on"
+#define CAMAF_GPIO_OFF "camaf_m1_gpio_off"
 
 static void camaf_power_init(void)
 {
