@@ -86,10 +86,10 @@ static int EEPROM_set_i2c_bus(unsigned int deviceID,
 	if (idx == IMGSENSOR_SENSOR_IDX_NONE)
 		return -EFAULT;
 
-	if (i2c_idx >= I2C_DEV_IDX_MAX)
+	if (i2c_idx < I2C_DEV_IDX_1 || i2c_idx >= I2C_DEV_IDX_MAX)
 		return -EFAULT;
 
-	client = g_pstI2Cclients[(unsigned int)i2c_idx];
+	client = g_pstI2Cclients[i2c_idx];
 	pr_debug("%s end! deviceID=%d index=%u client=%p\n",
 		 __func__, deviceID, idx, client);
 
@@ -149,7 +149,7 @@ static int EEPROM_get_cmd_info(unsigned int sensorID,
 	return 0;
 
 }
-
+/*  hs14 code for SR-AL6528-01-70 by pengxutao at 2022/10/28 start */
 static struct stCAM_CAL_CMD_INFO_STRUCT *EEPROM_get_cmd_info_ex
 	(unsigned int sensorID, unsigned int deviceID)
 {
@@ -157,7 +157,7 @@ static struct stCAM_CAL_CMD_INFO_STRUCT *EEPROM_get_cmd_info_ex
 
 	/* To check device ID */
 	for (i = 0; i < IMGSENSOR_SENSOR_IDX_MAX_NUM; i++) {
-		if (g_camCalDrvInfo[i].deviceID == deviceID)
+		if (g_camCalDrvInfo[i].deviceID == deviceID && g_camCalDrvInfo[i].sensorID == sensorID)
 			break;
 	}
 	/* To check cmd from Sensor ID */
@@ -187,6 +187,7 @@ static struct stCAM_CAL_CMD_INFO_STRUCT *EEPROM_get_cmd_info_ex
 		return &g_camCalDrvInfo[i];
 	}
 }
+/*  hs14 code for SR-AL6528-01-70 by pengxutao at 2022/10/28 end */
 
 /**************************************************
  * EEPROM_HW_i2c_probe
