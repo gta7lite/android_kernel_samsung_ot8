@@ -129,6 +129,7 @@ struct mdp_thread {
 	bool acquired;
 	bool allow_dispatch;
 	bool secure;
+	bool mtee;
 };
 
 struct mdp_context {
@@ -639,6 +640,17 @@ static void cmdq_mdp_lock_thread(struct cmdqRecStruct *handle)
 
 	/* make this thread can be dispath again */
 	mdp_ctx.thread[thread].allow_dispatch = true;
+
+#ifdef CMDQ_SECURE_PATH_SUPPORT
+	if (!mdp_ctx.thread[thread].task_count &&
+		handle->pkt && handle->pkt->sec_data) {
+		mdp_ctx.thread[thread].mtee =
+			((struct cmdq_sec_data *)handle->pkt->sec_data)->mtee;
+		CMDQ_LOG("%s: handle:%p pkt:%p thread:%d mtee:%d start\n",
+			__func__, handle, handle->pkt, thread,
+			mdp_ctx.thread[thread].mtee);
+	}
+#endif
 	mdp_ctx.thread[thread].task_count++;
 	if (mdp_ctx.thread[thread].task_count > 3) {
 		CMDQ_LOG("[WARN]thread %d, task_count %d, engine:0x%llx\n",
@@ -695,6 +707,15 @@ void cmdq_mdp_unlock_thread(struct cmdqRecStruct *handle)
 			"true" : "false",
 			mdp_ctx.thread[thread].acquired ? "true" : "false");
 	mdp_ctx.thread[thread].task_count--;
+#ifdef CMDQ_SECURE_PATH_SUPPORT
+	if (!mdp_ctx.thread[thread].task_count &&
+		handle->pkt && handle->pkt->sec_data) {
+		CMDQ_LOG("%s: handle:%p pkt:%p thread:%d mtee:%d end\n",
+			__func__, handle, handle->pkt, thread,
+			mdp_ctx.thread[thread].mtee);
+		mdp_ctx.thread[thread].mtee = false;
+	}
+#endif
 
 	/* if no task on thread, release to cmdq core */
 	/* no need to release thread since secure path use static thread */
@@ -857,6 +878,16 @@ static s32 cmdq_mdp_find_free_thread(struct cmdqRecStruct *handle)
 	if (handle->secData.is_secure) {
 		thread = cmdq_mdp_get_sec_thread();
 
+		if (mdp_ctx.thread[thread].task_count &&
+			handle->pkt && handle->pkt->sec_data &&
+			mdp_ctx.thread[thread].mtee !=
+			((struct cmdq_sec_data *)handle->pkt->sec_data)->mtee) {
+			CMDQ_LOG("%s: handle:%p pkt:%p thread:%d mtee:%d run\n",
+				__func__, handle, handle->pkt, thread,
+				mdp_ctx.thread[thread].mtee);
+			return CMDQ_INVALID_THREAD;
+		}
+
 		if (threads[thread].task_count >=
 			CMDQ_MAX_TASK_IN_SECURE_THREAD) {
 			CMDQ_LOG(
@@ -928,6 +959,10 @@ static s32 cmdq_mdp_consume_handle(void)
 	bool acquired = false;
 	struct CmdqCBkStruct *callback = cmdq_core_get_group_cb();
 	bool conflict = false;
+#ifdef CMDQ_SECURE_PATH_SUPPORT
+	struct ContextStruct *ctx;
+	u32 task_cnt;
+#endif
 
 	/* operation for tasks_wait list need task mutex */
 	mutex_lock(&mdp_task_mutex);
@@ -942,6 +977,20 @@ static s32 cmdq_mdp_consume_handle(void)
 		list_entry) {
 		/* operations for thread list need thread lock */
 		mutex_lock(&mdp_thread_mutex);
+
+#ifdef CMDQ_SECURE_PATH_SUPPORT
+		if (handle->secData.is_secure) {
+			ctx = cmdq_core_get_context();
+			task_cnt = ctx->thread[(u32)cmdq_mdp_get_sec_thread()].handle_count;
+			/* sec thread and more than 4 task -> queue the task */
+			if (task_cnt + 1 > CMDQ_MAX_TASK_IN_SECURE_THREAD) {
+				mutex_unlock(&mdp_thread_mutex);
+				CMDQ_ERR("%s drop new task since there will be more than %d\n",
+					__func__, CMDQ_MAX_TASK_IN_SECURE_THREAD);
+				break;
+			}
+		}
+#endif
 
 		handle->thread = cmdq_mdp_find_free_thread(handle);
 		if (handle->thread == CMDQ_INVALID_THREAD) {
@@ -2539,7 +2588,7 @@ static void cmdq_mdp_begin_task_virtual(struct cmdqRecStruct *handle,
 		(curr_time.tv_sec == mdp_curr_pmqos->tv_sec &&
 		curr_time.tv_usec > mdp_curr_pmqos->tv_usec);
 	CMDQ_LOG_PMQOS(
-		"%s%s handle:%p engine:%#llx thread:%d cur:%lu.%lu end:%lu.%lu list:%u mdp:%u isp:%u\n",
+		"%s%s handle:%p engine:%#llx thread:%d cur:%ld.%ld end:%llu.%llu list:%u mdp:%u isp:%u\n",
 		__func__, expired ? " expired" : "",
 		handle, handle->engineFlag, handle->thread,
 		curr_time.tv_sec, curr_time.tv_usec,
@@ -2580,8 +2629,9 @@ static void cmdq_mdp_begin_task_virtual(struct cmdqRecStruct *handle,
 			mdp_list_pmqos = (struct mdp_pmqos *)curTask->prop_addr;
 			pmqos_list_record =
 			    (struct mdp_pmqos_record *)curTask->user_private;
-			total_pixel = max(mdp_list_pmqos->mdp_total_pixel,
-					mdp_list_pmqos->isp_total_pixel);
+			total_pixel = mdp_list_pmqos->mdp_total_pixel ?
+				mdp_list_pmqos->mdp_total_pixel :
+				mdp_list_pmqos->isp_total_pixel;
 
 			if (first_task) {
 				target_pmqos = mdp_list_pmqos;
@@ -2648,8 +2698,9 @@ static void cmdq_mdp_begin_task_virtual(struct cmdqRecStruct *handle,
 	} else {
 		DP_TIMER_GET_DURATION_IN_US(pmqos_curr_record->submit_tm,
 			pmqos_curr_record->end_tm, denominator);
-		total_pixel = max(mdp_curr_pmqos->mdp_total_pixel,
-				mdp_curr_pmqos->isp_total_pixel);
+		total_pixel = mdp_curr_pmqos->mdp_total_pixel ?
+			mdp_curr_pmqos->mdp_total_pixel :
+			mdp_curr_pmqos->isp_total_pixel;
 		pmqos_curr_record->mdp_throughput =
 			total_pixel / denominator;
 		target_pmqos = mdp_curr_pmqos;
@@ -2667,8 +2718,9 @@ static void cmdq_mdp_begin_task_virtual(struct cmdqRecStruct *handle,
 		act_throughput = g_freq_steps[0];
 	else
 		act_throughput = max_throughput;
-	total_pixel = max(target_pmqos->mdp_total_pixel,
-			target_pmqos->isp_total_pixel);
+	total_pixel = target_pmqos->mdp_total_pixel ?
+		target_pmqos->mdp_total_pixel :
+		target_pmqos->isp_total_pixel;
 
 	CMDQ_LOG_PMQOS(
 		"[%d]begin task act_throughput %u total_pixel %u\n",
@@ -2830,7 +2882,7 @@ static void cmdq_mdp_end_task_virtual(struct cmdqRecStruct *handle,
 		(curr_time.tv_sec == mdp_curr_pmqos->tv_sec &&
 		curr_time.tv_usec > mdp_curr_pmqos->tv_usec);
 	CMDQ_LOG_PMQOS(
-		"%s%s handle:%p engine:%#llx thread:%d cur:%lu.%lu end:%lu.%lu list:%u mdp:%u isp:%u\n",
+		"%s%s handle:%p engine:%#llx thread:%d cur:%ld.%ld end:%llu.%llu list:%u mdp:%u isp:%u\n",
 		__func__, expired ? " expired" : "",
 		handle, handle->engineFlag, handle->thread,
 		curr_time.tv_sec, curr_time.tv_usec,
@@ -2864,8 +2916,9 @@ static void cmdq_mdp_end_task_virtual(struct cmdqRecStruct *handle,
 
 		if (first_task) {
 			target_pmqos = mdp_list_pmqos;
-			curr_pixel_size = max(mdp_list_pmqos->mdp_total_pixel,
-						mdp_list_pmqos->isp_total_pixel);
+			curr_pixel_size = mdp_list_pmqos->mdp_total_pixel ?
+				mdp_list_pmqos->mdp_total_pixel :
+				mdp_list_pmqos->isp_total_pixel;
 			first_task = false;
 		}
 
@@ -2906,8 +2959,9 @@ static void cmdq_mdp_end_task_virtual(struct cmdqRecStruct *handle,
 				(struct mdp_pmqos_record *)
 					curTask->user_private;
 
-			total_pixel = max(mdp_list_pmqos->mdp_total_pixel,
-					mdp_list_pmqos->isp_total_pixel);
+			total_pixel = mdp_list_pmqos->mdp_total_pixel ?
+				mdp_list_pmqos->mdp_total_pixel :
+				mdp_list_pmqos->isp_total_pixel;
 
 			if (first_task) {
 				DP_TIMER_GET_DURATION_IN_US(
