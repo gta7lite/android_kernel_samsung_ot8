@@ -51,6 +51,9 @@
 #include <linux/percpu.h>
 #include <linux/thread_info.h>
 #include <linux/prctl.h>
+#ifdef CONFIG_SEC_DEBUG
+#include <linux/sec_debug.h>
+#endif
 
 #include <asm/alternative.h>
 #include <asm/compat.h>
@@ -221,6 +224,12 @@ void __show_regs(struct pt_regs *regs)
 		sp = regs->sp;
 		top_reg = 29;
 	}
+
+#ifdef CONFIG_SEC_DEBUG
+	if (!user_mode(regs)) {
+		sec_save_context(_THIS_CPU, regs);
+	}
+#endif
 
 	show_regs_print_info(KERN_DEFAULT);
 	print_pstate(regs);

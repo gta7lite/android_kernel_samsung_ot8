@@ -40,6 +40,9 @@
 #include <linux/completion.h>
 #include <linux/of.h>
 #include <linux/irq_work.h>
+#ifdef CONFIG_SEC_DEBUG
+#include <linux/sec_debug.h>
+#endif
 #include <linux/kexec.h>
 
 #include <asm/alternative.h>
@@ -837,9 +840,17 @@ void arch_irq_work_raise(void)
 /*
  * ipi_cpu_stop - handle IPI from smp_send_stop()
  */
+#ifdef CONFIG_SEC_DEBUG
+static void ipi_cpu_stop(unsigned int cpu, struct pt_regs *regs)
+#else
 static void ipi_cpu_stop(unsigned int cpu)
+#endif
 {
 	set_cpu_online(cpu, false);
+
+#ifdef CONFIG_SEC_DEBUG
+	sec_save_context(_THIS_CPU, regs);
+#endif
 
 	local_daif_mask();
 	sdei_mask_local_cpu();
@@ -901,7 +912,11 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
 
 	case IPI_CPU_STOP:
 		irq_enter();
+#ifdef CONFIG_SEC_DEBUG
+		ipi_cpu_stop(cpu, regs);
+#else
 		ipi_cpu_stop(cpu);
+#endif
 		irq_exit();
 		break;
 
