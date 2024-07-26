@@ -172,7 +172,7 @@ struct vow_dump_info_t {
 	uint32_t      size;               // size of reseved buffer (bytes)
 	uint32_t      scp_dump_offset[VOW_MAX_CH_NUM]; // return data offset from scp
 	uint32_t      scp_dump_size[VOW_MAX_CH_NUM];   // return data size from scp
-	char         *kernel_dump_addr;  // kernel internal buffer address
+	short         *kernel_dump_addr;  // kernel internal buffer address
 	unsigned int  kernel_dump_idx;    // current index of kernel_dump_addr
 	unsigned int  kernel_dump_size;   // size of kernel_dump_ptr buffer (bytes)
 	unsigned long user_dump_addr;     // addr of user dump buffer
@@ -454,7 +454,7 @@ static void vow_service_Init(void)
 {
 	int I;
 	bool ret;
-	unsigned int vow_ipi_buf[4];
+	unsigned int vow_ipi_buf[3];
 
 	VOWDRV_DEBUG("%s():%x\n", __func__, init_flag);
 	/* common part */
@@ -1393,7 +1393,7 @@ static void vow_service_GetVowDumpData(void)
 					size = temp_dump_info.scp_dump_size[0] * 2;
 				}
 				vow_interleaving(
-					(short *)(&temp_dump_info.kernel_dump_addr[idx]),
+					&temp_dump_info.kernel_dump_addr[idx],
 					(short *)(temp_dump_info.vir_addr +
 						temp_dump_info.scp_dump_offset[0]),
 					(short *)(temp_dump_info.vir_addr +
@@ -1997,8 +1997,6 @@ static ssize_t VowDrv_SetPhase1Debug(struct device *kobj,
 	if (kstrtouint(buf, 0, &enable) != 0)
 		return -EINVAL;
 
-	vowserv.force_phase_stage = (enable == 1) ? FORCE_PHASE1 : NO_FORCE;
-
 	VowDrv_SetFlag(VOW_FLAG_FORCE_PHASE1_DEBUG, enable);
 	return n;
 }
@@ -2030,8 +2028,6 @@ static ssize_t VowDrv_SetPhase2Debug(struct device *kobj,
 
 	if (kstrtouint(buf, 0, &enable) != 0)
 		return -EINVAL;
-
-	vowserv.force_phase_stage = (enable == 1) ? FORCE_PHASE2 : NO_FORCE;
 
 	VowDrv_SetFlag(VOW_FLAG_FORCE_PHASE2_DEBUG, enable);
 	return n;
@@ -2245,7 +2241,6 @@ static ssize_t VowDrv_SetSWIPLog(struct device *kobj,
 	if (kstrtouint(buf, 0, &enable) != 0)
 		return -EINVAL;
 
-	vowserv.swip_log_enable = (enable == 1) ? true : false;
 	VowDrv_SetFlag(VOW_FLAG_SWIP_LOG_PRINT, enable);
 	return n;
 }
@@ -2761,6 +2756,14 @@ static ssize_t VowDrv_read(struct file *fp,
 	bool dsp_inform_tx_flag = false;
 
 	VOWDRV_DEBUG("+%s()+\n", __func__);
+	if (count != sizeof(struct vow_eint_data_struct_t)) {
+		VOWDRV_DEBUG(
+			"%s(), cpy incorrect size to user, size=%d, correct size=%d, exit\n",
+			__func__,
+			count,
+			sizeof(struct vow_eint_data_struct_t));
+		goto exit;
+	}
 	VowDrv_SetVowEINTStatus(VOW_EINT_RETRY);
 
 	if (VowDrv_Wait_Queue_flag == 0)
