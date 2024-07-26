@@ -344,8 +344,12 @@ static void mtk_dsc1_config(struct mtk_ddp_comp *comp,
 	if (!comp->mtk_crtc || (!comp->mtk_crtc->panel_ext
 				&& !comp->mtk_crtc->is_dual_pipe))
 		return;
-	dsc_params = &comp->mtk_crtc->panel_ext->params->dsc_params;
-
+	dsc_params =
+#ifndef CONFIG_MTK_HDMI_SUPPORT
+	 &comp->mtk_crtc->panel_ext->params->dsc_params;
+#else
+	mtk_dsc_default_setting();
+#endif
 	if (dsc_params->enable == 1) {
 		DDPMSG("%s, w:%d, h:%d, slice_mode:%d,slice(%d,%d),bpp:%d\n",
 			mtk_dump_comp_str(comp), cfg->w, cfg->h,
@@ -633,8 +637,12 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 	if (!comp->mtk_crtc || (!comp->mtk_crtc->panel_ext
 				&& !comp->mtk_crtc->is_dual_pipe))
 		return;
-	dsc_params = &comp->mtk_crtc->panel_ext->params->dsc_params;
-
+	dsc_params =
+#ifndef CONFIG_MTK_HDMI_SUPPORT
+	 &comp->mtk_crtc->panel_ext->params->dsc_params;
+#else
+	mtk_dsc_default_setting();
+#endif
 	if (dsc_params->enable == 1) {
 		DDPMSG("%s, w:%d, h:%d, slice_mode:%d,slice(%d,%d),bpp:%d\n",
 			mtk_dump_comp_str(comp), cfg->w, cfg->h,

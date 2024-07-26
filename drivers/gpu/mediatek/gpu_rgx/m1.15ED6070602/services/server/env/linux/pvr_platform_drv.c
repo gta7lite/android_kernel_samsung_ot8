@@ -176,7 +176,7 @@ static int pvr_probe(struct platform_device *pdev)
 
 	DRM_DEBUG_DRIVER("device %p\n", &pdev->dev);
 #if defined(MTK_MINI_PORTING)
-	MTK_LOGI("start to probe pvrsrvkm driver");
+	MTK_LOGI("@%s: start to probe pvrsrvkm driver\n", __func__);
 #endif
 
 	ddev = drm_dev_alloc(&pvr_drm_platform_driver, &pdev->dev);
@@ -226,7 +226,7 @@ err_drm_dev_put:
 #else
 	DRM_DEBUG_DRIVER("device %p\n", &pdev->dev);
 #if defined(MTK_MINI_PORTING)
-	MTK_LOGI("pvrsrvkm driver probe done");
+	MTK_LOGI("@%s: pvrsrvkm driver probe done\n", __func__);
 #endif
 
 	return drm_platform_init(&pvr_drm_platform_driver, pdev);
@@ -308,7 +308,18 @@ static int __init pvr_init(void)
 	int err;
 
 	DRM_DEBUG_DRIVER("\n");
-	MTK_LOGI("start to init pvrsrvkm driver");
+#if defined(MTK_MINI_PORTING)
+	MTK_LOGI("@%s: start to initialize pvrsrvkm driver\n", __func__);
+#if defined(MODULE)
+	err = mtk_mfg_async_init();
+	if (err)
+		return err;
+
+	err = mtk_mfg_2d_init();
+	if (err)
+		return err;
+#endif /* MODULE */
+#endif /* MTK_MINI_PORTING */
 
 	pvr_drm_platform_driver = pvr_drm_generic_driver;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)) && \

@@ -1902,7 +1902,7 @@ PMR_DevPhysAddr(const PMR *psPMR,
 	if (ui32NumOfPages > PMR_MAX_TRANSLATION_STACK_ALLOC)
 	{
 		puiPhysicalOffset = OSAllocMem(ui32NumOfPages * sizeof(IMG_DEVMEM_OFFSET_T));
-		PVR_RETURN_IF_NOMEM(puiPhysicalOffset);
+		PVR_GOTO_IF_NOMEM(puiPhysicalOffset, eError, e0);
 	}
 
 	_PMRLogicalOffsetToPhysicalOffset(psPMR,
@@ -1921,17 +1921,13 @@ PMR_DevPhysAddr(const PMR *psPMR,
 		                                          puiPhysicalOffset,
 		                                          pbValid,
 		                                          psDevAddrPtr);
-		PVR_GOTO_IF_ERROR(eError, FreeOffsetArray);
-
 #if defined(PVR_PMR_TRANSLATE_UMA_ADDRESSES)
-		/* Currently excluded from the default build because of performance
-		 * concerns.
-		 * We do not need this part in all systems because the GPU has the same
-		 * address view of system RAM as the CPU.
-		 * Alternatively this could be implemented as part of the PMR-factories
-		 * directly */
+		/* Currently excluded from the default build because of performance concerns.
+		 * We do not need this part in all systems because the GPU has the same address view of system RAM as the CPU.
+		 * Alternatively this could be implemented as part of the PMR-factories directly */
+
 		if (PhysHeapGetType(psPMR->psPhysHeap) == PHYS_HEAP_TYPE_UMA ||
-		    PhysHeapGetType(psPMR->psPhysHeap) == PHYS_HEAP_TYPE_DMA)
+				PhysHeapGetType(psPMR->psPhysHeap) == PHYS_HEAP_TYPE_DMA)
 		{
 			IMG_UINT32 i;
 			IMG_DEV_PHYADDR sDevPAddrCorrected;
@@ -1949,12 +1945,17 @@ PMR_DevPhysAddr(const PMR *psPMR,
 #endif
 	}
 
-FreeOffsetArray:
 	if (puiPhysicalOffset != auiPhysicalOffset)
 	{
 		OSFreeMem(puiPhysicalOffset);
 	}
 
+	PVR_GOTO_IF_ERROR(eError, e0);
+
+	return PVRSRV_OK;
+
+e0:
+	PVR_ASSERT(eError != PVRSRV_OK);
 	return eError;
 }
 

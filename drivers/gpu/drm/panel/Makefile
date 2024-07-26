@@ -69,4 +69,9 @@ obj-$(CONFIG_DRM_PANEL_TRULY_NT35595_VDO) += panel-truly-nt35595-vdo.o
 obj-$(CONFIG_DRM_PANEL_TRULY_ILI9881H_VDO) += panel-truly-ili9881h-rt4801-vdo.o
 obj-$(CONFIG_DRM_PANEL_TRULY_ILI9882N_VDO_90HZ) += panel-truly-ili9882n-rt4801-vdo-90hz.o
 obj-$(CONFIG_DRM_PANEL_RAYDIUM_RM692H0) += panel-raydium-rm692h0-cmd-120hz.o
-
+obj-$(CONFIG_DRM_PANEL_HIMAX_HX83102D_VDO) += panel-himax-hx83102d-vdo.o
+obj-$(CONFIG_DRM_PANEL_BOE_NT36525B_HDP_DSI_VDO_LM36274) += panel-boe-nt36525b-hdp-dsi-vdo-lm36274.o
+obj-$(CONFIG_DRM_PANEL_BOE_SW83109_CMD) += panel-boe-sw83109-cmd.o
+obj-$(CONFIG_DRM_PANEL_HIMAX_HX83102J_VDO) += panel-himax-hx83102j-vdo.o
+obj-$(CONFIG_DRM_PANEL_S6E8FC3_VDO) += panel-s6e8fc3-vdo.o
+obj-$(CONFIG_DRM_PANEL_S6E8FC5_CMD) += panel-s6e8fc5-cmd.o

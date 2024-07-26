@@ -592,6 +592,12 @@ unsigned int mt_gpufreq_get_volt_by_idx(unsigned int idx)
 	return 0;
 }
 
+/* API: pass GPU power table to EARA-QoS */
+struct mt_gpufreq_power_table_info *pass_gpu_table_to_eara(void)
+{
+	return g_power_table;
+}
+
 /* API : get max power on power table */
 unsigned int mt_gpufreq_get_max_power(void)
 {
@@ -940,6 +946,13 @@ void mt_gpufreq_set_power_limit_by_pbm(unsigned int limited_power)
 
 	mutex_unlock(&mt_gpufreq_power_lock);
 }
+
+/* API : get current GPU temperature */
+int mt_gpufreq_get_gpu_temp(void)
+{
+	return get_immediate_gpu_wrap();
+}
+EXPORT_SYMBOL(mt_gpufreq_get_gpu_temp);
 
 /*
  * API : set GPU loading for SSPM

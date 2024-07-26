@@ -90,7 +90,7 @@ GED_ERROR ged_debugFS_create_entry(
 	uiMode = S_IFREG;
 
 	if (psReadOps != NULL)
-		uiMode |= 0440;
+		uiMode |= 0444;
 
 	if (pfnWrite != NULL)
 		uiMode |= 0220;

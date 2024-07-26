@@ -637,8 +637,6 @@ PVRSRVBridgeGetDeviceStatus(IMG_UINT32 ui32DispatchTableEntry,
 	return 0;
 }
 
-static_assert(8 <= IMG_UINT32_MAX, "8 must not be larger than IMG_UINT32_MAX");
-
 static IMG_INT
 PVRSRVBridgeGetMultiCoreInfo(IMG_UINT32 ui32DispatchTableEntry,
 			     IMG_UINT8 * psGetMultiCoreInfoIN_UI8,
@@ -829,9 +827,6 @@ EventObjectWaitTimeout_exit:
 
 	return 0;
 }
-
-static_assert(PVRSRV_PROCESS_STAT_TYPE_COUNT <= IMG_UINT32_MAX,
-			"PVRSRV_PROCESS_STAT_TYPE_COUNT must not be larger than IMG_UINT32_MAX");
 
 static IMG_INT
 PVRSRVBridgeFindProcessMemStats(IMG_UINT32 ui32DispatchTableEntry,
