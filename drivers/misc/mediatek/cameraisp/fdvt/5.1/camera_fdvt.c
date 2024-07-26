@@ -2328,6 +2328,7 @@ static void fdvt_enable_clock(bool En)
 /*****************************************************************************
  *
  *****************************************************************************/
+
 static signed int fdvt_wait_irq(FDVT_WAIT_IRQ_STRUCT *wait_irq)
 {
 	signed int ret = 0;
