@@ -9,6 +9,9 @@
 #include <linux/kernel.h>
 #include <linux/device.h>
 #include <linux/mutex.h>
+/* hs14 code for SR-AL6528A-01-258 by shanxinkai at 2022/09/13 start */
+#include <linux/chg-tcpc_info.h>
+/* hs14 code for SR-AL6528A-01-258 by shanxinkai at 2022/09/13 end */
 
 enum adc_channel {
 	ADC_CHANNEL_VBUS,
@@ -169,6 +172,27 @@ struct charger_ops {
 	int (*enable_hz)(struct charger_device *dev, bool en);
 
 	int (*enable_bleed_discharge)(struct charger_device *dev, bool en);
+
+	/* hs14 code for SR-AL6528A-01-299 by gaozhengwei at 2022/09/02 start */
+	int (*set_hiz_mode)(struct charger_device *dev, bool en);
+	int (*get_hiz_mode)(struct charger_device *dev);
+	/* hs14 code for SR-AL6528A-01-299 by gaozhengwei at 2022/09/02 end */
+
+	/* hs14 code for  SR-AL6528A-01-259 by zhouyuhang at 2022/09/15 start*/
+	int (*get_ship_mode)(struct charger_device *chg_dev);
+	int (*set_ship_mode)(struct charger_device *chg_dev, bool enable);
+	/* hs14 code for  SR-AL6528A-01-259 by zhouyuhang at 2022/09/15 end*/
+
+	/* hs14 code for  SR-AL6528A-01-339 by shanxinkai at 2022/09/30 start*/
+	int (*get_chr_status)(struct charger_device *chg_dev, int *status);
+	/* hs14 code for  SR-AL6528A-01-339 by shanxinkai at 2022/09/30 end*/
+	/* hs14 code for AL6528ADEU-580 by gaozhengwei at 2022/10/09 start */
+	int (*get_vbus_status)(struct charger_device *dev);
+	int (*dynamic_set_hwovp_threshold)(struct charger_device *dev, int adapter_type);
+	/* hs14 code for AL6528ADEU-580 by gaozhengwei at 2022/10/09 end */
+	/* hs14 code for P221116-03489 by wenyaqi at 2022/11/23 start */
+	int (*bypass_chgdet)(struct charger_device *chg_dev, bool bypass_chgdet_en);
+	/* hs14 code for P221116-03489 by wenyaqi at 2022/11/23 end */
 };
 
 static inline void *charger_dev_get_drvdata(
@@ -353,5 +377,30 @@ extern int unregister_charger_device_notifier(
 extern int charger_dev_notify(
 	struct charger_device *charger_dev, int event);
 
+/* hs14 code for SR-AL6528A-01-299 by gaozhengwei at 2022/09/02 start */
+extern int charger_dev_set_hiz_mode(struct charger_device *chg_dev, bool en);
+extern int charger_dev_get_hiz_mode(struct charger_device *chg_dev);
+/* hs14 code for SR-AL6528A-01-299 by gaozhengwei at 2022/09/02 end */
 
+/* hs14 code for SR-AL6528A-01-258 by shanxinkai at 2022/09/13 start */
+extern enum chg_ic_supplier chg_info;
+/* hs14 code for SR-AL6528A-01-258 by shanxinkai at 2022/09/13 end */
+
+/* hs14 code for  SR-AL6528A-01-259 by zhouyuhang at 2022/09/15 start*/
+extern int charger_dev_set_shipmode(struct charger_device *chg_dev, bool enable);
+extern int charger_dev_get_shipmode(struct charger_device *chg_dev);
+/* hs14 code for  SR-AL6528A-01-259 by zhouyuhang at 2022/09/15 end*/
+
+/* hs14 code for  SR-AL6528A-01-339 by shanxinkai at 2022/09/30 start*/
+extern int charger_dev_get_chr_status(struct charger_device *chg_dev, int *status);
+/* hs14 code for  SR-AL6528A-01-339 by shanxinkai at 2022/09/30 end*/
+
+/* hs14 code for AL6528ADEU-580 by gaozhengwei at 2022/10/09 start */
+extern int charger_dev_get_vbus_status(struct charger_device *charger_dev);
+extern int charger_dev_dynamic_set_hwovp_threshold(struct charger_device *charger_dev,
+				      int adapter_type);
+/* hs14 code for AL6528ADEU-580 by gaozhengwei at 2022/10/09 end */
+/* hs14 code for P221116-03489 by wenyaqi at 2022/11/23 start */
+extern int charger_dev_bypass_chgdet(struct charger_device *chg_dev,bool bypass_chgdet_en);
+/* hs14 code for P221116-03489 by wenyaqi at 2022/11/23 end */
 #endif /*LINUX_POWER_CHARGER_CLASS_H*/

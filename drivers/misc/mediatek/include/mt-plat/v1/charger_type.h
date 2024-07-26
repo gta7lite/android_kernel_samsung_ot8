@@ -12,9 +12,11 @@ enum charger_type {
 	CHARGING_HOST,
 	NONSTANDARD_CHARGER,	/* AC : 450mA~1A */
 	STANDARD_CHARGER,	/* AC : ~1A */
+	APPLE_2_4A_CHARGER, /* 2.4A apple charger */
 	APPLE_2_1A_CHARGER, /* 2.1A apple charger */
 	APPLE_1_0A_CHARGER, /* 1A apple charger */
 	APPLE_0_5A_CHARGER, /* 0.5A apple charger */
+	SAMSUNG_CHARGER,
 	WIRELESS_CHARGER,
 };
 #if defined(CONFIG_USB_MTK_HDRC) || defined(CONFIG_USB_MU3D_DRV) \
@@ -34,8 +36,7 @@ extern int register_charger_det_callback(int (*func)(int));
 #endif /*CONFIG_MTK_PUMP_EXPRESS_PLUS_30_SUPPORT*/
 
 #if defined(CONFIG_MACH_MT6877) || defined(CONFIG_MACH_MT6893) \
-	|| defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6785) \
-	|| defined(CONFIG_MACH_MT6853) || defined(CONFIG_MACH_MT6873)
+	||  defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6785)
 extern bool is_usb_rdy(struct device *dev);
 #else
 extern bool is_usb_rdy(void);
