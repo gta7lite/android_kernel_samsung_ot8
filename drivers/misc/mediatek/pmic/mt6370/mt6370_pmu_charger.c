@@ -159,7 +159,7 @@ struct mt6370_pmu_charger_data {
 	struct mutex attach_lock;
 	bool typec_attach;
 	bool ignore_usb;
-	bool bypass_chgdet;
+//	bool bypass_chgdet;
 #else
 	struct work_struct chgdet_work;
 #endif /* CONFIG_TCPC_CLASS */
@@ -167,6 +167,18 @@ struct mt6370_pmu_charger_data {
 	struct power_supply_desc psy_desc;
 	struct power_supply *psy;
 	struct regulator_dev *otg_rdev;
+
+/*HS03s for SR-AL5625-01-261 by wenyaqi at 20210428 start*/
+	bool bypass_chgdet;
+/*HS03s for SR-AL5625-01-261 by wenyaqi at 20210428 end*/
+
+/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 start*/
+	int dump_reg_flag;
+	u32 ss_aicr;
+	int ss_ibus;
+	int ss_vbus;
+	int ss_vbat;
+/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 end*/
 
 	bool pp_en;
 	union power_supply_propval *old_propval;
@@ -347,23 +359,6 @@ static int mt6370_get_aicr(struct charger_device *chg_dev, u32 *uA);
 static int mt6370_set_ichg(struct charger_device *chg_dev, u32 uA);
 static int mt6370_get_ichg(struct charger_device *chg_dev, u32 *uA);
 static int mt6370_enable_charging(struct charger_device *chg_dev, bool en);
-
-#if defined(CONFIG_MACH_MT6771)
-bool is_usb_rdy_v1(struct device *dev)
-{
-	struct device_node *node;
-	bool ready = false;
-
-	node = of_parse_phandle(dev->of_node, "usb", 0);
-	if (node) {
-		ready = of_property_read_bool(node, "gadget-ready");
-		dev_info(dev, "gadget-ready=%d\n", ready);
-	} else
-		dev_info(dev, "usb node missing or invalid\n");
-
-	return ready;
-}
-#endif
 
 static inline void mt6370_chg_irq_set_flag(
 	struct mt6370_pmu_charger_data *chg_data, u8 *irq, u8 mask)
@@ -819,11 +814,13 @@ static int __maybe_unused mt6370_enable_chgdet_flow(
 			      struct mt6370_pmu_charger_data *chg_data, bool en)
 {
 	int ret = 0;
+#if IS_ENABLED(CONFIG_USB_MTK_HDRC)
 	int i;
 #ifndef CONFIG_TCPC_CLASS
 	int vbus = 0;
 #endif /* !CONFIG_TCPC_CLASS */
 	const int max_wait_cnt = 200;
+#endif /* CONFIG_USB_MTK_HDRC */
 #ifndef CONFIG_MT6370_DCDTOUT_SUPPORT
 	bool dcd_en = false;
 #endif /* CONFIG_MT6370_DCDTOUT_SUPPORT */
@@ -844,13 +841,10 @@ static int __maybe_unused mt6370_enable_chgdet_flow(
 		if (!dcd_en)
 			msleep(180);
 #endif /* CONFIG_MT6370_DCDTOUT_SUPPORT */
+#if IS_ENABLED(CONFIG_USB_MTK_HDRC)
 		/* Workaround for CDP port */
 		for (i = 0; i < max_wait_cnt; i++) {
-#if defined(CONFIG_MACH_MT6771)
-			if (is_usb_rdy_v1(chg_data->dev))
-#else
 			if (is_usb_rdy())
-#endif
 				break;
 			dev_info(chg_data->dev, "%s: CDP block\n", __func__);
 #ifndef CONFIG_TCPC_CLASS
@@ -875,6 +869,7 @@ static int __maybe_unused mt6370_enable_chgdet_flow(
 			dev_err(chg_data->dev, "%s: CDP timeout\n", __func__);
 		else
 			dev_info(chg_data->dev, "%s: CDP free\n", __func__);
+#endif /* CONFIG_USB_MTK_HDRC */
 	}
 
 	mutex_lock(&chg_data->bc12_access_lock);
@@ -977,9 +972,11 @@ static int __mt6370_chgdet_handler(struct mt6370_pmu_charger_data *chg_data)
 	}
 	chg_data->pwr_rdy = pwr_rdy;
 
+	dev_info(chg_data->dev, "%s: pwr rdy = (%d)\n",
+			__func__, pwr_rdy);
 	/* plug out */
 	if (!pwr_rdy) {
-		chg_data->psy_desc.type = POWER_SUPPLY_TYPE_UNKNOWN;
+		chg_data->psy_desc.type = POWER_SUPPLY_TYPE_USB;
 		chg_data->psy_usb_type = POWER_SUPPLY_USB_TYPE_UNKNOWN;
 		atomic_set(&chg_data->bc12_cnt, 0);
 		goto out;
@@ -1023,7 +1020,7 @@ static int __mt6370_chgdet_handler(struct mt6370_pmu_charger_data *chg_data)
 		break;
 	default:
 		chg_data->psy_usb_type = POWER_SUPPLY_USB_TYPE_UNKNOWN;
-		chg_data->psy_desc.type = POWER_SUPPLY_TYPE_UNKNOWN;
+		chg_data->psy_desc.type = POWER_SUPPLY_TYPE_USB;
 		break;
 	}
 
@@ -1153,6 +1150,15 @@ static int mt6370_chg_sw_workaround(struct mt6370_pmu_charger_data *chg_data)
 	ret = mt6370_pmu_reg_clr_bit(chg_data->chip,
 		MT6370_PMU_REG_QCCTRL2, MT6370_MASK_EN_DCP);
 
+	/*HS03s for SR-AL5625-01-261 by wenyaqi at 20210428 start*/
+	/* Adjust adc bias current */
+	ret = mt6370_pmu_reg_update_bits(
+		chg_data->chip, MT6370_PMU_REG_CHGHIDDENCTRL15,
+		MT6370_MASK_dADC_IBIAS_SEL, MT6370_MASK_dADC_IBIAS_SEL);
+	if (ret < 0)
+		dev_err(chg_data->dev,
+			"%s: modify ADC bias current fail\n", __func__);
+	/*HS03s for SR-AL5625-01-261 by wenyaqi at 20210428 end*/
 	mt6370_enable_hidden_mode(chg_data, false);
 
 	return ret;
@@ -2506,6 +2512,106 @@ static int mt6370_is_charging_done(struct charger_device *chg_dev, bool *done)
 	return 0;
 }
 
+/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 start*/
+enum mt6371_batt_chr_status {
+	MT6371_BATT_PRE_CHARGE = 0,
+	MT6371_BATT_TRICKLE,
+	MT6371_BATT_FAST_CHARG,
+};
+
+static int ss_mt6370_get_charge_type(struct charger_device *chg_dev, int *chr_type)
+{
+	int ret = 0;
+	unsigned int chg_stat = MT6370_CHG_STATUS_READY;
+	struct mt6370_pmu_charger_data *chg_data =
+		dev_get_drvdata(&chg_dev->dev);
+	#ifdef CONFIG_AFC_CHARGER
+	static struct power_supply *psys;
+	union power_supply_propval hv_status;
+	#endif
+
+	ret = mt6370_get_charging_status(chg_data, &chg_stat);
+	if(ret < 0) {
+		dev_err(chg_data->dev, "%s: get charging status failed\n",
+				__func__);
+		return ret;
+	}
+
+	if(chg_stat == MT6370_CHG_STATUS_READY ||
+		chg_stat == MT6370_CHG_STATUS_DONE ) {
+		*chr_type = POWER_SUPPLY_CHARGE_TYPE_NONE;
+		goto output_chr_type;
+	}
+
+	if(chg_stat == MT6370_CHG_STATUS_FAULT) {
+		*chr_type = POWER_SUPPLY_CHARGE_TYPE_UNKNOWN;
+		goto output_chr_type;
+	}
+
+	ret = mt6370_pmu_reg_read(chg_data->chip, MT6370_PMU_REG_CHGSTAT);
+
+	if(ret < 0) {
+		dev_err(chg_data->dev, "%s: read batt_reg status failed\n",
+				__func__);
+		return ret;
+	}
+
+	ret = (ret & MT6371_MASK_BAT_CHG_STAT) >> MT6371_SHIFT_BATT_CHG_STAT;
+	switch(ret)	{
+	case MT6371_BATT_PRE_CHARGE:
+		*chr_type = POWER_SUPPLY_CHARGE_TYPE_TRICKLE;
+		break;
+	case MT6371_BATT_TRICKLE:
+		*chr_type = POWER_SUPPLY_CHARGE_TYPE_TRICKLE;
+		break;
+	case MT6371_BATT_FAST_CHARG:
+		*chr_type = POWER_SUPPLY_CHARGE_TYPE_FAST;
+		break;
+	default:
+		*chr_type = POWER_SUPPLY_CHARGE_TYPE_NONE;
+		break;
+	}
+
+	if (chg_data->dump_reg_flag >= 1) {
+		if (chg_data->ss_aicr == 1 || chg_data->ss_ibus == 1 ||
+			chg_data->ss_vbus == 1 || chg_data->ss_vbat == 1) {
+			pr_err("%s:don't get chg_para\n", __func__);
+			return 0;
+		}
+		#ifdef CONFIG_AFC_CHARGER
+		if (psys == NULL)
+			psys = power_supply_get_by_name("mtk-master-charger");
+		if (psys == NULL) {
+			pr_err("%s:don't get mtk-master-charger\n", __func__);
+			return 0;
+		}
+		power_supply_get_property(psys, POWER_SUPPLY_PROP_HV_CHARGER_STATUS, &hv_status);
+		if (hv_status.intval == true) {
+			pr_debug("%s:charger_type=%d\n", __func__, *chr_type);
+			return 0;
+		}
+		#endif
+
+		if (chg_data->ss_vbat > 4350000) {
+			*chr_type = POWER_SUPPLY_CHARGE_TYPE_TAPER;
+			goto output_chr_type;
+		}
+
+		if (*chr_type != POWER_SUPPLY_CHARGE_TYPE_NONE && chg_data->ss_aicr > MT6370_AICR_MIN &&
+			(chg_data->ss_aicr <= SLOW_CHARGING_CURRENT_STANDARD ||
+			(chg_data->ss_ibus <= SLOW_CHARGING_CURRENT_STANDARD && chg_data->ss_vbus <= V_SLOW_CHARGER_MIN)))
+			*chr_type = POWER_SUPPLY_CHARGE_TYPE_SLOW;
+	}
+
+output_chr_type:
+	pr_debug("%s:charger_type=%d,ibus=%d,aicr=%d,vbus=%d,vbat=%d,dump_reg_flag=%d\n", 
+		__func__, *chr_type, chg_data->ss_ibus, chg_data->ss_aicr,
+		chg_data->ss_vbus, chg_data->ss_vbat, chg_data->dump_reg_flag);
+
+	return 0;
+}
+/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 end*/
+
 static int mt6370_kick_wdt(struct charger_device *chg_dev)
 {
 	/* Any I2C communication can kick watchdog timer */
@@ -2703,6 +2809,13 @@ static int mt6370_plug_out(struct charger_device *chg_dev)
 		dev_get_drvdata(&chg_dev->dev);
 
 	dev_info(chg_data->dev, "%s\n", __func__);
+	/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 start*/
+	chg_data->dump_reg_flag = 0;
+	chg_data->ss_aicr = 1;
+	chg_data->ss_ibus = 1;
+	chg_data->ss_vbus = 1;
+	chg_data->ss_vbat = 1;
+	/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 end*/
 
 	/* Reset AICR limit */
 	chg_data->aicr_limit = -1;
@@ -2730,6 +2843,9 @@ static int mt6370_plug_in(struct charger_device *chg_dev)
 		dev_get_drvdata(&chg_dev->dev);
 
 	dev_info(chg_data->dev, "%s\n", __func__);
+	/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 start*/
+	chg_data->dump_reg_flag = 0;
+	/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 end*/
 
 	/* Enable WDT */
 	if (chg_data->chg_desc->en_wdt) {
@@ -2784,7 +2900,10 @@ static int mt6370_dump_register(struct charger_device *chg_dev)
 	u8 chg_stat = 0, chg_ctrl[2] = {0};
 	struct mt6370_pmu_charger_data *chg_data =
 		dev_get_drvdata(&chg_dev->dev);
-
+#ifdef CONFIG_HQ_PROJECT_OT8
+    /* modify code for OT8 */
+	int chr_type = 0;
+#endif
 	ret = mt6370_get_ichg(chg_dev, &ichg);
 	ret = mt6370_get_aicr(chg_dev, &aicr);
 	ret = mt6370_get_charging_status(chg_data, &chg_status);
@@ -2831,6 +2950,50 @@ static int mt6370_dump_register(struct charger_device *chg_dev)
 		__func__, chg_ctrl[0], chg_ctrl[1]);
 
 	ret = 0;
+#ifdef CONFIG_HQ_PROJECT_HS03S
+    /* modify code for O6 */
+	/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 start*/
+	chg_data->ss_aicr = aicr;
+	chg_data->ss_ibus = adc_ibus;
+	chg_data->ss_vbus = adc_vbus;
+	chg_data->ss_vbat = adc_vbat;
+
+#endif
+#ifdef CONFIG_HQ_PROJECT_O22
+    /* modify code for O22 */
+	chg_data->ss_aicr = aicr;
+	chg_data->ss_ibus = adc_ibus;
+	chg_data->ss_vbus = adc_vbus;
+	chg_data->ss_vbat = adc_vbat;
+
+#endif
+#ifdef CONFIG_HQ_PROJECT_HS04
+    /* modify code for O6 */
+	/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 start*/
+	chg_data->ss_aicr = aicr;
+	chg_data->ss_ibus = adc_ibus;
+	chg_data->ss_vbus = adc_vbus;
+	chg_data->ss_vbat = adc_vbat;
+
+#endif
+#ifdef CONFIG_HQ_PROJECT_OT8
+    /* modify code for OT8 */
+	if (chg_data->dump_reg_flag < 5) {
+		chg_data->dump_reg_flag++;
+		chg_data->ss_aicr = aicr;
+		chg_data->ss_ibus = adc_ibus;
+		chg_data->ss_vbus = adc_vbus;
+		chg_data->ss_vbat = adc_vbat;
+		pr_debug("go to get_charge_type\n");
+		ss_mt6370_get_charge_type(chg_dev, &chr_type);
+	}
+#endif
+	if (chg_data->dump_reg_flag < 1) {
+		pr_err("want to mt6371_get_batt_charging_status\n");
+		chg_data->dump_reg_flag++;
+		power_supply_changed(chg_data->psy);
+	}
+	/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 end*/
 	return ret;
 }
 
@@ -3138,6 +3301,7 @@ static irqreturn_t mt6370_pmu_pwr_rdy_irq_handler(int irq, void *data)
 		(struct mt6370_pmu_charger_data *)data;
 
 	dev_info(chg_data->dev, "%s\n", __func__);
+	mt6370_power_supply_changed(chg_data);
 	return IRQ_HANDLED;
 }
 
@@ -3926,8 +4090,22 @@ static int mt6370_chg_init_setting(struct mt6370_pmu_charger_data *chg_data)
 		dev_info(chg_data->dev, "%s: set aicr to 200mA in meta mode\n",
 			__func__);
 	} else
+#ifdef CONFIG_HQ_PROJECT_HS03S
 		ret = __mt6370_set_aicr(chg_data, chg_desc->aicr);
-
+#endif
+#ifdef CONFIG_HQ_PROJECT_O22
+		ret = __mt6370_set_aicr(chg_data, chg_desc->aicr);
+#endif
+#ifdef CONFIG_HQ_PROJECT_HS04
+		ret = __mt6370_set_aicr(chg_data, chg_desc->aicr);
+#endif
+#ifdef CONFIG_HQ_PROJECT_OT8
+/*TabA7 Lite code for OT8-222 modify aicr when standard charger gaoxugang at 20201223 start*/
+		#if !defined(HQ_FACTORY_BUILD)
+		ret = __mt6370_set_aicr(chg_data, chg_desc->aicr);
+		#endif
+/*TabA7 Lite code for OT8-222 modify aicr when standard charger gaoxugang at 20201223 end*/
+#endif
 	if (ret < 0)
 		dev_err(chg_data->dev, "%s: set aicr failed\n", __func__);
 
@@ -4016,6 +4194,10 @@ static int mt6370_chg_init_setting(struct mt6370_pmu_charger_data *chg_data)
 	if (ret < 0)
 		dev_notice(chg_data->dev, "%s disable dcd fail\n", __func__);
 #endif
+/*hs03s  code for SR-AL5625-01-266 by wangdeyan at 20210408 start*/
+	/* Disable powerkey all reset */
+	ret = mt6370_pmu_reg_update_bits(chg_data->chip, 0x2A, 0x80, 0x80);
+/*hs03s  code for SR-AL5625-01-266 by wangdeyan at 20210408 end*/
 
 	return ret;
 }
@@ -4076,6 +4258,10 @@ static struct charger_ops mt6370_chg_ops = {
 
 	/* Event */
 	.event = mt6370_do_event,
+
+	/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 start*/
+	.get_chr_type = ss_mt6370_get_charge_type,
+	/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 end*/
 };
 
 
@@ -4183,23 +4369,51 @@ static int mt6370_pmu_chg_set_online(struct mt6370_pmu_charger_data *chg_data,
 	return mt6370_enable_chg_type_det(chg_data->chg_dev, val->intval);
 }
 
+extern bool pd_hub_flag;
+extern int thub_chr_type;
+/* Tab A7 lite_T for P221008-02933 by duanweiping at 20221029 start */
+#ifdef CONFIG_HQ_PROJECT_OT8
+extern bool bc12_done;
+#endif
+/* Tab A7 lite_T for P221008-02933 by duanweiping at 20221029 end */
 static int mt6370_pmu_chg_get_property(struct power_supply *psy,
 				       enum power_supply_property psp,
 				       union power_supply_propval *val)
 {
-	struct mt6370_pmu_charger_data *chg_data =
-						  power_supply_get_drvdata(psy);
+	/*TabA7 Lite code for AX3565TDEV-695 by liufurong at 20221021 start*/
+	struct mt6370_pmu_charger_data *chg_data = NULL;
+
 	enum mt6370_charging_status chg_stat = MT6370_CHG_STATUS_READY;
 	int ret = 0;
+	bool chg_en = false;
 
 	val->intval = 0;
+
+	if (psy == NULL) {
+		pr_err("%s: psy is null\n", __func__);
+		return -ENODATA;
+	}
+	chg_data = power_supply_get_drvdata(psy);
+	/*TabA7 Lite code for AX3565TDEV-695 by liufurong at 20221021 end*/
 
 	dev_dbg(chg_data->dev, "%s: prop = %d\n", __func__, psp);
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
+/* Tab A7 lite_T for P221008-02933 by duanweiping at 20221029 start */
+#ifdef CONFIG_HQ_PROJECT_OT8
+		dev_err(chg_data->dev, "%s: bc12_done = %d\n", __func__, bc12_done);
+		/* Tab A7 lite_T for AX3565TDEV-758 by shixuanxuan at 20221203 start */
+		if(bc12_done || pd_hub_flag)
+		/* Tab A7 lite_T for AX3565TDEV-758 by shixuanxuan at 20221203 end */
+			ret = mt6370_pmu_chg_get_online(chg_data, val);
+		else
+			val->intval = bc12_done;
+#else
 		ret = mt6370_pmu_chg_get_online(chg_data, val);
+#endif
+/* Tab A7 lite_T for P221008-02933 by duanweiping at 20221029 end */
 		break;
-#ifdef CONFIG_TCPC_CLASS
+#ifndef CONFIG_MACH_MT6771
 	case POWER_SUPPLY_PROP_AUTHENTIC:
 		val->intval = chg_data->ignore_usb;
 		break;
@@ -4212,18 +4426,28 @@ static int mt6370_pmu_chg_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_STATUS:
 		ret = mt6370_pmu_chg_get_online(chg_data, val);
+		ret = mt6370_is_charging_enable(chg_data, &chg_en);
 		if (!val->intval) {
 			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
 			break;
 		}
+
+		if (pd_hub_flag == true && thub_chr_type != 0) {
+			val->intval = POWER_SUPPLY_STATUS_CHARGING;
+                        break;
+		}
 		ret = mt6370_get_charging_status(chg_data, &chg_stat);
+		pr_err("%s:chg_stat = %d\n",__func__, chg_stat);
 		switch (chg_stat) {
-		case MT6370_CHG_STATUS_READY:
 		case MT6370_CHG_STATUS_FAULT:
 			val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
 			break;
+		case MT6370_CHG_STATUS_READY:
 		case MT6370_CHG_STATUS_PROGRESS:
-			val->intval = POWER_SUPPLY_STATUS_CHARGING;
+			if (chg_en)
+				val->intval = POWER_SUPPLY_STATUS_CHARGING;
+			else
+				val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
 			break;
 		case MT6370_CHG_STATUS_DONE:
 			val->intval = POWER_SUPPLY_STATUS_FULL;
@@ -4283,9 +4507,7 @@ static int mt6370_pmu_chg_property_is_writeable(struct power_supply *psy,
 
 static enum power_supply_property mt6370_pmu_chg_properties[] = {
 	POWER_SUPPLY_PROP_ONLINE,
-#ifdef CONFIG_TCPC_CLASS
 	POWER_SUPPLY_PROP_AUTHENTIC,
-#endif
 	POWER_SUPPLY_PROP_TYPE,
 	POWER_SUPPLY_PROP_USB_TYPE,
 	POWER_SUPPLY_PROP_STATUS,
@@ -4455,6 +4677,7 @@ static const struct regulator_desc mt6370_otg_rdesc = {
 static int mt6370_get_charger_type(struct mt6370_pmu_charger_data *chg_data,
 	bool attach)
 {
+	union power_supply_propval prop2, prop3;
 	static struct power_supply *chg_psy;
 	int ret = 0;
 	union power_supply_propval val = {.intval = 0};
@@ -4468,8 +4691,7 @@ static int mt6370_get_charger_type(struct mt6370_pmu_charger_data *chg_data,
 
 	if (!chg_psy) {
 		pr_notice("%s Couldn't get chg_psy\n", __func__);
-		chg_data->psy_desc.type = attach ? POWER_SUPPLY_TYPE_USB :
-			POWER_SUPPLY_TYPE_UNKNOWN;
+		chg_data->psy_desc.type = POWER_SUPPLY_TYPE_USB;
 		chg_data->psy_usb_type = attach ? POWER_SUPPLY_USB_TYPE_DCP :
 			POWER_SUPPLY_USB_TYPE_UNKNOWN;
 		goto out;
@@ -4477,26 +4699,39 @@ static int mt6370_get_charger_type(struct mt6370_pmu_charger_data *chg_data,
 
 	if (attach) {
 		val.intval = true;
-		ret = power_supply_set_property(chg_psy,
-				POWER_SUPPLY_PROP_ONLINE, &val);
-		ret = power_supply_get_property(chg_psy,
-				POWER_SUPPLY_PROP_TYPE, &val);
-		chg_data->psy_desc.type = val.intval;
-		pr_notice("%s type:%d\n", __func__, val.intval);
-		ret = power_supply_get_property(chg_psy,
-				POWER_SUPPLY_PROP_USB_TYPE, &val);
-		chg_data->psy_usb_type = val.intval;
-		pr_notice("%s usb_type:%d\n", __func__, val.intval);
+		/*HS03s for SR-AL5625-01-261 by wenyaqi at 20210428 start*/
+		if (chg_data->bypass_chgdet == true) {
+			prop2.intval = POWER_SUPPLY_TYPE_USB;
+			prop3.intval = POWER_SUPPLY_USB_TYPE_SDP;
+			chg_data->bypass_chgdet = false;
+		} else {
+			ret = power_supply_set_property(chg_psy,
+					POWER_SUPPLY_PROP_ONLINE, &val);
+			ret = power_supply_get_property(chg_psy,
+					POWER_SUPPLY_PROP_TYPE, &val);
+			chg_data->psy_desc.type = val.intval;
+			pr_notice("%s type:%d\n", __func__, val.intval);
+			ret = power_supply_get_property(chg_psy,
+					POWER_SUPPLY_PROP_USB_TYPE, &val);
+			chg_data->psy_usb_type = val.intval;
+			pr_notice("%s usb_type:%d\n", __func__, val.intval);
+		}
 	} else {
-		chg_data->psy_desc.type = POWER_SUPPLY_TYPE_UNKNOWN;
+		chg_data->psy_desc.type = POWER_SUPPLY_TYPE_USB;
 		chg_data->psy_usb_type = POWER_SUPPLY_USB_TYPE_UNKNOWN;
+		ret = power_supply_set_property(chg_psy,
+					POWER_SUPPLY_PROP_TYPE, &val);
+		ret = power_supply_set_property(chg_psy,
+					POWER_SUPPLY_PROP_USB_TYPE, &val);
 	}
+	/*HS03s for SR-AL5625-01-261 by wenyaqi at 20210428 end*/
 out:
 	mt6370_power_supply_changed(chg_data);
 
 	return chg_data->psy_usb_type;
 }
-
+bool pd_hub_flag = 0;
+EXPORT_SYMBOL(pd_hub_flag);
 static int typec_attach_thread(void *data)
 {
 	struct mt6370_pmu_charger_data *chg_data = data;
@@ -4517,12 +4752,18 @@ static int typec_attach_thread(void *data)
 		pr_notice("%s bc12_sel:%d typec_attach:%d ignore_usb:%d\n",
 			  __func__, chg_desc->bc12_sel,
 			  typec_attach, ignore_usb);
-
+/* Tab A7 lite_T for P221008-02933 by duanweiping at 20221029 start */
+#ifdef CONFIG_HQ_PROJECT_OT8
+		if(!typec_attach)
+			bc12_done = false;
+#endif
+/* Tab A7 lite_T for P221008-02933 by duanweiping at 20221029 end */
 		if (typec_attach && ignore_usb) {
 			chg_data->bypass_chgdet = true;
 			goto bypass_chgdet;
 		} else if (!typec_attach && chg_data->bypass_chgdet) {
 			chg_data->bypass_chgdet = false;
+			pd_hub_flag = 0;
 			goto bypass_chgdet;
 		}
 
@@ -4544,9 +4785,12 @@ bypass_chgdet:
 			else
 				chg_data->psy_usb_type =
 					POWER_SUPPLY_USB_TYPE_SDP;
+			pd_hub_flag = 1;
+			pr_err("SXX PD attached, pd_hub_flag = 1\n");
 		} else {
 			chg_data->psy_desc.type = POWER_SUPPLY_TYPE_UNKNOWN;
 			chg_data->psy_usb_type = POWER_SUPPLY_USB_TYPE_UNKNOWN;
+			pd_hub_flag = 0;
 		}
 		mutex_unlock(&chg_data->bc12_access_lock);
 		mt6370_power_supply_changed(chg_data);
@@ -4608,6 +4852,9 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			   new_state == TYPEC_ATTACHED_SNK) {
 			dev_info(chg_data->dev, "%s Source_to_Sink\n",
 						__func__);
+			/*HS03s for SR-AL5625-01-261 by wenyaqi at 20210428 start*/
+			chg_data->bypass_chgdet = true;
+			/*HS03s for SR-AL5625-01-261 by wenyaqi at 20210428 end*/
 			handle_typec_attach(chg_data, true, true);
 		}  else if (old_state == TYPEC_ATTACHED_SNK &&
 			    new_state == TYPEC_ATTACHED_SRC) {
@@ -4658,6 +4905,15 @@ static int mt6370_pmu_charger_probe(struct platform_device *pdev)
 	chg_data->ieoc = 250000; /* register default value 250mA */
 	chg_data->ichg = 2000000;
 	chg_data->ichg_dis_chg = 2000000;
+	/*HS03s for SR-AL5625-01-369 by wenyaqi at 20210428 start*/
+	chg_data->bypass_chgdet = false;
+	/*HS03s for SR-AL5625-01-369 by wenyaqi at 20210428 end*/
+	/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 start*/
+	chg_data->ss_aicr = 1;
+	chg_data->ss_ibus = 1;
+	chg_data->ss_vbus = 1;
+	chg_data->ss_vbat = 1;
+	/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 end*/
 	atomic_set(&chg_data->bc12_cnt, 0);
 	atomic_set(&chg_data->bc12_wkard, 0);
 #ifdef CONFIG_TCPC_CLASS

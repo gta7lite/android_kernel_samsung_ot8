@@ -694,6 +694,29 @@ static int mt6360_select_vinovp(struct mt6360_pmu_chg_info *mpci, u32 uV)
 					  i << MT6360_SHFT_CHG_VIN_OVP_VTHSEL);
 }
 
+static const u32 mt6360_chrdetovp_list[] = {
+	600000, 6500000, 7000000, 7500000,
+	8500000, 9500000, 10500000, 11500000,
+	12500000, 14500000,
+};
+
+static int mt6360_select_chrdetovp(struct mt6360_pmu_chg_info *mpci, u32 uV)
+{
+	int i;
+
+	if (uV < mt6360_chrdetovp_list[0])
+		return -EINVAL;
+	for (i = 1; i < ARRAY_SIZE(mt6360_chrdetovp_list); i++) {
+		if (uV < mt6360_chrdetovp_list[i])
+			break;
+	}
+	i--;
+	return mt6360_pmu_reg_update_bits(mpci->mpi,
+					  MT6360_PMU_CHRDET_CTRL1,
+					  MT6360_MASK_CHRDETB_VIN_OVP_VTHSEL,
+					  i << MT6360_SHFT_CHRDETB_VIN_OVP_VTHSEL);
+}
+
 static inline int mt6360_read_zcv(struct mt6360_pmu_chg_info *mpci)
 {
 	int ret = 0;
@@ -823,7 +846,7 @@ static int mt6360_enable(struct charger_device *chg_dev, bool en)
 				   "%s: set ichg fail\n", __func__);
 			goto vsys_wkard_fail;
 		}
-		mdelay(ichg_ramp_t);
+		msleep(ichg_ramp_t);
 	} else {
 		if (mpci->ichg == mpci->ichg_dis_chg) {
 			ret = __mt6360_set_ichg(mpci, mpci->ichg);
@@ -2699,6 +2722,13 @@ static int mt6360_chg_init_setting(struct mt6360_pmu_chg_info *mpci)
 			__func__);
 		return ret;
 	}
+	/* chrdet ovp limit for pump express, can be replaced by option */
+	ret = mt6360_select_chrdetovp(mpci, 12500000);
+	if (ret < 0) {
+		dev_notice(mpci->dev, "%s: unlimit chrdet for pump express\n",
+			__func__);
+		return ret;
+	}
 	/* Disable TE, set TE when plug in/out */
 	ret = mt6360_pmu_reg_clr_bits(mpci->mpi, MT6360_PMU_CHG_CTRL2,
 				      MT6360_MASK_TE_EN);
@@ -2828,7 +2858,6 @@ void mt6360_recv_batoc_callback(BATTERY_OC_LEVEL tag)
 					 "%s: set shipping mode done\n",
 					 __func__);
 		}
-		mdelay(8);
 		cnt++;
 	}
 	dev_info(g_mpci->dev, "%s exit, cnt = %d, FG_CUR_H = %d\n",
@@ -2880,6 +2909,7 @@ static int mt6360_pmu_chg_get_property(struct power_supply *psy,
 
 	val->intval = 0;
 
+	dev_dbg(mpci->dev, "%s: prop = %d\n", __func__, psp);
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
 		ret = mt6360_pmu_chg_get_online(mpci, val);
@@ -3100,7 +3130,7 @@ static int mt6360_boost_get_current_limit(struct regulator_dev *rdev)
 	if (ret < 0)
 		return ret;
 	ret = (ret & desc->csel_mask) >> shift;
-	if (ret >= ARRAY_SIZE(mt6360_otg_oc_threshold))
+	if (ret > ARRAY_SIZE(mt6360_otg_oc_threshold))
 		return -EINVAL;
 	return mt6360_otg_oc_threshold[ret];
 }
@@ -3319,6 +3349,7 @@ static int mt6360_pmu_chg_probe(struct platform_device *pdev)
 	struct regulator_config config = { };
 	bool use_dt = pdev->dev.of_node;
 	int i, ret = 0;
+	char *p;
 
 	dev_info(&pdev->dev, "%s\n", __func__);
 	if (use_dt) {
@@ -3412,8 +3443,14 @@ static int mt6360_pmu_chg_probe(struct platform_device *pdev)
 	mt6360_pmu_chg_irq_register(pdev);
 	device_init_wakeup(&pdev->dev, true);
 	/* mivr task */
-	mpci->mivr_task = kthread_run(mt6360_chg_mivr_task_threadfn, mpci,
-				      "mivr_thread.%s", dev_name(mpci->dev));
+	p = devm_kasprintf(mpci->dev, GFP_KERNEL,
+			   "mivr_thread.%s", dev_name(mpci->dev));
+	if (IS_ERR_OR_NULL(p)) {
+		dev_notice(mpci->dev, "devm kasprintf fail\n");
+		ret = -EINVAL;
+		goto err_register_chg_dev;
+	}
+	mpci->mivr_task = kthread_run(mt6360_chg_mivr_task_threadfn, mpci, p);
 	ret = PTR_ERR_OR_ZERO(mpci->mivr_task);
 	if (ret < 0) {
 		dev_err(mpci->dev, "create mivr handling thread fail\n");
