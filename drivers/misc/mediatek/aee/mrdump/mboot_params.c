@@ -31,10 +31,15 @@
 #include "mboot_params_internal.h"
 #include "mrdump_helper.h"
 #include "mrdump_private.h"
+#ifdef CONFIG_SEC_DEBUG
+#include <linux/sec_debug.h>
+#endif
 
 #define MBOOT_PARAMS_HEADER_STR_LEN 1024
 
+#ifndef CONFIG_SEC_DEBUG
 #define THERMAL_RESERVED_TZS (10)
+#endif
 static int thermal_num = THERMAL_RESERVED_TZS;
 
 static int mtk_cpu_num;
@@ -53,6 +58,7 @@ static u32 mbootlog_size;
  *  This group of API call by sub-driver module to report reboot reasons
  *  aee_rr_* stand for previous reboot reason
  */
+#ifndef CONFIG_SEC_DEBUG
 struct last_reboot_reason {
 	uint32_t fiq_step;
 	/* 0xaeedeadX: X=1 (HWT), X=2 (KE), X=3 (nested panic) */
@@ -209,6 +215,7 @@ struct last_reboot_reason {
 	unsigned long last_sync_func;
 	uint32_t gz_irq;
 };
+#endif
 
 struct reboot_reason_pl {
 	u32 wdt_status;
@@ -219,6 +226,7 @@ struct reboot_reason_lk {
 	u32 data[0];
 };
 
+#ifndef CONFIG_SEC_DEBUG
 struct mboot_params_buffer {
 	uint32_t sig;
 	/* for size comptible */
@@ -233,11 +241,16 @@ struct mboot_params_buffer {
 	uint32_t off_linux;	/* struct last_reboot_reason */
 	uint32_t filling[4];
 };
+#endif
 
 #define REBOOT_REASON_SIG (0x43474244)	/* DBRR */
 static int FIQ_log_size = sizeof(struct mboot_params_buffer);
 
+#ifdef CONFIG_SEC_DEBUG
+struct mboot_params_buffer *mboot_params_buffer;
+#else
 static struct mboot_params_buffer *mboot_params_buffer;
+#endif
 static struct mboot_params_buffer *mboot_params_old;
 static struct mboot_params_buffer *mboot_params_buffer_pa;
 
@@ -537,6 +550,16 @@ static int __init mboot_params_init(struct mboot_params_buffer *buffer,
 #ifndef CONFIG_PSTORE
 	register_console(&mboot_params);
 #endif
+#ifdef CONFIG_SEC_DEBUG
+	/* Initialize flags */
+	LAST_RR_SET(is_upload, UPLOAD_MAGIC_UPLOAD);
+	LAST_RR_SET(upload_reason, UPLOAD_CAUSE_INIT);
+	LAST_RR_SET(is_power_reset, SEC_POWER_OFF);
+	LAST_RR_SET(power_reset_reason, SEC_RESET_REASON_INIT);
+	
+	pr_notice("ram_console: Debug Flags set\n");
+#endif
+
 	mboot_params_init_val();
 	mbootlog_buf = kzalloc(SZ_128K, GFP_KERNEL);
 	if (!mbootlog_buf)
@@ -727,6 +750,7 @@ int __init mrdump_module_init_mboot_params(void)
 console_initcall(mboot_params_early_init);
 #endif
 
+#ifndef CONFIG_SEC_DEBUG
 /* aee sram flags save */
 #define RR_BASE(stage)	\
 	((void *)mboot_params_buffer + mboot_params_buffer->off_##stage)
@@ -748,6 +772,7 @@ console_initcall(mboot_params_early_init);
 
 #define LAST_RR_MEMCPY_WITH_ID(rr_item, id, str, len)			\
 	(strlcpy(RR_LINUX->rr_item[id], str, len))
+#endif /* CONFIG_SEC_DEBUG */
 
 static void mboot_params_init_val(void)
 {
