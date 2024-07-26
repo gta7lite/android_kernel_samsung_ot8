@@ -61,9 +61,6 @@ obj-$(CONFIG_MACH_MT6739) += mcdi/
 obj-$(CONFIG_MACH_MT6739) += ppm_v3/
 obj-$(CONFIG_MACH_MT6739) += spm_v4/
 obj-$(CONFIG_MACH_MT6771) += spm_v4/
-ifeq ($(CONFIG_MTK_QOS_SUPPORT), y)
-obj-$(CONFIG_MACH_MT6771) += vcorefs_v3/
-endif
 obj-$(CONFIG_MACH_MT6739) += vcorefs_v3/
 obj-$(CONFIG_MTK_SWPM) += swpm_v1/
 obj-$(CONFIG_MACH_MT6779) += dcm_v1/
@@ -94,7 +91,6 @@ obj-$(CONFIG_MACH_MT6885) += srclken_rc_v1/
 obj-$(CONFIG_MACH_MT6893) += srclken_rc_v1/
 obj-$(CONFIG_MACH_MT6873) += srclken_rc_v1/
 obj-$(CONFIG_MACH_MT6853) += srclken_rc_v1/
-obj-$(CONFIG_MACH_MT6771) += pbm_v3/
 obj-$(CONFIG_MACH_MT6739) += pbm_v3/
 obj-$(CONFIG_MACH_MT6833) += pbm_v4/
 obj-$(CONFIG_MACH_MT6765) += pbm_v4/
@@ -181,8 +177,6 @@ obj-$(CONFIG_MACH_MT6873) += cm_mgr_v1/
 obj-$(CONFIG_MACH_MT6785) += cm_mgr_v1/
 obj-$(CONFIG_MACH_MT6885) += cm_mgr_v1/
 obj-$(CONFIG_MACH_MT6893) += cm_mgr_v1/
-obj-$(CONFIG_MACH_MT6771) += cm_mgr_v1/
 endif
 obj-$(CONFIG_MTK_QOS_FRAMEWORK) += qos/
 obj-$(CONFIG_MACH_MT6893) += dvfsrc/
-obj-$(CONFIG_MACH_MT6885) += dvfsrc/
