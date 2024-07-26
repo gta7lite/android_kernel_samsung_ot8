@@ -55,6 +55,30 @@ enum DDP_IRQ_BIT {
 /* path handle */
 #define disp_path_handle void *
 
+struct DPMGR_WQ_HANDLE {
+	unsigned int init;
+	enum DISP_PATH_EVENT event;
+	wait_queue_head_t wq;
+	unsigned long long data;
+};
+
+struct DDP_IRQ_EVENT_MAPPING {
+	enum DDP_IRQ_BIT irq_bit;
+};
+
+struct ddp_path_handle {
+	struct cmdqRecStruct *cmdqhandle;
+	int hwmutexid;
+	int power_state;
+	enum DDP_MODE mode;
+	struct mutex mutex_lock;
+	struct DDP_IRQ_EVENT_MAPPING irq_event_map[DISP_PATH_EVENT_NUM];
+	struct DPMGR_WQ_HANDLE wq_list[DISP_PATH_EVENT_NUM];
+	enum DDP_SCENARIO_ENUM scenario;
+	enum DISP_MODULE_ENUM mem_module;
+	struct disp_ddp_path_config last_config;
+};
+
 /**
  * Init ddp manager, now only register irq handler to ddp_irq.c
  * return 0 if ok or -1 if fail.
@@ -446,5 +470,4 @@ int dpmgr_path_dsi_power_off(disp_path_handle dp_handle, void *cmdqhandle);
 
 /* turn on dsi */
 int dpmgr_path_dsi_power_on(disp_path_handle dp_handle, void *cmdqhandle);
-bool dpmgr_is_power_on(void);
 #endif

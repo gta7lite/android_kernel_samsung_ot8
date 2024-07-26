@@ -435,6 +435,10 @@ static void mtkfb_ion_cache_flush(struct ion_client *client,
 		return;
 
 	va = ion_map_kernel(client, handle);
+	if (!va || IS_ERR(va)) {
+		pr_info("[%s]:ion_map_kernel failed!\n", __func__);
+		return;
+	}
 	sys_data.sys_cmd = ION_SYS_CACHE_SYNC;
 	sys_data.cache_sync_param.kernel_handle = handle;
 	sys_data.cache_sync_param.va = va;

@@ -860,7 +860,7 @@ int dprec_logger_get_result_string(enum DPREC_LOGGER_ENUM source,
 int dprec_logger_get_result_string_all(char *stringbuf, int strlen)
 {
 	int n = 0;
-	unsigned int i = 0;
+	int i = 0;
 
 	n += scnprintf(stringbuf + n, strlen - n,
 		       "|**** Display Driver Statistic Information Dump ****\n");
@@ -1196,6 +1196,11 @@ void init_log_buffer(void)
 	int i, buf_size, buf_idx;
 	char *temp_buf;
 
+	if (is_buffer_init) {
+		pr_info("[DISP]%s already initialized\n", __func__);
+		return;
+	}
+
 	/*1. Allocate debug buffer. This buffer used to store the output data.*/
 	debug_buffer = kzalloc(sizeof(char) * DEBUG_BUFFER_SIZE, GFP_KERNEL);
 	if (!debug_buffer)
@@ -1282,6 +1287,10 @@ void get_disp_fence_buffer(unsigned long *addr, unsigned long *size,
 void get_disp_dbg_buffer(unsigned long *addr, unsigned long *size,
 	unsigned long *start)
 {
+	if (!is_buffer_init) {
+		init_log_buffer();
+	}
+
 	if (is_buffer_init) {
 		*addr = (unsigned long)err_buffer[0];
 		*size = (DEBUG_BUFFER_SIZE - 4096);

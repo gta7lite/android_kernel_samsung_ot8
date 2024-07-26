@@ -144,6 +144,9 @@ int disp_pwm_get_cust_led(unsigned int *clocksource, unsigned int *clockdiv)
 	int led_mode;
 	int pwm_config[5] = { 0 };
 
+	if (pled_dtsi)
+		return ret;
+
 	led_node = of_find_compatible_node(NULL, NULL,
 		"mediatek,lcd-backlight");
 	if (!led_node) {
@@ -973,9 +976,7 @@ static void disp_pwm_dump(void)
 
 void disp_pwm_test(const char *cmd, char *debug_output)
 {
-	unsigned long offset = 0;
-	unsigned long value = 0;
-	unsigned long mask = 0;
+	unsigned long offset, value, mask;
 
 	const unsigned long reg_base = pwm_get_reg_base(DISP_PWM0);
 

@@ -34,30 +34,6 @@
 static int ddp_manager_init;
 #define DDP_MAX_MANAGER_HANDLE (DISP_MUTEX_DDP_COUNT+DISP_MUTEX_DDP_FIRST)
 
-struct DPMGR_WQ_HANDLE {
-	unsigned int init;
-	enum DISP_PATH_EVENT event;
-	wait_queue_head_t wq;
-	unsigned long long data;
-};
-
-struct DDP_IRQ_EVENT_MAPPING {
-	enum DDP_IRQ_BIT irq_bit;
-};
-
-struct ddp_path_handle {
-	struct cmdqRecStruct *cmdqhandle;
-	int hwmutexid;
-	int power_state;
-	enum DDP_MODE mode;
-	struct mutex mutex_lock;
-	struct DDP_IRQ_EVENT_MAPPING irq_event_map[DISP_PATH_EVENT_NUM];
-	struct DPMGR_WQ_HANDLE wq_list[DISP_PATH_EVENT_NUM];
-	enum DDP_SCENARIO_ENUM scenario;
-	enum DISP_MODULE_ENUM mem_module;
-	struct disp_ddp_path_config last_config;
-};
-
 struct DDP_MANAGER_CONTEXT {
 	int handle_cnt;
 	int mutex_idx;
@@ -364,7 +340,7 @@ static int acquire_mutex(enum DDP_SCENARIO_ENUM scenario)
 		++mutex_id;
 	}
 	ASSERT(mutex_id < (DISP_MUTEX_DDP_FIRST + DISP_MUTEX_DDP_COUNT));
-	DDPDBG("scenario %s acquire mutex %d, left mutex 0x%x!\n",
+	DDPMSG("scenario %s acquire mutex %d, left mutex 0x%x!\n",
 		ddp_get_scenario_name(scenario), mutex_id,
 		ctx->mutex_idx);
 	return mutex_id;
@@ -1786,13 +1762,6 @@ int dpmgr_check_status_by_scenario(enum DDP_SCENARIO_ENUM scenario)
 	return 0;
 }
 
-bool dpmgr_is_power_on(void)
-{
-	struct DDP_MANAGER_CONTEXT *context = _get_context();
-
-	return context->power_state;
-}
-
 int dpmgr_check_status(disp_path_handle dp_handle)
 {
 	int i = 0;
@@ -2041,6 +2010,8 @@ int dpmgr_init(void)
 	ddp_debug_init();
 	disp_init_irq();
 	disp_register_irq_callback(dpmgr_irq_handler);
+	/* init dpmgr context */
+	_get_context();
 	return 0;
 }
 

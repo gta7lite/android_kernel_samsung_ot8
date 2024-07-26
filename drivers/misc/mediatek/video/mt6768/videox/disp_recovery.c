@@ -22,6 +22,9 @@
 #ifdef CONFIG_MTK_M4U
 #include "m4u.h"
 #endif
+/*hs14 code for AL6528A-213 by hehaoran5 at 20221002 start*/
+#include <linux/fb.h>
+/*hs14 code for AL6528A-213 by hehaoran5 at 20221002 end*/
 #include "disp_drv_platform.h"
 #include "debug.h"
 #include "ddp_debug.h"
@@ -224,7 +227,13 @@ int _esd_check_config_handle_vdo(struct cmdqRecStruct *qhandle)
 
 	/* 6.flush instruction */
 	dprec_logger_start(DPREC_LOGGER_ESD_CMDQ, 0, 0);
+	cmdq_mbox_set_thread_timeout(
+		cmdq_helper_mbox_client((u32)qhandle->thread)->chan, 300);
 	ret = cmdqRecFlush(qhandle);
+	cmdq_mbox_set_thread_timeout(
+		cmdq_helper_mbox_client((u32)qhandle->thread)->chan,
+		CMDQ_TIMEOUT_DEFAULT);
+
 	dprec_logger_done(DPREC_LOGGER_ESD_CMDQ, 0, 0);
 	DISPINFO("[ESD]%s ret=%d\n", __func__, ret);
 	primary_display_manual_unlock();
@@ -638,7 +647,11 @@ static int primary_display_check_recovery_worker_kthread(void *data)
 	int i = 0;
 	int esd_try_cnt = 5; /* 20; */
 	int recovery_done = 0;
-
+/*hs14 code for AL6528ADEU-721 by duanyaoming at 20221013 start*/
+#ifdef CONFIG_HQ_PROJECT_O22
+	char *lcm_cmdline = saved_command_line;
+#endif
+/*hs14 code for AL6528ADEU-721 by duanyaoming at 20221013 end*/
 	sched_setscheduler(current, SCHED_RR, &param);
 
 	while (1) {
@@ -674,12 +687,28 @@ static int primary_display_check_recovery_worker_kthread(void *data)
 			ret = primary_display_esd_check();
 			if (!ret) /* success */
 				break;
-
-			DISPERR(
-				"[ESD]esd check fail, will do esd recovery. try=%d\n",
-				i);
+/*hs14 code for AL6528ADEU-721 by duanyaoming at 20221013 start*/
+#ifdef CONFIG_HQ_PROJECT_O22
+			if (NULL != strstr(lcm_cmdline, "lcd_jd9522t_xx_boe_mipi_fhd_video")) {
+				if (((i%2) == 0) && (i > 0)) {
+					DISPERR(
+						"[ESD]jd9522t esd check fail, will do esd recovery. try=%d\n",
+						i);
+					primary_display_esd_recovery();
+					recovery_done = 1;
+				}
+			} else {
+				DISPERR("[ESD]esd check fail, will do esd recovery. try=%d\n",i);
+				primary_display_esd_recovery();
+				recovery_done = 1;
+			}
+#else
+			DISPERR("[ESD]esd check fail, will do esd recovery. try=%d\n",i);
 			primary_display_esd_recovery();
 			recovery_done = 1;
+#endif
+/*hs14 code for AL6528ADEU-721 by duanyaoming at 20221013 end*/
+
 		} while (++i < esd_try_cnt);
 
 		if (ret == 1) {
@@ -701,7 +730,27 @@ static int primary_display_check_recovery_worker_kthread(void *data)
 	}
 	return 0;
 }
+/*hs14 code for AL6528A-213 by hehaoran5 at 20221002 start*/
+static RAW_NOTIFIER_HEAD(esd_tp_recovery_chain);
 
+int register_esd_tp_recovery_notifier(struct notifier_block *nb)
+{
+    return raw_notifier_chain_register(&esd_tp_recovery_chain,nb);
+}
+EXPORT_SYMBOL(register_esd_tp_recovery_notifier);
+
+int unregister_esd_tp_recovery_notifier(struct notifier_block *nb)
+{
+    return raw_notifier_chain_unregister(&esd_tp_recovery_chain,nb);
+}
+EXPORT_SYMBOL(unregister_esd_tp_recovery_notifier);
+
+int esd_tp_recovery_notifier_call_chain(unsigned long val,void *v)
+{
+    return raw_notifier_call_chain(&esd_tp_recovery_chain,val,v);
+}
+EXPORT_SYMBOL(esd_tp_recovery_notifier_call_chain);
+/*hs14 code for AL6528A-213 by hehaoran5 at 20221002 end*/
 /* ESD RECOVERY */
 int primary_display_esd_recovery(void)
 {
@@ -730,8 +779,10 @@ int primary_display_esd_recovery(void)
 		mmprofile_log_ex(mmp_r, MMPROFILE_FLAG_PULSE, 0, 2);
 
 	}
+
 	/* blocking flush before stop trigger loop */
-	_blocking_flush();
+	if (bdg_is_bdg_connected() != 1)
+		_blocking_flush();
 
 	mmprofile_log_ex(mmp_r, MMPROFILE_FLAG_PULSE, 0, 3);
 
@@ -761,6 +812,13 @@ int primary_display_esd_recovery(void)
 	mmprofile_log_ex(mmp_r, MMPROFILE_FLAG_PULSE, 0, 6);
 
 	DISPDBG("[POWER]lcm suspend[begin]\n");
+/*hs14 code for AL6528A-213 by hehaoran5 at 20221002 start*/
+#ifdef CONFIG_HQ_PROJECT_O22
+	esd_tp_recovery_notifier_call_chain(FB_BLANK_POWERDOWN,NULL);
+#else
+
+#endif
+/*hs14 code for AL6528A-213 by hehaoran5 at 20221002 end*/
 	/*after dsi_stop, we should enable the dsi basic irq.*/
 	dsi_basic_irq_enable(DISP_MODULE_DSI0, NULL);
 	disp_lcm_suspend(primary_get_lcm());
@@ -806,6 +864,13 @@ int primary_display_esd_recovery(void)
 	}
 	DISPDBG("[ESD]lcm recover[begin]\n");
 	disp_lcm_esd_recover(primary_get_lcm());
+/*hs14 code for AL6528A-213 by hehaoran5 at 20221002 start*/
+#ifdef CONFIG_HQ_PROJECT_O22
+	esd_tp_recovery_notifier_call_chain(FB_BLANK_UNBLANK,NULL);
+#else
+
+#endif
+/*hs14 code for AL6528A-213 by hehaoran5 at 20221002 end*/
 	DISPCHECK("[ESD]lcm recover[end]\n");
 	mmprofile_log_ex(mmp_r, MMPROFILE_FLAG_PULSE, 0, 8);
 	if (bdg_is_bdg_connected() == 1 && get_mt6382_init()) {

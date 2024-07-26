@@ -719,7 +719,7 @@ ovl_layer_config(enum DISP_MODULE_ENUM module, unsigned int phy_layer,
 			 * cmdq sec driver will help to convert handle to
 			 * correct address
 			 */
-			enum TRUSTED_MEM_REQ_TYPE mem_type = -1;
+			enum TRUSTED_MEM_REQ_TYPE mem_type;
 			int sec = -1, sec_id = -1;
 			ion_phys_addr_t sec_hdl = 0;
 
@@ -730,7 +730,7 @@ ovl_layer_config(enum DISP_MODULE_ENUM module, unsigned int phy_layer,
 			}
 
 			mem_type = ion_hdl2sec_type(cfg->hnd, &sec, &sec_id, &sec_hdl);
-			if (mem_type == -1) {
+			if (unlikely(mem_type < 0)) {
 				DISP_LOG_E("normal memory set as secure, L%u/idx%u\n",
 					   cfg->layer, cfg->buff_idx);
 				return 0;
@@ -1042,7 +1042,7 @@ static int ovl_layer_config_compress(enum DISP_MODULE_ENUM module,
 			 * cmdq sec driver will help to convert handle to
 			 * correct address
 			 */
-			enum TRUSTED_MEM_REQ_TYPE mem_type = -1;
+			enum TRUSTED_MEM_REQ_TYPE mem_type;
 			int sec = -1, sec_id = -1;
 			ion_phys_addr_t sec_hdl = 0;
 
@@ -1053,7 +1053,7 @@ static int ovl_layer_config_compress(enum DISP_MODULE_ENUM module,
 			}
 
 			mem_type = ion_hdl2sec_type(cfg->hnd, &sec, &sec_id, &sec_hdl);
-			if (mem_type == -1) {
+			if (unlikely(mem_type < 0)) {
 				DISP_LOG_E("normal memory set as secure, L%u/idx%u\n",
 					   cfg->layer, cfg->buff_idx);
 				return 0;

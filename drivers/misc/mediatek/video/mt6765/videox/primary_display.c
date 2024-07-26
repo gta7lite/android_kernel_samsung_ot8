@@ -91,6 +91,7 @@
 #ifdef MTK_FB_MMDVFS_SUPPORT
 #include <linux/soc/mediatek/mtk-pm-qos.h>
 #endif
+#include "mtk_notify.h"
 
 #define MMSYS_CLK_LOW (0)
 #define MMSYS_CLK_HIGH (1)
@@ -100,6 +101,10 @@
 #define _DEBUG_DITHER_HANG_
 
 #define FRM_UPDATE_SEQ_CACHE_NUM (DISP_INTERNAL_BUFFER_COUNT+1)
+
+/* HS03S code for SR-AL5625-01-313 by gaozhengwei at 2021/04/25 start */
+bool g_system_is_shutdown = 0;
+/* HS03S code for SR-AL5625-01-313 by gaozhengwei at 2021/04/25 end */
 
 static struct disp_internal_buffer_info
 	*decouple_buffer_info[DISP_INTERNAL_BUFFER_COUNT];
@@ -179,6 +184,8 @@ wait_queue_head_t primary_display_present_fence_wq;
 atomic_t primary_display_pt_fence_update_event = ATOMIC_INIT(0);
 static unsigned int _need_lfr_check(void);
 struct Layer_draw_info *draw;
+struct mtk_uevent_dev uevent_data;
+EXPORT_SYMBOL(uevent_data);
 
 #ifdef CONFIG_MTK_DISPLAY_120HZ_SUPPORT
 static int od_need_start;
@@ -4182,6 +4189,9 @@ int primary_display_init(char *lcm_name, unsigned int lcm_fps,
 	ret = switch_dev_register(&disp_switch_data);
 #endif
 
+	uevent_data.name = "lcm_disconnect";
+	uevent_dev_register(&uevent_data);
+
 	DISPCHECK("primary_display_init done\n");
 
 done:
@@ -4639,6 +4649,8 @@ int suspend_to_full_roi(void)
 	return ret;
 }
 
+extern int mtk_tpd_smart_wakeup_support(void);
+
 int primary_display_suspend(void)
 {
 	enum DISP_STATUS ret = DISP_STATUS_OK;
@@ -4650,6 +4662,10 @@ int primary_display_suspend(void)
 #endif
 #endif
 
+#if defined(CONFIG_MTK_VSYNC_PRINT)
+	disp_unregister_irq_callback(vsync_print_handler);
+	pr_info("%s: vsync_print\n", __func__);
+#endif
 	DISPCHECK("primary_display_suspend begin\n");
 	mmprofile_log_ex(ddp_mmp_get_events()->primary_suspend,
 		MMPROFILE_FLAG_START, 0, 0);
@@ -4793,6 +4809,13 @@ int primary_display_suspend(void)
 	dpmgr_path_power_off(pgc->dpmgr_handle, CMDQ_DISABLE);
 	if (disp_helper_get_option(DISP_OPT_MET_LOG))
 		set_enterulps(1);
+	/* HS03S code for SR-AL5625-01-313 by gaozhengwei at 2021/04/25 start */
+	if ((!mtk_tpd_smart_wakeup_support()) || g_system_is_shutdown) {
+	/* HS03S code for SR-AL5625-01-313 by gaozhengwei at 2021/04/25 end */
+		if (pgc->plcm->drv)
+			if (pgc->plcm->drv->suspend_power)
+				pgc->plcm->drv->suspend_power();
+	}
 
 #ifdef MTK_FB_MMDVFS_SUPPORT
 	mmprofile_log_ex(ddp_mmp_get_events()->primary_pm_qos,
@@ -4842,6 +4865,18 @@ done:
 #endif
 	return ret;
 }
+
+/* HS03S code added for SR-AL5625-01-506 by gaozhengwei at 20210526 start */
+#ifndef CONFIG_HQ_SET_LCD_BIAS
+EXPORT_SYMBOL(primary_display_suspend);
+
+void primary_display_shutdown_set_power_mode(void)
+{
+	primary_display_set_power_mode(FB_SUSPEND);
+}
+EXPORT_SYMBOL(primary_display_shutdown_set_power_mode);
+#endif
+/* HS03S code added for SR-AL5625-01-506 by gaozhengwei at 20210526 end */
 
 int primary_display_get_lcm_index(void)
 {
@@ -4953,7 +4988,25 @@ int primary_display_resume(void)
 		DISPMSG("%s,g_force_cfg=%d,g_force_cfg_id=%d\n",
 			__func__, g_force_cfg, g_force_cfg_id);
 #endif
-
+/*hs04 code for DEAL6398A-1875 by zhawei at 20221017 start */
+#ifdef CONFIG_HQ_PROJECT_OT8
+	if (!mtk_tpd_smart_wakeup_support()) {
+		if (pgc->plcm->drv) {
+			if (pgc->plcm->drv->resume_power) {
+				pgc->plcm->drv->resume_power();
+			}
+		}
+	}
+#else
+	if (gpio_get_value(lcm_bias_state) == 0) {
+		if (pgc->plcm->drv) {
+			if (pgc->plcm->drv->resume_power) {
+				pgc->plcm->drv->resume_power();
+			}
+		}
+	}
+#endif
+/*hs04 code for DEAL6398A-1875 by zhawei at 20221017 end */
 	DISPDBG("dpmanager path power on[begin]\n");
 	dpmgr_path_power_on(pgc->dpmgr_handle, CMDQ_DISABLE);
 
@@ -5278,6 +5331,10 @@ done:
 	_primary_path_unlock(__func__);
 	DISPMSG("skip_update:%d\n", skip_update);
 
+#if defined(CONFIG_MTK_VSYNC_PRINT)
+	disp_register_irq_callback(vsync_print_handler);
+	pr_info("%s: vsync_print\n", __func__);
+#endif
 	mmprofile_log_ex(ddp_mmp_get_events()->primary_resume,
 		MMPROFILE_FLAG_END, 0, 0);
 	ddp_clk_check();

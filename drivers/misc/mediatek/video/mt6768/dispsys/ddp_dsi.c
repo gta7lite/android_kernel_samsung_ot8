@@ -187,8 +187,8 @@ unsigned long DSI_PHY_REG[DSI_INTERFACE_NUM];
 struct DSI_CMDQ_REGS *DSI_CMDQ_REG[DSI_INTERFACE_NUM];
 struct DSI_VM_CMDQ_REGS *DSI_VM_CMD_REG[DSI_INTERFACE_NUM];
 
-static int def_data_rate;
-static int def_dsi_hbp;
+int def_data_rate;
+int def_dsi_hbp;
 static int dsi_currect_mode;
 static int dsi_force_config;
 static int dsi0_te_enable = 1;
@@ -845,7 +845,7 @@ enum DSI_STATUS DSI_BIST_Pattern_Test(enum DISP_MODULE_ENUM module,
 static void DSI_send_cmd_cmd(struct cmdqRecStruct *cmdq,
 		enum DISP_MODULE_ENUM module,
 		bool hs, unsigned char data_id,
-		unsigned int cmd, unsigned char count,
+		unsigned int cmd, unsigned int count,
 		unsigned char *para_list,
 		unsigned char force_update);
 int ddp_dsi_set_bdg_porch_setting(enum DISP_MODULE_ENUM module, void *handle,
@@ -1580,6 +1580,283 @@ static int _dsi_get_pcw(int data_rate, int pcw_ratio)
 	return tmp;
 }
 
+#define NS_TO_CYCLE(n, c)	((n) / (c))
+#define NS_TO_CYCLE_MOD(n, c)	(((n) % (c)) ? 1 : 0)
+void DSI_PHY_TIMCONFIG(enum DISP_MODULE_ENUM module,
+	struct cmdqRecStruct *cmdq, struct LCM_DSI_PARAMS *dsi_params)
+{
+	struct DSI_PHY_TIMCON0_REG timcon0;
+	struct DSI_PHY_TIMCON1_REG timcon1;
+	struct DSI_PHY_TIMCON2_REG timcon2;
+	struct DSI_PHY_TIMCON3_REG timcon3;
+	int i = 0;
+	unsigned int lane_no;
+	unsigned int cycle_time = 0;
+	unsigned int ui = 0;
+	unsigned int hs_trail;
+	unsigned int hs_trail_m, hs_trail_n;
+	unsigned char timcon_temp;
+
+	DISPFUNC();
+
+#ifdef CONFIG_FPGA_EARLY_PORTING
+	/* sync from cmm */
+	for (i = DSI_MODULE_BEGIN(module); i <= DSI_MODULE_END(module); i++) {
+		DSI_OUTREG32(cmdq, &DSI_REG[i]->DSI_PHY_TIMECON0, 0x02000102);
+		DSI_OUTREG32(cmdq, &DSI_REG[i]->DSI_PHY_TIMECON1, 0x010a0308);
+		DSI_OUTREG32(cmdq, &DSI_REG[i]->DSI_PHY_TIMECON2, 0x02000100);
+		DSI_OUTREG32(cmdq, &DSI_REG[i]->DSI_PHY_TIMECON3, 0x00010701);
+
+		DISPCHECK("%s, 0x%08x,0x%08x,0x%08x,0x%08x\n", __func__,
+			  INREG32(&DSI_REG[i]->DSI_PHY_TIMECON0),
+			  INREG32(&DSI_REG[i]->DSI_PHY_TIMECON1),
+			  INREG32(&DSI_REG[i]->DSI_PHY_TIMECON2),
+			  INREG32(&DSI_REG[i]->DSI_PHY_TIMECON3));
+	}
+	return;
+#endif
+
+	lane_no = dsi_params->LANE_NUM;
+	if (dsi_params->data_rate != 0) {
+		ui = 1000 / dsi_params->data_rate + 0x01;
+		cycle_time = 8000 / dsi_params->data_rate + 0x01;
+	} else if (dsi_params->PLL_CLOCK) {
+		ui = 1000 / (dsi_params->PLL_CLOCK * 2) + 0x01;
+		cycle_time = 8000 / (dsi_params->PLL_CLOCK * 2) + 0x01;
+	} else {
+		DISPINFO("[dsi_dsi.c] PLL clock should not be 0!\n");
+		ASSERT(0);
+	}
+
+	if (bdg_is_bdg_connected() == 1) {
+		ui = ui - 0x01;
+		cycle_time = cycle_time - 0x01;
+	}
+
+	DISPINFO("Cycle Time=%d, interval=%d, lane#=%d\n",
+		__func__, cycle_time, ui, lane_no);
+
+	if (bdg_is_bdg_connected() == 1) {
+		/* lpx >= 50ns (spec) */
+		/* lpx = 60ns */
+		timcon0.LPX = NS_TO_CYCLE(60, cycle_time) + NS_TO_CYCLE_MOD(60, cycle_time);
+		if (timcon0.LPX < 2)
+			timcon0.LPX = 2;
+
+		/* hs_prep = 40ns+4*UI ~ 85ns+6*UI (spec) */
+		/* hs_prep = 64ns+5*UI */
+		timcon0.HS_PRPR = NS_TO_CYCLE((64 + 5 * ui), cycle_time) +
+			+ NS_TO_CYCLE_MOD((64 + 5 * ui), cycle_time) + 1;
+
+		/* hs_zero = (200+10*UI) - hs_prep */
+		timcon0.HS_ZERO = NS_TO_CYCLE((200 + 10 * ui), cycle_time) +
+				NS_TO_CYCLE_MOD((200 + 10 * ui), cycle_time);
+		timcon0.HS_ZERO = timcon0.HS_ZERO > timcon0.HS_PRPR ?
+				timcon0.HS_ZERO - timcon0.HS_PRPR : timcon0.HS_ZERO;
+		if (timcon0.HS_ZERO < 1)
+			timcon0.HS_ZERO = 1;
+
+		/* hs_trail > max(8*UI, 60ns+4*UI) (spec) */
+		/* hs_trail = 80ns+4*UI */
+		hs_trail = 80 + 4 * ui;
+		timcon0.HS_TRAIL = (hs_trail > cycle_time) ?
+				(NS_TO_CYCLE(hs_trail, cycle_time) +
+				NS_TO_CYCLE_MOD(hs_trail, cycle_time) + 1) : 2;
+
+		/* hs_exit > 100ns (spec) */
+		/* hs_exit = 120ns */
+		/* timcon1.DA_HS_EXIT = NS_TO_CYCLE(120, cycle_time); */
+		/* hs_exit = 2*lpx */
+		timcon1.DA_HS_EXIT = 2 * timcon0.LPX;
+
+		/* ta_go = 4*lpx (spec) */
+		timcon1.TA_GO = 4 * timcon0.LPX;
+
+		/* ta_get = 5*lpx (spec) */
+		timcon1.TA_GET = 5 * timcon0.LPX;
+
+		/* ta_sure = lpx ~ 2*lpx (spec) */
+		timcon1.TA_SURE = 3 * timcon0.LPX / 2;
+
+		/* clk_hs_prep = 38ns ~ 95ns (spec) */
+		/* clk_hs_prep = 80ns */
+		timcon3.CLK_HS_PRPR = NS_TO_CYCLE(80, cycle_time) +
+					NS_TO_CYCLE_MOD(80, cycle_time);
+
+		/* clk_zero + clk_hs_prep > 300ns (spec) */
+		/* clk_zero = 400ns - clk_hs_prep */
+		timcon2.CLK_ZERO = NS_TO_CYCLE(400, cycle_time) +
+					NS_TO_CYCLE_MOD(400, cycle_time) -
+					timcon3.CLK_HS_PRPR;
+		if (timcon2.CLK_ZERO < 1)
+			timcon2.CLK_ZERO = 1;
+
+		/* clk_trail > 60ns (spec) */
+		/* clk_trail = 100ns */
+		timcon2.CLK_TRAIL = NS_TO_CYCLE(100, cycle_time) + 1;
+		if (timcon2.CLK_TRAIL < 2)
+			timcon2.CLK_TRAIL = 2;
+		timcon2.CONT_DET = 0;
+
+		/* clk_exit > 100ns (spec) */
+		/* clk_exit = 200ns */
+		/* timcon3.CLK_EXIT = NS_TO_CYCLE(200, cycle_time); */
+		/* clk_exit = 2*lpx */
+		timcon3.CLK_HS_EXIT = 2 * timcon0.LPX;
+
+		/* clk_post > 60ns+52*UI (spec) */
+		/* clk_post = 96ns+52*UI */
+		timcon3.CLK_HS_POST = NS_TO_CYCLE((96 + 52 * ui), cycle_time) +
+					NS_TO_CYCLE_MOD((96 + 52 * ui), cycle_time);
+	} else {
+		hs_trail_m = 1;
+		hs_trail_n = (dsi_params->HS_TRAIL == 0) ?
+			(NS_TO_CYCLE(((hs_trail_m * 0x4 * ui) + 0x50)
+			* dsi_params->PLL_CLOCK * 2, 0x1F40) + 0x1) :
+			dsi_params->HS_TRAIL;
+		/* +3 is recommended from designer becauase of HW latency */
+		timcon0.HS_TRAIL = (hs_trail_m > hs_trail_n) ? hs_trail_m : hs_trail_n;
+
+		timcon0.HS_PRPR = (dsi_params->HS_PRPR == 0) ?
+			(NS_TO_CYCLE((0x40 + 0x5 * ui), cycle_time) + 0x1) :
+			dsi_params->HS_PRPR;
+		/* HS_PRPR can't be 1. */
+		if (timcon0.HS_PRPR < 1)
+			timcon0.HS_PRPR = 1;
+
+		timcon0.HS_ZERO = (dsi_params->HS_ZERO == 0) ?
+					NS_TO_CYCLE((0xC8 + 0x0a * ui), cycle_time) :
+					dsi_params->HS_ZERO;
+		timcon_temp = timcon0.HS_PRPR;
+		if (timcon_temp < timcon0.HS_ZERO)
+			timcon0.HS_ZERO -= timcon0.HS_PRPR;
+
+		timcon0.LPX = (dsi_params->LPX == 0) ?
+			(NS_TO_CYCLE(dsi_params->PLL_CLOCK * 2 * 0x4B, 0x1F40)	+ 0x1) :
+			dsi_params->LPX;
+		if (timcon0.LPX < 1)
+			timcon0.LPX = 1;
+
+		timcon1.TA_GET = (dsi_params->TA_GET == 0) ?  (0x5 * timcon0.LPX) :
+								dsi_params->TA_GET;
+		timcon1.TA_SURE = (dsi_params->TA_SURE == 0) ?
+			(0x3 * timcon0.LPX / 0x2) : dsi_params->TA_SURE;
+		timcon1.TA_GO = (dsi_params->TA_GO == 0) ?  (0x4 * timcon0.LPX) :
+								dsi_params->TA_GO;
+		/* --------------------------------------------------------------
+		 * NT35510 need fine tune timing
+		 * Data_hs_exit = 60 ns + 128UI
+		 * Clk_post = 60 ns + 128 UI.
+		 * --------------------------------------------------------------
+		 */
+		timcon1.DA_HS_EXIT = (dsi_params->DA_HS_EXIT == 0) ?
+			(0x2 * timcon0.LPX) : dsi_params->DA_HS_EXIT;
+
+		timcon2.CLK_TRAIL = ((dsi_params->CLK_TRAIL == 0) ?
+			NS_TO_CYCLE(0x64 * dsi_params->PLL_CLOCK * 2,
+			0x1F40) : dsi_params->CLK_TRAIL) + 0x01;
+		/* CLK_TRAIL can't be 1. */
+		if (timcon2.CLK_TRAIL < 2)
+			timcon2.CLK_TRAIL = 2;
+
+		timcon2.CONT_DET = dsi_params->CONT_DET;
+		timcon2.CLK_ZERO = (dsi_params->CLK_ZERO == 0) ?
+			NS_TO_CYCLE(0x190, cycle_time) :
+			dsi_params->CLK_ZERO;
+
+		timcon3.CLK_HS_PRPR = (dsi_params->CLK_HS_PRPR == 0) ?
+			NS_TO_CYCLE(0x50 * dsi_params->PLL_CLOCK * 2,
+			0x1F40) : dsi_params->CLK_HS_PRPR;
+
+		if (timcon3.CLK_HS_PRPR < 1)
+			timcon3.CLK_HS_PRPR = 1;
+
+		timcon3.CLK_HS_EXIT = (dsi_params->CLK_HS_EXIT == 0) ?
+			(0x2 * timcon0.LPX) : dsi_params->CLK_HS_EXIT;
+		timcon3.CLK_HS_POST = (dsi_params->CLK_HS_POST == 0) ?
+			NS_TO_CYCLE((0x60 + 0x34 * ui), cycle_time) :
+			dsi_params->CLK_HS_POST;
+	}
+
+	if (bdg_is_bdg_connected() == 1)
+		data_phy_cycle = (timcon1.DA_HS_EXIT + 1) + timcon0.LPX +
+					timcon0.HS_PRPR + timcon0.HS_ZERO + 1;
+
+	DISP_LOG_PRINT(ANDROID_LOG_INFO, "DSI",
+			"[DISP] - kernel - %s, HS_TRAIL = %d, HS_ZERO = %d, HS_PRPR = %d, LPX = %d, TA_GET = %d, TA_SURE = %d, TA_GO = %d, CLK_TRAIL = %d, CLK_ZERO = %d, CLK_HS_PRPR = %d\n",
+			__func__, timcon0.HS_TRAIL, timcon0.HS_ZERO,
+			timcon0.HS_PRPR, timcon0.LPX,
+			timcon1.TA_GET, timcon1.TA_SURE,
+			timcon1.TA_GO, timcon2.CLK_TRAIL,
+			timcon2.CLK_ZERO, timcon3.CLK_HS_PRPR);
+
+	for (i = DSI_MODULE_BEGIN(module); i <= DSI_MODULE_END(module); i++) {
+		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON0_REG,
+			DSI_REG[i]->DSI_PHY_TIMECON0, LPX,
+			timcon0.LPX);
+		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON0_REG,
+			DSI_REG[i]->DSI_PHY_TIMECON0, HS_PRPR,
+			timcon0.HS_PRPR);
+		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON0_REG,
+			DSI_REG[i]->DSI_PHY_TIMECON0, HS_ZERO,
+			timcon0.HS_ZERO);
+		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON0_REG,
+			DSI_REG[i]->DSI_PHY_TIMECON0, HS_TRAIL,
+			timcon0.HS_TRAIL);
+
+		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON1_REG,
+			DSI_REG[i]->DSI_PHY_TIMECON1, TA_GO,
+			timcon1.TA_GO);
+		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON1_REG,
+			DSI_REG[i]->DSI_PHY_TIMECON1, TA_SURE,
+			timcon1.TA_SURE);
+		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON1_REG,
+			DSI_REG[i]->DSI_PHY_TIMECON1, TA_GET,
+			timcon1.TA_GET);
+		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON1_REG,
+			DSI_REG[i]->DSI_PHY_TIMECON1, DA_HS_EXIT,
+			timcon1.DA_HS_EXIT);
+
+		DSI_OUTREGBIT(cmdq, struct  DSI_PHY_TIMCON2_REG,
+			DSI_REG[i]->DSI_PHY_TIMECON2, CONT_DET,
+			timcon2.CONT_DET);
+		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON2_REG,
+			DSI_REG[i]->DSI_PHY_TIMECON2, CLK_ZERO,
+			timcon2.CLK_ZERO);
+		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON2_REG,
+			DSI_REG[i]->DSI_PHY_TIMECON2, CLK_TRAIL,
+			timcon2.CLK_TRAIL);
+
+		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON3_REG,
+			DSI_REG[i]->DSI_PHY_TIMECON3, CLK_HS_PRPR,
+			timcon3.CLK_HS_PRPR);
+		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON3_REG,
+			DSI_REG[i]->DSI_PHY_TIMECON3, CLK_HS_POST,
+			timcon3.CLK_HS_POST);
+		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON3_REG,
+			DSI_REG[i]->DSI_PHY_TIMECON3, CLK_HS_EXIT,
+			timcon3.CLK_HS_EXIT);
+		DISPINFO("%s, 0x%08x,0x%08x,0x%08x,0x%08x\n",
+			__func__,
+			INREG32(&DSI_REG[i]->DSI_PHY_TIMECON0),
+			INREG32(&DSI_REG[i]->DSI_PHY_TIMECON1),
+			INREG32(&DSI_REG[i]->DSI_PHY_TIMECON2),
+			INREG32(&DSI_REG[i]->DSI_PHY_TIMECON3));
+	}
+}
+
+int DSI_enable_checksum(enum DISP_MODULE_ENUM module,
+	struct cmdqRecStruct *cmdq)
+{
+	int i;
+
+	for (i = DSI_MODULE_BEGIN(module); i <= DSI_MODULE_END(module); i++) {
+		DSI_OUTREGBIT(cmdq, struct DSI_DEBUG_SEL_REG,
+			DSI_REG[i]->DSI_DEBUG_SEL, CHKSUM_REC_EN, 1);
+	}
+	return 0;
+}
+
 static void _DSI_PHY_clk_setting(enum DISP_MODULE_ENUM module,
 	struct cmdqRecStruct *cmdq, struct LCM_DSI_PARAMS *dsi_params)
 {
@@ -1946,6 +2223,8 @@ void DSI_MIPI_clk_change(enum DISP_MODULE_ENUM module, void *cmdq, int clk)
 int mipi_clk_change(int msg, int en)
 {
 	struct cmdqRecStruct *handle = NULL;
+	struct ddp_path_handle *path_handle;
+	struct LCM_PARAMS *lcm_params;
 	struct LCM_DSI_PARAMS *dsi_params =
 			&(_dsi_context[0].dsi_params);
 
@@ -1955,12 +2234,21 @@ int mipi_clk_change(int msg, int en)
 	if (dsi_params->mode == CMD_MODE)
 		primary_display_idlemgr_kick(__func__, 0);
 
+	path_handle = (struct ddp_path_handle *)primary_get_dpmgr_handle();
+	lcm_params = &path_handle->last_config.dispif_config;
 	if (en) {
 		if (!strcmp(mtkfb_lcm_name,
-		"nt35521_hd_dsi_vdo_truly_rt5081_drv")) {
-			def_data_rate = 460;
-			if (dsi_params->mode != CMD_MODE)
+			"ea8076g_fhdplus_dis_cmd_drv")) {
+			def_data_rate = 1160;
+			lcm_params->dsi.data_rate
+						= def_data_rate;
+			lcm_params->dsi.PLL_CLOCK
+						= def_data_rate / 2;
+			if (dsi_params->mode != CMD_MODE) {
 				def_dsi_hbp = 0xD2; /* adaptive HBP value */
+				lcm_params->dsi.horizontal_backporch
+						= def_dsi_hbp;
+			}
 		} else {
 			DISPERR("%s,lcm(%s) not support change mipi clock\n",
 				__func__, mtkfb_lcm_name);
@@ -1971,8 +2259,6 @@ int mipi_clk_change(int msg, int en)
 
 		/*TODO: for other lcm */
 	} else {
-		struct LCM_DSI_PARAMS *dsi_params =
-			&(_dsi_context[0].dsi_params);
 		unsigned int data_rate = dsi_params->data_rate != 0 ?
 			dsi_params->data_rate : dsi_params->PLL_CLOCK * 2;
 		unsigned int dsiTmpBufBpp;
@@ -2022,6 +2308,12 @@ int mipi_clk_change(int msg, int en)
 			}
 		} else
 			cmdqRecWaitNoClear(handle, CMDQ_SYNC_TOKEN_STREAM_EOF);
+		DSI_MIPI_clk_change(DISP_MODULE_DSI0, handle, def_data_rate);
+		if (dsi_params->mode == CMD_MODE) {
+			dsi_params->data_rate = def_data_rate;
+			DSI_PHY_TIMCONFIG(DISP_MODULE_DSI0, handle, dsi_params);
+		}
+
 		cmdqRecFlushAsync(handle);
 		cmdqRecDestroy(handle);
 	}
@@ -2128,281 +2420,6 @@ void DSI_PHY_clk_switch(enum DISP_MODULE_ENUM module,
 		/* mdelay(1); */
 	}
 }
-#define NS_TO_CYCLE(n, c)	((n) / (c))
-#define NS_TO_CYCLE_MOD(n, c)	(((n) % (c)) ? 1 : 0)
-void DSI_PHY_TIMCONFIG(enum DISP_MODULE_ENUM module,
-	struct cmdqRecStruct *cmdq, struct LCM_DSI_PARAMS *dsi_params)
-{
-	struct DSI_PHY_TIMCON0_REG timcon0;
-	struct DSI_PHY_TIMCON1_REG timcon1;
-	struct DSI_PHY_TIMCON2_REG timcon2;
-	struct DSI_PHY_TIMCON3_REG timcon3;
-	int i = 0;
-	unsigned int lane_no;
-	unsigned int cycle_time = 0;
-	unsigned int ui = 0;
-	unsigned int hs_trail;
-	unsigned int hs_trail_m, hs_trail_n;
-	unsigned char timcon_temp;
-	DISPFUNC();
-
-#ifdef CONFIG_FPGA_EARLY_PORTING
-	/* sync from cmm */
-	for (i = DSI_MODULE_BEGIN(module); i <= DSI_MODULE_END(module); i++) {
-		DSI_OUTREG32(cmdq, &DSI_REG[i]->DSI_PHY_TIMECON0, 0x02000102);
-		DSI_OUTREG32(cmdq, &DSI_REG[i]->DSI_PHY_TIMECON1, 0x010a0308);
-		DSI_OUTREG32(cmdq, &DSI_REG[i]->DSI_PHY_TIMECON2, 0x02000100);
-		DSI_OUTREG32(cmdq, &DSI_REG[i]->DSI_PHY_TIMECON3, 0x00010701);
-
-		DISPCHECK("%s, 0x%08x,0x%08x,0x%08x,0x%08x\n", __func__,
-			  INREG32(&DSI_REG[i]->DSI_PHY_TIMECON0),
-			  INREG32(&DSI_REG[i]->DSI_PHY_TIMECON1),
-			  INREG32(&DSI_REG[i]->DSI_PHY_TIMECON2),
-			  INREG32(&DSI_REG[i]->DSI_PHY_TIMECON3));
-	}
-	return;
-#endif
-
-	lane_no = dsi_params->LANE_NUM;
-	if (dsi_params->data_rate != 0) {
-		ui = 1000 / dsi_params->data_rate + 0x01;
-		cycle_time = 8000 / dsi_params->data_rate + 0x01;
-	} else if (dsi_params->PLL_CLOCK) {
-		ui = 1000 / (dsi_params->PLL_CLOCK * 2) + 0x01;
-		cycle_time = 8000 / (dsi_params->PLL_CLOCK * 2) + 0x01;
-	} else {
-		DISPINFO("[dsi_dsi.c] PLL clock should not be 0!\n");
-		ASSERT(0);
-	}
-
-	if (bdg_is_bdg_connected() == 1) {
-		ui = ui - 0x01;
-		cycle_time = cycle_time - 0x01;
-	}
-
-	DISPINFO("Cycle Time=%d, interval=%d, lane#=%d\n",
-		__func__, cycle_time, ui, lane_no);
-
-	if (bdg_is_bdg_connected() == 1) {
-		/* lpx >= 50ns (spec) */
-		/* lpx = 60ns */
-		timcon0.LPX = NS_TO_CYCLE(60, cycle_time) + NS_TO_CYCLE_MOD(60, cycle_time);
-		if (timcon0.LPX < 2)
-			timcon0.LPX = 2;
-
-		/* hs_prep = 40ns+4*UI ~ 85ns+6*UI (spec) */
-		/* hs_prep = 64ns+5*UI */
-		timcon0.HS_PRPR = NS_TO_CYCLE((64 + 5 * ui), cycle_time) +
-			+ NS_TO_CYCLE_MOD((64 + 5 * ui), cycle_time) + 1;
-
-		/* hs_zero = (200+10*UI) - hs_prep */
-		timcon0.HS_ZERO = NS_TO_CYCLE((200 + 10 * ui), cycle_time) +
-				NS_TO_CYCLE_MOD((200 + 10 * ui), cycle_time);
-		timcon0.HS_ZERO = timcon0.HS_ZERO > timcon0.HS_PRPR ?
-				timcon0.HS_ZERO - timcon0.HS_PRPR : timcon0.HS_ZERO;
-		if (timcon0.HS_ZERO < 1)
-			timcon0.HS_ZERO = 1;
-
-		/* hs_trail > max(8*UI, 60ns+4*UI) (spec) */
-		/* hs_trail = 80ns+4*UI */
-		hs_trail = 80 + 4 * ui;
-		timcon0.HS_TRAIL = (hs_trail > cycle_time) ?
-				(NS_TO_CYCLE(hs_trail, cycle_time) +
-				NS_TO_CYCLE_MOD(hs_trail, cycle_time) + 1) : 2;
-
-		/* hs_exit > 100ns (spec) */
-		/* hs_exit = 120ns */
-		/* timcon1.DA_HS_EXIT = NS_TO_CYCLE(120, cycle_time); */
-		/* hs_exit = 2*lpx */
-		timcon1.DA_HS_EXIT = 2 * timcon0.LPX;
-
-		/* ta_go = 4*lpx (spec) */
-		timcon1.TA_GO = 4 * timcon0.LPX;
-
-		/* ta_get = 5*lpx (spec) */
-		timcon1.TA_GET = 5 * timcon0.LPX;
-
-		/* ta_sure = lpx ~ 2*lpx (spec) */
-		timcon1.TA_SURE = 3 * timcon0.LPX / 2;
-
-		/* clk_hs_prep = 38ns ~ 95ns (spec) */
-		/* clk_hs_prep = 80ns */
-		timcon3.CLK_HS_PRPR = NS_TO_CYCLE(80, cycle_time) +
-					NS_TO_CYCLE_MOD(80, cycle_time);
-
-		/* clk_zero + clk_hs_prep > 300ns (spec) */
-		/* clk_zero = 400ns - clk_hs_prep */
-		timcon2.CLK_ZERO = NS_TO_CYCLE(400, cycle_time) +
-					NS_TO_CYCLE_MOD(400, cycle_time) -
-					timcon3.CLK_HS_PRPR;
-		if (timcon2.CLK_ZERO < 1)
-			timcon2.CLK_ZERO = 1;
-
-		/* clk_trail > 60ns (spec) */
-		/* clk_trail = 100ns */
-		timcon2.CLK_TRAIL = NS_TO_CYCLE(100, cycle_time) + 1;
-		if (timcon2.CLK_TRAIL < 2)
-			timcon2.CLK_TRAIL = 2;
-		timcon2.CONT_DET = 0;
-
-		/* clk_exit > 100ns (spec) */
-		/* clk_exit = 200ns */
-		/* timcon3.CLK_EXIT = NS_TO_CYCLE(200, cycle_time); */
-		/* clk_exit = 2*lpx */
-		timcon3.CLK_HS_EXIT = 2 * timcon0.LPX;
-
-		/* clk_post > 60ns+52*UI (spec) */
-		/* clk_post = 96ns+52*UI */
-		timcon3.CLK_HS_POST = NS_TO_CYCLE((96 + 52 * ui), cycle_time) +
-					NS_TO_CYCLE_MOD((96 + 52 * ui), cycle_time);
-	} else {
-		hs_trail_m = 1;
-		hs_trail_n = (dsi_params->HS_TRAIL == 0) ?
-			(NS_TO_CYCLE(((hs_trail_m * 0x4 * ui) + 0x50)
-			* dsi_params->PLL_CLOCK * 2, 0x1F40) + 0x1) :
-			dsi_params->HS_TRAIL;
-		/* +3 is recommended from designer becauase of HW latency */
-		timcon0.HS_TRAIL = (hs_trail_m > hs_trail_n) ? hs_trail_m : hs_trail_n;
-
-		timcon0.HS_PRPR = (dsi_params->HS_PRPR == 0) ?
-			(NS_TO_CYCLE((0x40 + 0x5 * ui), cycle_time) + 0x1) :
-			dsi_params->HS_PRPR;
-		/* HS_PRPR can't be 1. */
-		if (timcon0.HS_PRPR < 1)
-			timcon0.HS_PRPR = 1;
-
-		timcon0.HS_ZERO = (dsi_params->HS_ZERO == 0) ?
-					NS_TO_CYCLE((0xC8 + 0x0a * ui), cycle_time) :
-					dsi_params->HS_ZERO;
-		timcon_temp = timcon0.HS_PRPR;
-		if (timcon_temp < timcon0.HS_ZERO)
-			timcon0.HS_ZERO -= timcon0.HS_PRPR;
-
-		timcon0.LPX = (dsi_params->LPX == 0) ?
-			(NS_TO_CYCLE(dsi_params->PLL_CLOCK * 2 * 0x4B, 0x1F40)	+ 0x1) :
-			dsi_params->LPX;
-		if (timcon0.LPX < 1)
-			timcon0.LPX = 1;
-
-		timcon1.TA_GET = (dsi_params->TA_GET == 0) ?  (0x5 * timcon0.LPX) :
-								dsi_params->TA_GET;
-		timcon1.TA_SURE = (dsi_params->TA_SURE == 0) ?
-			(0x3 * timcon0.LPX / 0x2) : dsi_params->TA_SURE;
-		timcon1.TA_GO = (dsi_params->TA_GO == 0) ?  (0x4 * timcon0.LPX) :
-								dsi_params->TA_GO;
-		/* --------------------------------------------------------------
-		 * NT35510 need fine tune timing
-		 * Data_hs_exit = 60 ns + 128UI
-		 * Clk_post = 60 ns + 128 UI.
-		 * --------------------------------------------------------------
-		 */
-		timcon1.DA_HS_EXIT = (dsi_params->DA_HS_EXIT == 0) ?
-			(0x2 * timcon0.LPX) : dsi_params->DA_HS_EXIT;
-
-		timcon2.CLK_TRAIL = ((dsi_params->CLK_TRAIL == 0) ?
-			NS_TO_CYCLE(0x64 * dsi_params->PLL_CLOCK * 2,
-			0x1F40) : dsi_params->CLK_TRAIL) + 0x01;
-		/* CLK_TRAIL can't be 1. */
-		if (timcon2.CLK_TRAIL < 2)
-			timcon2.CLK_TRAIL = 2;
-
-		timcon2.CONT_DET = dsi_params->CONT_DET;
-		timcon2.CLK_ZERO = (dsi_params->CLK_ZERO == 0) ?
-			NS_TO_CYCLE(0x190, cycle_time) :
-			dsi_params->CLK_ZERO;
-
-		timcon3.CLK_HS_PRPR = (dsi_params->CLK_HS_PRPR == 0) ?
-			NS_TO_CYCLE(0x50 * dsi_params->PLL_CLOCK * 2,
-			0x1F40) : dsi_params->CLK_HS_PRPR;
-
-		if (timcon3.CLK_HS_PRPR < 1)
-			timcon3.CLK_HS_PRPR = 1;
-
-		timcon3.CLK_HS_EXIT = (dsi_params->CLK_HS_EXIT == 0) ?
-			(0x2 * timcon0.LPX) : dsi_params->CLK_HS_EXIT;
-		timcon3.CLK_HS_POST = (dsi_params->CLK_HS_POST == 0) ?
-			NS_TO_CYCLE((0x60 + 0x34 * ui), cycle_time) :
-			dsi_params->CLK_HS_POST;
-	}
-
-	if (bdg_is_bdg_connected() == 1)
-		data_phy_cycle = (timcon1.DA_HS_EXIT + 1) + timcon0.LPX +
-					timcon0.HS_PRPR + timcon0.HS_ZERO + 1;
-
-	DISP_LOG_PRINT(ANDROID_LOG_INFO, "DSI",
-			"[DISP] - kernel - %s, HS_TRAIL = %d, HS_ZERO = %d, HS_PRPR = %d, LPX = %d, TA_GET = %d, TA_SURE = %d, TA_GO = %d, CLK_TRAIL = %d, CLK_ZERO = %d, CLK_HS_PRPR = %d\n",
-			__func__, timcon0.HS_TRAIL, timcon0.HS_ZERO,
-			timcon0.HS_PRPR, timcon0.LPX,
-			timcon1.TA_GET, timcon1.TA_SURE,
-			timcon1.TA_GO, timcon2.CLK_TRAIL,
-			timcon2.CLK_ZERO, timcon3.CLK_HS_PRPR);
-
-	for (i = DSI_MODULE_BEGIN(module); i <= DSI_MODULE_END(module); i++) {
-		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON0_REG,
-			DSI_REG[i]->DSI_PHY_TIMECON0, LPX,
-			timcon0.LPX);
-		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON0_REG,
-			DSI_REG[i]->DSI_PHY_TIMECON0, HS_PRPR,
-			timcon0.HS_PRPR);
-		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON0_REG,
-			DSI_REG[i]->DSI_PHY_TIMECON0, HS_ZERO,
-			timcon0.HS_ZERO);
-		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON0_REG,
-			DSI_REG[i]->DSI_PHY_TIMECON0, HS_TRAIL,
-			timcon0.HS_TRAIL);
-
-		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON1_REG,
-			DSI_REG[i]->DSI_PHY_TIMECON1, TA_GO,
-			timcon1.TA_GO);
-		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON1_REG,
-			DSI_REG[i]->DSI_PHY_TIMECON1, TA_SURE,
-			timcon1.TA_SURE);
-		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON1_REG,
-			DSI_REG[i]->DSI_PHY_TIMECON1, TA_GET,
-			timcon1.TA_GET);
-		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON1_REG,
-			DSI_REG[i]->DSI_PHY_TIMECON1, DA_HS_EXIT,
-			timcon1.DA_HS_EXIT);
-
-		DSI_OUTREGBIT(cmdq, struct  DSI_PHY_TIMCON2_REG,
-			DSI_REG[i]->DSI_PHY_TIMECON2, CONT_DET,
-			timcon2.CONT_DET);
-		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON2_REG,
-			DSI_REG[i]->DSI_PHY_TIMECON2, CLK_ZERO,
-			timcon2.CLK_ZERO);
-		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON2_REG,
-			DSI_REG[i]->DSI_PHY_TIMECON2, CLK_TRAIL,
-			timcon2.CLK_TRAIL);
-
-		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON3_REG,
-			DSI_REG[i]->DSI_PHY_TIMECON3, CLK_HS_PRPR,
-			timcon3.CLK_HS_PRPR);
-		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON3_REG,
-			DSI_REG[i]->DSI_PHY_TIMECON3, CLK_HS_POST,
-			timcon3.CLK_HS_POST);
-		DSI_OUTREGBIT(cmdq, struct DSI_PHY_TIMCON3_REG,
-			DSI_REG[i]->DSI_PHY_TIMECON3, CLK_HS_EXIT,
-			timcon3.CLK_HS_EXIT);
-		DISPINFO("%s, 0x%08x,0x%08x,0x%08x,0x%08x\n",
-			__func__,
-			INREG32(&DSI_REG[i]->DSI_PHY_TIMECON0),
-			INREG32(&DSI_REG[i]->DSI_PHY_TIMECON1),
-			INREG32(&DSI_REG[i]->DSI_PHY_TIMECON2),
-			INREG32(&DSI_REG[i]->DSI_PHY_TIMECON3));
-	}
-}
-
-int DSI_enable_checksum(enum DISP_MODULE_ENUM module,
-	struct cmdqRecStruct *cmdq)
-{
-	int i;
-
-	for (i = DSI_MODULE_BEGIN(module); i <= DSI_MODULE_END(module); i++) {
-		DSI_OUTREGBIT(cmdq, struct DSI_DEBUG_SEL_REG,
-			DSI_REG[i]->DSI_DEBUG_SEL, CHKSUM_REC_EN, 1);
-	}
-	return 0;
-}
 
 enum DSI_STATUS DSI_Start(enum DISP_MODULE_ENUM module,
 	struct cmdqRecStruct *cmdq)
@@ -2504,10 +2521,12 @@ UINT32 DSI_dcs_read_lcm_reg_v2(enum DISP_MODULE_ENUM module,
 	struct DSI_RX_DATA_REG read_data3;
 	struct DSI_T0_INS t0;
 	struct DSI_T0_INS t1;
+#if 0 // comment the IRQ method to read register
 	static const long WAIT_TIMEOUT = 2 * HZ; /* 2 sec */
 	long ret;
-	unsigned int i;
 	struct t_condition_wq *waitq;
+#endif
+	unsigned int i;
 
 	/* illegal parameters */
 	ASSERT(cmdq == NULL);
@@ -2565,21 +2584,21 @@ UINT32 DSI_dcs_read_lcm_reg_v2(enum DISP_MODULE_ENUM module,
 		/* dump cmdq & rxdata */
 		if (DSI_REG[d]->DSI_INTSTA.RD_RDY != 0 ||
 			DSI_REG[d]->DSI_INTSTA.CMD_DONE != 0) {
-			DISPERR("Last DSI Read Why not clear irq???\n");
-			DISPERR("DSI_CMDQ_SIZE  : %d\n",
+			DISPINFO("Last DSI Read Why not clear irq???\n");
+			DISPINFO("DSI_CMDQ_SIZE  : %d\n",
 				AS_UINT32(&DSI_REG[d]->DSI_CMDQ_SIZE));
 			for (i = 0; i < DSI_REG[d]->DSI_CMDQ_SIZE.CMDQ_SIZE;
 				i++) {
-				DISPERR("DSI_CMDQ_DATA%d : 0x%08x\n", i,
+				DISPINFO("DSI_CMDQ_DATA%d : 0x%08x\n", i,
 					AS_UINT32(&DSI_CMDQ_REG[d]->data[i]));
 			}
-			DISPERR("DSI_RX_DATA0   : 0x%08x\n",
+			DISPINFO("DSI_RX_DATA0   : 0x%08x\n",
 				  AS_UINT32(&DSI_REG[d]->DSI_RX_DATA0));
-			DISPERR("DSI_RX_DATA1   : 0x%08x\n",
+			DISPINFO("DSI_RX_DATA1   : 0x%08x\n",
 				  AS_UINT32(&DSI_REG[d]->DSI_RX_DATA1));
-			DISPERR("DSI_RX_DATA2   : 0x%08x\n",
+			DISPINFO("DSI_RX_DATA2   : 0x%08x\n",
 				  AS_UINT32(&DSI_REG[d]->DSI_RX_DATA2));
-			DISPERR("DSI_RX_DATA3   : 0x%08x\n",
+			DISPINFO("DSI_RX_DATA3   : 0x%08x\n",
 				  AS_UINT32(&DSI_REG[d]->DSI_RX_DATA3));
 
 			/* clear irq */
@@ -2612,6 +2631,7 @@ UINT32 DSI_dcs_read_lcm_reg_v2(enum DISP_MODULE_ENUM module,
 		DSI_OUTREG32(cmdq, &DSI_REG[d]->DSI_START, 0);
 		DSI_OUTREG32(cmdq, &DSI_REG[d]->DSI_START, 1);
 
+#if 0
 		/*
 		 * the following code is to
 		 * 1: wait read ready
@@ -2636,6 +2656,13 @@ UINT32 DSI_dcs_read_lcm_reg_v2(enum DISP_MODULE_ENUM module,
 				DSI_REG[d]->DSI_INTEN, RD_RDY, 0);
 			return 0;
 		}
+#endif
+		/* Poll the read ready register to confirm successful read */
+		DISP_REG_CMDQ_POLLING_TIMEOUT(cmdq, &DSI_REG[d]->DSI_INTSTA, 0x00000001, 0x1, 500);
+		DSI_OUTREGBIT(cmdq,
+			      struct DSI_INT_STATUS_REG,
+			      DSI_REG[d]->DSI_INTSTA,
+			      RD_RDY, 0x00000000);
 
 		/* read data */
 		DSI_OUTREG32(cmdq, &read_data0,
@@ -2649,6 +2676,7 @@ UINT32 DSI_dcs_read_lcm_reg_v2(enum DISP_MODULE_ENUM module,
 
 		DSI_OUTREGBIT(cmdq, struct DSI_RACK_REG,
 			DSI_REG[d]->DSI_RACK, DSI_RACK, 1);
+#if 0
 		ret = wait_event_timeout(_dsi_context[d].cmddone_wq.wq,
 			!(DSI_REG[d]->DSI_INTSTA.BUSY), WAIT_TIMEOUT);
 		if (ret == 0) {
@@ -2657,7 +2685,8 @@ UINT32 DSI_dcs_read_lcm_reg_v2(enum DISP_MODULE_ENUM module,
 			DSI_DumpRegisters(module, 2);
 			DSI_Reset(module, NULL);
 		}
-
+#endif
+		DISP_REG_CMDQ_POLLING_TIMEOUT(cmdq, &DSI_REG[d]->DSI_INTSTA, 0x80000000, 0, 500);
 		DISPDBG("DSI read begin i = %d --------------------\n",
 			  5 - max_try_count);
 		DISPDBG("DSI_RX_STA     : 0x%08x\n",
@@ -2724,7 +2753,7 @@ UINT32 DSI_dcs_read_lcm_reg_v2(enum DISP_MODULE_ENUM module,
 					(void *)&read_data1, 4);
 				memcpy((void *)buffer + 4,
 					(void *)&read_data2, 4);
-				memcpy((void *)buffer + 8, (void *)&read_data2,
+				memcpy((void *)buffer + 8, (void *)&read_data3,
 				    recv_data_cnt - 8);
 			}
 		} else if (packet_type == 0x11 || packet_type == 0x12 ||
@@ -2752,9 +2781,17 @@ UINT32 DSI_dcs_read_lcm_reg_v2(enum DISP_MODULE_ENUM module,
 		} else {
 			DISPCHECK("read return type is non-recognite: 0x%x\n",
 				  packet_type);
+			/* We add DSI_DUMP for debugging */
+			DSI_DumpRegisters(module, 2);
+
+			DSI_OUTREGBIT(cmdq, struct DSI_RACK_REG,
+				DSI_REG[d]->DSI_RACK, DSI_RACK, 1);
+			DSI_Reset(module, NULL);
 			DSI_OUTREGBIT(cmdq, struct DSI_INT_ENABLE_REG,
 				DSI_REG[d]->DSI_INTEN, RD_RDY, 0);
-			return 0;
+
+			/* packet_type 0x02 is for re-try */
+			packet_type = 0x02;
 		}
 	} while (packet_type == 0x02);
 	/* here: we may receive a ACK packet which packet type is 0x02
@@ -3060,7 +3097,7 @@ UINT32 DSI_dcs_read_lcm_reg_v3(enum DISP_MODULE_ENUM module,
 }
 
 void DSI_set_cmdq_V2(enum DISP_MODULE_ENUM module, struct cmdqRecStruct *cmdq,
-	unsigned int cmd, unsigned char count, unsigned char *para_list,
+	unsigned int cmd, unsigned int count, unsigned char *para_list,
 	unsigned char force_update)
 {
 	UINT32 i = 0;
@@ -3335,7 +3372,8 @@ void DSI_set_cmdq_V3(enum DISP_MODULE_ENUM module, struct cmdqRecStruct *cmdq,
 	/* DSI_T1_INS t1; */
 	struct DSI_T2_INS t2 = {0};
 	UINT32 index = 0;
-	unsigned char data_id, cmd, count;
+	unsigned char data_id, cmd;
+	unsigned int count;
 	unsigned char *para_list;
 	UINT32 d;
 
@@ -3484,7 +3522,7 @@ void DSI_set_cmdq_V4(enum DISP_MODULE_ENUM module,
 	int d = 0;
 	unsigned long goto_addr, mask_para, set_para;
 	unsigned int cmd;
-	unsigned char count;
+	unsigned int count;
 	unsigned char *para_list;
 	unsigned char virtual_channel;
 	struct DSI_T0_INS t0;
@@ -3502,7 +3540,7 @@ void DSI_set_cmdq_V4(enum DISP_MODULE_ENUM module,
 		return;
 
 	cmd = cmds->dtype;
-	count = (unsigned char)cmds->dlen;
+	count = cmds->dlen;
 	para_list = cmds->payload;
 	virtual_channel = (unsigned char)cmds->vc;
 
@@ -3794,7 +3832,7 @@ void DSI_set_cmdq_V4(enum DISP_MODULE_ENUM module,
 static void DSI_send_vm_cmd(struct cmdqRecStruct *cmdq,
 				enum DISP_MODULE_ENUM module,
 				unsigned char data_id, unsigned int cmd,
-				unsigned char count, unsigned char *para_list,
+				unsigned int count, unsigned char *para_list,
 				unsigned char force_update)
 {
 	UINT32 i = 0;
@@ -3873,7 +3911,7 @@ static void DSI_send_vm_cmd(struct cmdqRecStruct *cmdq,
 static void DSI_send_cmd_cmd(struct cmdqRecStruct *cmdq,
 			enum DISP_MODULE_ENUM module,
 			bool hs, unsigned char data_id,
-			unsigned int cmd, unsigned char count,
+			unsigned int cmd, unsigned int count,
 			unsigned char *para_list,
 			unsigned char force_update)
 {
@@ -3977,7 +4015,8 @@ static void DSI_set_cmdq_serially(enum DISP_MODULE_ENUM module,
 	/* vdo LP set only support CMDQ version */
 	int dsi_i = 0;
 	UINT32 index = 0;
-	unsigned char data_id, cmd, count;
+	unsigned char data_id, cmd;
+	unsigned int count;
 	unsigned char *para_list;
 
 	if (module == DISP_MODULE_DSI0 || module == DISP_MODULE_DSIDUAL)
@@ -4043,6 +4082,7 @@ void DSI_dcs_set_lcm_reg_v4(enum DISP_MODULE_ENUM module,
 
 	cmdqRecCreate(CMDQ_SCENARIO_DISP_ESD_CHECK, &cmdq);
 	cmdqRecReset(cmdq);
+	_cmdq_insert_wait_frame_done_token_mira(cmdq);
 	DSI_set_cmdq_serially(module, cmdq, hs, para_tbl, size,
 		force_update);
 	cmdqRecFlush(cmdq);
@@ -4221,7 +4261,8 @@ static void DSI_send_read_cmd(struct cmdqRecStruct *cmdq,
 }
 
 UINT32 DSI_dcs_read_lcm_reg_v4(enum DISP_MODULE_ENUM module,
-	UINT8 cmd, UINT8 *user_buffer, UINT8 buffer_size, bool sendhs)
+	UINT8 cmd, UINT8 *user_buffer, UINT8 buffer_size, bool sendhs,
+	UINT8 offset)
 {
 	/* Just read 10 bytes valid each time */
 	UINT32 VALID_DATA_SIZE = 10;
@@ -4231,7 +4272,7 @@ UINT32 DSI_dcs_read_lcm_reg_v4(enum DISP_MODULE_ENUM module,
 	UINT32 recv_data_cnt = 0;
 	UINT32 read_data_cnt = 0;
 	UINT32 recv_data_offset = 0;
-	UINT8  read_data_offset = 0;
+	UINT8  read_data_offset = offset;
 	struct cmdqRecStruct *cmdq;
 	cmdqBackupSlotHandle hSlot;
 
@@ -4257,6 +4298,9 @@ UINT32 DSI_dcs_read_lcm_reg_v4(enum DISP_MODULE_ENUM module,
 	while (read_data_cnt > 0) {
 		read_data_cnt--;
 		cmdqRecReset(cmdq);
+
+		/* 0. wait frame done */
+		_cmdq_insert_wait_frame_done_token_mira(cmdq);
 
 		/* 1. wait dsi not busy => can't read if dsi busy */
 		if (DSI_REG[dsi_i]->DSI_MODE_CTRL.MODE)
@@ -4912,21 +4956,21 @@ void DSI_set_cmdq_V11_wrapper_DSI1(void *cmdq, unsigned int *pdata,
 	DSI_set_cmdq(DISP_MODULE_DSI1, cmdq, pdata, queue_size, force_update);
 }
 
-void DSI_set_cmdq_V2_DSI0(void *cmdq, unsigned int cmd, unsigned char count,
+void DSI_set_cmdq_V2_DSI0(void *cmdq, unsigned int cmd, unsigned int count,
 	unsigned char *para_list, unsigned char force_update)
 {
 	DSI_set_cmdq_V2(DISP_MODULE_DSI0, cmdq, cmd, count, para_list,
 		force_update);
 }
 
-void DSI_set_cmdq_V2_DSI1(void *cmdq, unsigned int cmd, unsigned char count,
+void DSI_set_cmdq_V2_DSI1(void *cmdq, unsigned int cmd, unsigned int count,
 	unsigned char *para_list, unsigned char force_update)
 {
 	DSI_set_cmdq_V2(DISP_MODULE_DSI1, cmdq, cmd, count, para_list,
 		force_update);
 }
 
-void DSI_set_cmdq_V2_DSIDual(void *cmdq, unsigned int cmd, unsigned char count,
+void DSI_set_cmdq_V2_DSIDual(void *cmdq, unsigned int cmd, unsigned int count,
 	unsigned char *para_list, unsigned char force_update)
 {
 	DSI_set_cmdq_V2(DISP_MODULE_DSIDUAL, cmdq, cmd, count, para_list,
@@ -4948,21 +4992,21 @@ void DSI_set_cmdq_V4_DSIDual(void *cmdq, struct dsi_cmd_desc *cmds)
 	DSI_set_cmdq_V4(DISP_MODULE_DSIDUAL, cmdq, cmds);
 }
 
-void DSI_set_cmdq_V2_Wrapper_DSI0(unsigned int cmd, unsigned char count,
+void DSI_set_cmdq_V2_Wrapper_DSI0(unsigned int cmd, unsigned int count,
 	unsigned char *para_list, unsigned char force_update)
 {
 	DSI_set_cmdq_V2(DISP_MODULE_DSI0, NULL, cmd, count, para_list,
 		force_update);
 }
 
-void DSI_set_cmdq_V2_Wrapper_DSI1(unsigned int cmd, unsigned char count,
+void DSI_set_cmdq_V2_Wrapper_DSI1(unsigned int cmd, unsigned int count,
 	unsigned char *para_list, unsigned char force_update)
 {
 	DSI_set_cmdq_V2(DISP_MODULE_DSI1, NULL, cmd, count, para_list,
 		force_update);
 }
 
-void DSI_set_cmdq_V2_Wrapper_DSIDual(unsigned int cmd, unsigned char count,
+void DSI_set_cmdq_V2_Wrapper_DSIDual(unsigned int cmd, unsigned int count,
 	unsigned char *para_list, unsigned char force_update)
 {
 	DSI_set_cmdq_V2(DISP_MODULE_DSIDUAL, NULL, cmd, count, para_list,
@@ -7100,7 +7144,7 @@ int ddp_dsi_read_lcm_cmdq(enum DISP_MODULE_ENUM module,
 
 int ddp_dsi_write_lcm_cmdq(enum DISP_MODULE_ENUM module,
 	struct cmdqRecStruct *cmdq, unsigned  char cmd_char,
-	unsigned char count, unsigned char *para_list)
+	unsigned int count, unsigned char *para_list)
 {
 	UINT32 i = 0;
 	int d = 0;
@@ -8168,7 +8212,7 @@ void ddp_dsi_dynfps_get_vfp_info(unsigned int disp_fps,
 
 void DSI_dynfps_send_cmd(
 	void *cmdq, unsigned int cmd,
-	unsigned char count, unsigned char *para_list,
+	unsigned int count, unsigned char *para_list,
 	unsigned char force_update, enum LCM_Send_Cmd_Mode sendmode)
 {
 	DDPMSG(
