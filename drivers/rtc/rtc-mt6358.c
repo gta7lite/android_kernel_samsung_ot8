@@ -630,7 +630,7 @@ void mtk_rtc_lp_exception(void)
 	rtc_read(RTC_PROT, &prot);
 	rtc_read(RTC_CON, &con);
 	rtc_read(RTC_TC_SEC, &sec1);
-	mdelay(2000);
+	msleep(2000);
 	rtc_read(RTC_TC_SEC, &sec2);
 
 	pr_emerg("!!! 32K WAS STOPPED !!!\n"
