@@ -116,7 +116,9 @@
 //#define THERMAL_VPU_SUPPORT
 
 /* EARA_Thermal power budget allocation support */
+#ifdef CONFIG_MTK_EARA_THERMAL
 #define EARA_THERMAL_SUPPORT
+#endif
 
 /* Thermal workaround for DDR/stressapptest fail
  * 8core@OPP0 can't over 70 degreeC

@@ -1845,6 +1845,14 @@ static int tscpu_thermal_resume(struct platform_device *dev)
 #endif
 #endif
 
+#if CFG_LVTS_DOMINATOR
+#if CFG_THERM_LVTS
+		lvts_config_all_tc_hw_protect(trip_temp[0], tc_mid_trip);
+#endif
+#else
+		tscpu_config_all_tc_hw_protect(trip_temp[0], tc_mid_trip);
+#endif
+
 #if !defined(CFG_THERM_NO_AUXADC)
 		tscpu_thermal_initial_all_tc();
 
@@ -1857,14 +1865,6 @@ static int tscpu_thermal_resume(struct platform_device *dev)
 		lvts_disable_all_sensing_points();
 		lvts_tscpu_thermal_initial_all_tc();
 		lvts_enable_all_sensing_points();
-#endif
-
-#if CFG_LVTS_DOMINATOR
-#if CFG_THERM_LVTS
-		lvts_config_all_tc_hw_protect(trip_temp[0], tc_mid_trip);
-#endif
-#else
-		tscpu_config_all_tc_hw_protect(trip_temp[0], tc_mid_trip);
 #endif
 
 #if defined(THERMAL_KERNEL_SUSPEND_RESUME_NOTIFY) && \
@@ -2240,7 +2240,7 @@ int tscpu_get_cpu_temp_met(enum mtk_thermal_sensor_cpu_id_met id)
 	unsigned long flags;
 	int ret;
 
-	if (id >= MTK_THERMAL_SENSOR_CPU_COUNT)
+	if (id < 0 || id >= MTK_THERMAL_SENSOR_CPU_COUNT)
 		return -127000;
 
 	if (id == ATM_CPU_LIMIT)
