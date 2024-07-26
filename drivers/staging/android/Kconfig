@@ -99,6 +99,12 @@ config MTK_ION_DEBUG
 	  show the buffer of total size about ion system heap,
 	  and show the number of the dma_map_attachment.
 
+config SAMSUNG_LMKD_DEBUG
+	bool "record lmkd kill history"
+	default y
+	help
+	  record lmkd kill history
+
 config MTK_ION_SEC_HEAP
 	bool "Ion mtk secure heap support"
 	depends on ION

@@ -49,6 +49,12 @@
 #define MTK_ION_MAPPING_PERF_DEBUG
 #endif
 
+/* HS03_T code for DEVAL5626T-668 by gaochao at 20220914 start */
+#include "mtk/ion_drv_priv.h"
+/* HS03_T code for DEVAL5626T-668 by gaochao at 20220914 end */
+
+static atomic_long_t systemheap_total_allocated = ATOMIC_LONG_INIT(0);
+
 struct ion_mm_buffer_info {
 	int module_id;
 	int fix_module_id;
@@ -115,6 +121,7 @@ struct ion_system_heap {
 	struct ion_page_pool **pools;
 	struct ion_page_pool **cached_pools;
 };
+static struct ion_system_heap *system_heap;
 
 struct page_info {
 	struct page *page;
@@ -289,11 +296,11 @@ int ion_get_domain_id(int from_kernel, int *port)
 static int ion_mm_heap_phys(struct ion_heap *heap, struct ion_buffer *buffer,
 			    ion_phys_addr_t *addr, size_t *len);
 
-#if defined(CONFIG_MTK_IOMMU_PGTABLE_EXT) && \
-	(CONFIG_MTK_IOMMU_PGTABLE_EXT > 32)
 static int ion_mm_heap_init_domain(struct ion_mm_buffer_info *buffer_info,
 				   unsigned int domain)
 {
+#if defined(CONFIG_MTK_IOMMU_PGTABLE_EXT) && \
+	(CONFIG_MTK_IOMMU_PGTABLE_EXT > 32)
 	int i;
 	unsigned int start = 0, end = 0;
 	struct sg_table *table = buffer_info->table_orig;
@@ -330,9 +337,10 @@ static int ion_mm_heap_init_domain(struct ion_mm_buffer_info *buffer_info,
 			return -2;
 		}
 	}
+#endif
+
 	return 0;
 }
-#endif
 
 static int ion_mm_heap_allocate(struct ion_heap *heap,
 				struct ion_buffer *buffer, unsigned long size,
@@ -467,6 +475,7 @@ static int ion_mm_heap_allocate(struct ion_heap *heap,
 	caller_pid = 0;
 	caller_tid = 0;
 
+	atomic_long_add(size, &systemheap_total_allocated);
 	return 0;
 
 err1:
@@ -615,7 +624,7 @@ void ion_mm_heap_free(struct ion_buffer *buffer)
 	struct scatterlist *sg;
 	LIST_HEAD(pages);
 	int i;
-
+	size_t size = buffer->size;
 	/* uncached pages come from the page pools, zero them before return */
 	/*for security purposes (other allocations are zerod at alloc time */
 	if (!(buffer->private_flags & ION_PRIV_FLAG_SHRINKER_FREE))
@@ -629,6 +638,8 @@ void ion_mm_heap_free(struct ion_buffer *buffer)
 
 	sg_free_table(table);
 	kfree(table);
+	atomic_long_sub(size, &systemheap_total_allocated);
+
 }
 
 struct sg_table *ion_mm_heap_map_dma(struct ion_heap *heap,
@@ -1196,6 +1207,21 @@ static int ion_dump_all_share_fds(struct seq_file *s)
 	return 0;
 }
 
+/* HS03_T code for DEVAL5626T-668 by gaochao at 20220914 start */
+void ion_print_system_heap(struct seq_file *s)
+{
+	struct ion_heap *heap = NULL;
+
+	ION_DUMP(s, "%s enter\n", __func__);
+	heap = ion_drv_get_heap(g_ion_device, ION_HEAP_TYPE_SYSTEM, 1);
+	if (heap != NULL && heap->debug_show != NULL) {
+		heap->debug_show(heap, s, NULL);
+	} else {
+		IONMSG("%s failed to find ion_heap_type_system or debug_show is null\n", __func__);
+	}
+}
+/* HS03_T code for DEVAL5626T-668 by gaochao at 20220914 end */
+
 static int ion_mm_heap_debug_show(struct ion_heap *heap, struct seq_file *s,
 				  void *unused)
 {
@@ -1371,6 +1397,10 @@ static int ion_mm_heap_debug_show(struct ion_heap *heap, struct seq_file *s,
 	mtk_iommu_log_dump(s);
 #endif
 	up_read(&dev->lock);
+
+	/* HS03_T code for DEVAL5626T-668 by gaochao at 20220914 start */
+	ion_print_system_heap(s);
+	/* HS03_T code for DEVAL5626T-668 by gaochao at 20220914 end */
 
 	return 0;
 }
@@ -1667,6 +1697,92 @@ size_t ion_mm_heap_total_memory(void)
 }
 EXPORT_SYMBOL(ion_mm_heap_total_memory);
 
+static void show_ion_system_heap_pool_size(struct seq_file *s)
+{
+	unsigned long uncached_total = 0;
+	unsigned long cached_total = 0;
+	unsigned long secure_total = 0;
+	struct ion_page_pool *pool;
+	int i;
+
+	if (!system_heap) {
+		pr_err("system_heap_pool is not ready\n");
+		return;
+	}
+
+	for (i = 0; i < num_orders; i++) {
+		pool = system_heap->pools[i];
+		uncached_total += (1 << pool->order) * PAGE_SIZE *
+			pool->high_count;
+		uncached_total += (1 << pool->order) * PAGE_SIZE *
+			pool->low_count;
+	}
+
+	for (i = 0; i < num_orders; i++) {
+		pool = system_heap->cached_pools[i];
+		cached_total += (1 << pool->order) * PAGE_SIZE *
+			pool->high_count;
+		cached_total += (1 << pool->order) * PAGE_SIZE *
+			pool->low_count;
+	}
+
+	if (s)
+		seq_printf(s, "SystemHeapPool: %8lu kB\n",
+			   (uncached_total + cached_total + secure_total)
+			   >> 10);
+	else
+		pr_cont("SystemHeapPool:%lukB ",
+			(uncached_total + cached_total + secure_total) >> 10);
+}
+
+void show_ion_system_heap_size(struct seq_file *s)
+{
+	struct ion_heap *heap;
+	unsigned long system_byte = 0;
+	unsigned long all_system_kb;
+
+	if (!system_heap) {
+		pr_err("system_heap is not ready\n");
+		return;
+	}
+
+	heap = &system_heap->heap;
+	system_byte = (unsigned long)atomic_long_read(&systemheap_total_allocated);
+	all_system_kb = (unsigned long)(atomic64_read(&page_sz_cnt)
+							<< (PAGE_SHIFT - 10));
+	if (s) {
+		seq_printf(s, "SystemHeap:     %8lu kB\n", system_byte >> 10);
+		seq_printf(s, "AllSystemHeap:  %8lu kB\n", all_system_kb);
+	}
+	else {
+		pr_cont("SystemHeap:%lukB ", system_byte >> 10);
+		pr_cont("AllSystemHeap:%lukB ", all_system_kb);
+	}
+}
+
+
+static int ion_system_heap_size_notifier(struct notifier_block *nb,
+					 unsigned long action, void *data)
+{
+	show_ion_system_heap_size((struct seq_file *)data);
+	return 0;
+}
+
+static struct notifier_block ion_system_heap_nb = {
+	.notifier_call = ion_system_heap_size_notifier,
+};
+
+static int ion_system_heap_pool_size_notifier(struct notifier_block *nb,
+					      unsigned long action, void *data)
+{
+	show_ion_system_heap_pool_size((struct seq_file *)data);
+	return 0;
+}
+
+static struct notifier_block ion_system_heap_pool_nb = {
+	.notifier_call = ion_system_heap_pool_size_notifier,
+};
+
 struct ion_heap *ion_mm_heap_create(struct ion_platform_heap *unused)
 {
 	struct ion_system_heap *heap;
@@ -1710,6 +1826,13 @@ struct ion_heap *ion_mm_heap_create(struct ion_platform_heap *unused)
 	}
 
 	heap->heap.debug_show = ion_mm_heap_debug_show;
+	if (!system_heap) {
+		system_heap = heap;
+		show_mem_extra_notifier_register(&ion_system_heap_nb);
+		show_mem_extra_notifier_register(&ion_system_heap_pool_nb);
+	} else {
+		pr_err("system_heap had been already created\n");
+	}
 	ion_comm_init();
 	return &heap->heap;
 
@@ -2149,6 +2272,8 @@ long ion_mm_ioctl(struct ion_client *client, unsigned int cmd,
 		}
 
 		if ((int)buffer->heap->type == ION_HEAP_TYPE_MULTIMEDIA) {
+			struct ion_mm_buffer_info *buffer_info =
+			    buffer->priv_virt;
 			enum ION_MM_CMDS mm_cmd = param.mm_cmd;
 			ion_phys_addr_t phy_addr;
 
