@@ -20,10 +20,170 @@ enum LCM_DSI_MODE_CON lcm_dsi_mode;
 #define LCD_HW_ID_STATUS_FLOAT 0x02
 #define LCD_HW_ID_STATUS_ERROR  0x03
 
+struct LCM_DRIVER *o22_lcm_driver_list[] = {
+/*hs14 code for SR-AL6528A-01-406 by tangzhen at 20220907 start*/
+#if defined(LCD_HX83112F_TXD_BOE_MIPI_FHD_VIDEO)
+	&lcd_hx83112f_txd_boe_mipi_fhd_video_lcm_drv,
+#endif
+/*hs14 code for SR-AL6528A-01-406 by tangzhen at 20220907 end*/
+/*hs14 code for SR-AL6528A-01-413 by duanyaoming at 20220910 start*/
+#if defined(LCD_TD4375_CW_INX_MIPI_FHD_VIDEO)
+	&lcd_td4375_cw_inx_mipi_fhd_video_lcm_drv,
+#endif
+/*hs14 code for SR-AL6528A-01-413 by duanyaoming at 20220910 end*/
+/*hs14 code for SR-AL6528A-01-420 by duanyaoming at 20220907 start*/
+#if defined(LCD_JD9522T_XX_BOE_MIPI_FHD_VIDEO)
+	&lcd_jd9522t_xx_boe_mipi_fhd_video_lcm_drv,
+#endif
+/*hs14 code for SR-AL6528A-01-420 by duanyaoming at 20220907 end*/
+/*hs14 code for SR-AL6528A-01-427 by tangzhen at 20220913 start*/
+#if defined(LCD_NL9922C_JZ_TM_MIPI_FHD_VIDEO)
+	&lcd_nl9922c_jz_tm_mipi_fhd_video_lcm_drv,
+#endif
+/*hs14 code for SR-AL6528A-01-427 by tangzhen at 20220913 end*/
+#if defined(LCD_TD4375_TXD_JDI_MIPI_FHD_VIDEO)
+	&lcd_td4375_txd_jdi_mipi_fhd_video_lcm_drv,
+#endif
+#if defined(LCD_DEFAULT_MIPI_FHD_VIDEO)
+        &lcd_default_mipi_fhd_video_lcm_drv,
+#endif
+};
+/*hs04 code for DEAL6398A-1875 by zhawei at 20221017 start*/
+struct LCM_DRIVER *hs04_lcm_driver_list[] = {
+#if defined(LCD_JD9365T_TXD_CTC_MIPI_HDP_VIDEO)
+        &lcd_jd9365t_txd_ctc_mipi_hdp_video_lcm_drv,
+#endif
+#if defined(LCD_GC7202_LS_HSD_MIPI_HDP_VIDEO)
+        &lcd_gc7202_ls_hsd_mipi_hdp_video_lcm_drv,
+#endif
+#if defined(LCD_JD9365T_TXD_BOE_MIPI_HDP_VIDEO)
+        &lcd_jd9365t_txd_boe_mipi_hdp_video_lcm_drv,
+#endif
+#if defined(LCD_NL9911C_HLT_HKC_MIPI_HDP_VIDEO)
+        &lcd_nl9911c_hlt_hkc_mipi_hdp_video_lcm_drv,
+#endif
+#if defined(LCD_NL9911C_HR_HR_MIPI_HDP_VIDEO)
+        &lcd_nl9911c_hr_hr_mipi_hdp_video_lcm_drv,
+#endif
+#if defined(LCD_JD9365T_TXD_CTC_JBPD_MIPI_HDP_VIDEO)
+        &lcd_jd9365t_txd_ctc_jbpd_mipi_hdp_video_lcm_drv,
+#endif
+#if defined(HS04_HDPLUS1600_DSI_DEFAULT_VDO)
+        &hs04_hdplus1600_dsi_default_vdo_lcm_drv,
+#endif
+};
+/*hs04 code for DEAL6398A-1875 by zhawei at 20221017 end*/
 struct LCM_DRIVER *lcm_driver_list[] = {
 #if defined(HX83102P_WXGA_VDO_INCELL_BOE)
 	&hx83102p_wxga_vdo_incell_boe_lcm_drv,
 #endif
+/*TabA7 Lite code for SR-AX3565-01-91 by gaozhengwei at 20201210 start*/
+#if defined(HX83102E_HLT_HSD_FHDPLUS2408)
+	&hx83102e_hlt_hsd_fhdplus2408_lcm_drv,
+#endif
+#if defined(HX83102E_BOE_BOE_DSI_VDO_HDP_WXGA)
+	&hx83102e_boe_boe_dsi_vdo_hdp_wxga_lcm_drv,
+#endif
+#if defined(NT36523_LIANSI_HSD_INCELL_VDO)
+	&nt36523_liansi_hsd_incell_vdo_lcm_drv,
+#endif
+/*TabA7 Lite code for SR-AX3565-01-895 by fengzhigang at 20220117 start*/
+#if defined(NT36523_LIANSI_HSD_NTFPC_INCELL_VDO)
+	&nt36523_liansi_hsd_ntfpc_incell_vdo_lcm_drv,
+#endif
+/*TabA7 Lite code for SR-AX3565-01-895 by fengzhigang at 20220117 end*/
+/*TabA7 Lite code for SR-AX3565-01-91 by gaozhengwei at 20201210 end*/
+/*TabA7 Lite code for SR-AX3565-01-53 by gaozhengwei at 20201215 start*/
+#if defined(ILI9881T_LIANSI_INX_INCELL_VDO)
+	&ili9881t_liansi_inx_incell_vdo_lcm_drv,
+#endif
+/*TabA7 Lite code for SR-AX3565-01-53 by gaozhengwei at 20201215 end*/
+/*TabA7 Lite code for SR-AX3565-01-718 by weiqiang at 20210202 start*/
+#if defined(NT36523_HLT_MDT_INCELL_VDO)
+	&nt36523_hlt_mdt_incell_vdo_lcm_drv,
+#endif
+/*TabA7 Lite code for SR-AX3565-01-718 by weiqiang at 20210202 end*/
+/*TabA7 Lite code for SR-AX3565-01-706 by weiqiang at 20210107 start*/
+#if defined(FT8201AB_DT_QUNCHUANG_INX_VDO_FHDPLUS2408)
+	&ft8201ab_dt_qunchuang_inx_vdo_fhdplus2408_lcm_drv,
+#endif
+/*TabA7 Lite code for SR-AX3565-01-706 by weiqiang at 20210107 end*/
+/*TabA7 Lite code for SR-AX3565-01-825 by weiqiang at 20210308 start*/
+#if defined(NT36523BH_QUNCHUANG_INX_INCELL_VDO)
+	&nt36523bh_qunchuang_inx_incell_vdo_lcm_drv,
+#endif
+/*TabA7 Lite code for SR-AX3565-01-825 by weiqiang at 20210308 end*/
+/*TabA7 Lite code for SR-AX3565-01-836 by weiqiang at 20210524 start*/
+#if defined(HX83102E_LIANSI_MDT_INCELL_VDO)
+	&hx83102e_liansi_mdt_incell_vdo_lcm_drv,
+#endif
+/*TabA7 Lite code for SR-AX3565-01-836 by weiqiang at 20210524 end*/
+/*TabA7 Lite code for OT8-5212 by huangzhongjie at 20211021 start*/
+#if defined(HX83102E_COPPER_HLT_HSD_FHDPLUS2408)
+	&hx83102e_copper_hlt_hsd_fhdplus2408_lcm_drv,
+#endif
+#if defined(FT8201_LIANCHUANG_BOE_DSI_VDO_HDP_WXGA)
+	&ft8201_lianchuang_boe_dsi_vdo_hdp_wxga_lcm_drv,
+#endif
+/*TabA7 Lite code for OT8-5212 by huangzhongjie at 20211021 end*/
+/*TabA7 Lite code for OT8-5317 by huangzhongjie at 20220217 start*/
+#if defined(HX83102E_GX_HSD_INCELL_VDO)
+	&hx83102e_gx_hsd_incell_vdo_lcm_drv,
+#endif
+#if defined(NT36523B_TXD_MDT_INCELL_VDO)
+	&nt36523b_txd_mdt_incell_vdo_lcm_drv,
+#endif
+#if defined(HX83102E_HY_MDT_INCELL_VDO)
+	&hx83102e_hy_mdt_incell_vdo_lcm_drv,
+#endif
+/*TabA7 Lite code for OT8-5317 by huangzhongjie at 20220217 end*/
+
+/* HS03S code added for SR-AL5625-01-310 by gaozhengwei at 20210423 start */
+#if defined(HX83112A_HDPLUS1600_DSI_VDO_LS_BOE_9MASK_55NM)
+	&hx83112a_hdplus1600_dsi_vdo_ls_boe_9mask_55nm_lcm_drv,
+#endif
+#if defined(NL9911C_HDPLUS1600_DSI_VDO_TRULY_TRULY)
+	&nl9911c_hdplus1600_dsi_vdo_truly_truly_lcm_drv,
+#endif
+#if defined(HX83102D_HDPLUS1600_DSI_VDO_JZ_INX)
+	&hx83102d_hdplus1600_dsi_vdo_jz_inx_lcm_drv,
+#endif
+#if defined(ILI7806S_HDPLUS1600_DSI_VDO_TXD_BOE_9MASK)
+	&ili7806s_hdplus1600_dsi_vdo_txd_boe_9mask_lcm_drv,
+#endif
+/* HS03S code added for SR-AL5625-01-178 by gaozhengwei at 20210511 start */
+#if defined(JD9365T_HDPLUS1600_DSI_VDO_HLT_BOE_6MASK)
+	&jd9365t_hdplus1600_dsi_vdo_hlt_boe_6mask_lcm_drv,
+#endif
+/* HS03S code added for SR-AL5625-01-178 by gaozhengwei at 20210511 end */
+/* HS03S code added for SR-AL5625-01-451 by gaozhengwei at 20210517 start */
+#if defined(JD9365T_HDPLUS1600_DSI_VDO_HY_MDT)
+	&jd9365t_hdplus1600_dsi_vdo_hy_mdt_lcm_drv,
+#endif
+/* HS03S code added for SR-AL5625-01-451 by gaozhengwei at 20210517 end */
+/* HS03S code added for SR-AL5625-01-572 by fengzhigang at 20210719 start */
+#if defined(ILI9882H_LIANSI_PANDA_DSI_VDO)
+	&ili9882h_liansi_panda_dsi_vdo_lcm_drv,
+#endif
+/* HS03S code added for SR-AL5625-01-572 by fengzhigang at 20210719 end */
+/* hs03s_NM code added for SR-AL5625-01-644 by fengzhigang at 20220407 start */
+#if defined(LCD_JD9365T_TXD_CTC_MIPI_HDP_VIDEO)
+	&lcd_jd9365t_txd_ctc_mipi_hdp_video_lcm_drv,
+#endif
+#if defined(LCD_NL9911C_TXD_HKC_MIPI_HDP_VIDEO)
+	&lcd_nl9911c_txd_hkc_mipi_hdp_video_lcm_drv,
+#endif
+#if defined(LCD_GC7202_LS_HSD_MIPI_HDP_VIDEO)
+	&lcd_gc7202_ls_hsd_mipi_hdp_video_lcm_drv,
+#endif
+/* hs03s_NM code added for SR-AL5625-01-644 by fengzhigang at 20220414 end */
+#if defined(HS03S_HDPLUS1600_DSI_DEFAULT_VDO)
+	&hs03s_hdplus1600_dsi_default_vdo_lcm_drv,
+#endif
+#if defined(HS04_HDPLUS1600_DSI_DEFAULT_VDO)
+	&hs04_hdplus1600_dsi_default_vdo_lcm_drv,
+#endif
+/* HS03S code added for SR-AL5625-01-310 by gaozhengwei at 20210423 end */
 #if defined(NT36672AH_HDP_DSI_VDO_TCL_CSOT)
 	&nt36672ah_hdp_dsi_vdo_tcl_csot_lcm_drv,
 #endif
@@ -38,18 +198,6 @@ struct LCM_DRIVER *lcm_driver_list[] = {
 #endif
 #if defined(OTM1285A_HD720_DSI_VDO_TM)
 	&otm1285a_hd720_dsi_vdo_tm_lcm_drv,
-#endif
-
-#if defined(OTM1901A_FHD_DSI_VDO_TPV)
-	&otm1901a_fhd_dsi_vdo_tpv_lcm_drv,
-#endif
-
-#if defined(R63350A_FHD_DSI_VDO_TRULY)
-	&r63350a_fhd_dsi_vdo_truly_lcm_drv,
-#endif
-
-#if defined(NT35532_FHD_DSI_VDO_SHARP)
-	&nt35532_fhd_dsi_vdo_sharp_lcm_drv,
 #endif
 
 #if defined(NT35595_FHD_DSI_CMD_TRULY_8163)
@@ -1255,22 +1403,6 @@ struct LCM_DRIVER *lcm_driver_list[] = {
 	&td4320_fhdp_dsi_vdo_auo_rt5081_lcm_drv,
 #endif
 
-#if defined(TD4320_FHDP_DSI_VDO_AUO_RT4801)
-	&td4320_fhdp_dsi_vdo_auo_rt4801_lcm_drv,
-#endif
-
-#if defined(NT36672C_FHDP_DSI_VDO_AUO_CPHY_90HZ_JDI)
-	&nt36672c_fhdp_dsi_vdo_auo_cphy_90hz_jdi_lcm_drv,
-#endif
-
-#if defined(NT36672C_FHDP_DSI_VDO_120HZ_SHENCHAO_6382)
-	&nt36672c_fhdp_dsi_vdo_120hz_shenchao_6382_lcm_drv,
-#endif
-
-#if defined(R66451_FHDP_DSI_CMD_TIANMA)
-	&r66451_fhdp_dsi_cmd_tianma_lcm_drv,
-#endif
-
 /*6768 OTM*/
 #if defined(OTM1911A_FHDP_DSI_VDO_TRULY_RT5081)
 	&otm1911a_fhdp_dsi_vdo_truly_rt5081_lcm_drv,
@@ -1282,6 +1414,26 @@ struct LCM_DRIVER *lcm_driver_list[] = {
 
 #if defined(OTM1911A_FHDP_DSI_VDO_TRULY_RT4801)
 	&otm1911a_fhdp_dsi_vdo_truly_rt4801_lcm_drv,
+#endif
+
+#if defined(TD4150_HDP_DSI_LM36274)
+	&td4150_hdp_dsi_lm36274_lcm_drv,
+#endif
+
+#if defined(ILI9882N_HDP_DSI_VDO_ILITEK_LM36274)
+	&ili9882n_hdp_dsi_vdo_ilitek_lm36274_lcm_drv,
+#endif
+
+#if defined(S6E3FC3_FHDP_CMD)
+	&s6e3fc3_fhdp_cmd_lcm_drv,
+#endif
+
+#if defined(S6E3FC3_FHDP_CMD_A22_LTE)
+	&s6e3fc3_fhdp_cmd_a22_lte_lcm_drv,
+#endif
+
+#if defined(S6E3FC3_HDP_CMD_A22_LTE)
+	&s6e3fc3_hdp_cmd_a22_lte_lcm_drv,
 #endif
 };
 
@@ -1368,9 +1520,24 @@ unsigned char lcm_name_list[][128] = {
 #define LCM_COMPILE_ASSERT_XX(condition, line) \
 	char assertion_failed_at_line_##line[(condition) ? 1 : -1]
 
+
+/*hs14 code for AL6528A-20 by duanyaoming at 20220906 start*/
+#ifdef CONFIG_HQ_PROJECT_O22
+unsigned int lcm_count =
+	sizeof(o22_lcm_driver_list) / sizeof(struct LCM_DRIVER *);
+LCM_COMPILE_ASSERT(sizeof(o22_lcm_driver_list) / sizeof(struct LCM_DRIVER *) != 0);
+/*hs14 code for AL6528A-20 by duanyaoming at 20220906 end*/
+/*hs04 code for DEAL6398A-1875 by zhawei at 20221017 start*/
+#elif defined CONFIG_HQ_PROJECT_HS04
+unsigned int lcm_count = sizeof(hs04_lcm_driver_list) / sizeof(struct LCM_DRIVER *);
+LCM_COMPILE_ASSERT(sizeof(hs04_lcm_driver_list) / sizeof(struct LCM_DRIVER *) != 0);
+/*hs04 code for DEAL6398A-1875 by zhawei at 20221017 end*/
+#else
 unsigned int lcm_count =
 	sizeof(lcm_driver_list) / sizeof(struct LCM_DRIVER *);
 LCM_COMPILE_ASSERT(sizeof(lcm_driver_list) / sizeof(struct LCM_DRIVER *) != 0);
+
+#endif
 #if defined(NT35520_HD720_DSI_CMD_TM) | \
 	defined(NT35520_HD720_DSI_CMD_BOE) | \
 	defined(NT35521_HD720_DSI_VDO_BOE) | \

@@ -10,6 +10,9 @@
 #include <linux/device.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
+#include <linux/touchscreen_info.h>
+
+extern enum tp_module_used tp_is_used;
 
 #ifndef ARY_SIZE
 #define ARY_SIZE(x) (sizeof((x)) / sizeof((x[0])))
@@ -288,6 +291,20 @@ enum LCM_DSI_PLL_CLOCK {
 	LCM_DSI_6589_PLL_CLOCK_520 = 50,
 };
 
+/* HS03S code added for SR-AL5625-01-506 by gaozhengwei at 20210526 start */
+#ifdef CONFIG_HQ_SET_LCD_BIAS
+typedef enum {
+	OFF = 0,
+	ON = 1
+} LCD_BIAS_VSPN_POWER_ON_OFF;
+
+typedef enum {
+	VSP_FIRST_VSN_AFTER = 0,
+	VSN_FIRST_VSP_AFTER = 1
+} LCD_BIAS_VSPN_POWER_ON_SEQUENCE;
+#endif
+/* HS03S code added for SR-AL5625-01-506 by gaozhengwei at 20210526 end */
+
 /* ------------------------------------------------------------------------- */
 
 struct LCM_DBI_DATA_FORMAT {
@@ -561,11 +578,10 @@ struct vsync_trigger_time {
 enum DynFPS_LEVEL {
 	DFPS_LEVEL0 = 0,
 	DFPS_LEVEL1,
-	DFPS_LEVEL2,
 	DFPS_LEVELNUM,
 };
 
-#define DFPS_LEVELS 3
+#define DFPS_LEVELS 2
 enum FPS_CHANGE_INDEX {
 	DYNFPS_NOT_DEFINED = 0,
 	DYNFPS_DSI_VFP = 1,
@@ -690,7 +706,6 @@ struct LCM_DSI_PARAMS {
 	/* PLL_CLOCK = (int) PLL_CLOCK */
 	unsigned int PLL_CLOCK;
 	/* data_rate = PLL_CLOCK x 2 */
-	unsigned int ap_data_rate;
 	unsigned int data_rate;
 	unsigned int PLL_CK_VDO;
 	unsigned int PLL_CK_CMD;
@@ -926,8 +941,8 @@ struct LCM_DTS {
 struct LCM_setting_table_V3 {
 	unsigned char id;
 	unsigned char cmd;
-	unsigned char count;
-	unsigned char para_list[128];
+	unsigned int count;
+	unsigned char para_list[512];
 };
 
 /*
@@ -962,11 +977,11 @@ struct LCM_UTIL_FUNCS {
 
 	void (*dsi_set_cmdq_V3)(struct LCM_setting_table_V3 *para_list,
 			unsigned int size, unsigned char force_update);
-	void (*dsi_set_cmdq_V2)(unsigned int cmd, unsigned char count,
+	void (*dsi_set_cmdq_V2)(unsigned int cmd, unsigned int count,
 			unsigned char *para_list, unsigned char force_update);
 	void (*dsi_set_cmdq)(unsigned int *pdata, unsigned int queue_size,
 			unsigned char force_update);
-	void (*dsi_set_null)(unsigned int cmd, unsigned char count,
+	void (*dsi_set_null)(unsigned int cmd, unsigned int count,
 			unsigned char *para_list, unsigned char force_update);
 	void (*dsi_write_cmd)(unsigned int cmd);
 	void (*dsi_write_regs)(unsigned int addr, unsigned int *para,
@@ -986,11 +1001,11 @@ struct LCM_UTIL_FUNCS {
 	void (*dsi_set_cmdq_V11)(void *cmdq, unsigned int *pdata,
 			unsigned int queue_size, unsigned char force_update);
 	void (*dsi_set_cmdq_V22)(void *cmdq, unsigned int cmd,
-			unsigned char count, unsigned char *para_list,
+			unsigned int count, unsigned char *para_list,
 			unsigned char force_update);
 	void (*dsi_swap_port)(int swap);
 	void (*dsi_set_cmdq_V23)(void *cmdq, unsigned int cmd,
-		unsigned char count, unsigned char *para_list,
+		unsigned int count, unsigned char *para_list,
 		unsigned char force_update);	/* dual */
 	void (*mipi_dsi_cmds_tx)(void *cmdq, struct dsi_cmd_desc *cmds);
 	unsigned int (*mipi_dsi_cmds_rx)(char *out,
@@ -998,7 +1013,7 @@ struct LCM_UTIL_FUNCS {
 	/*Dynfps*/
 	void (*dsi_dynfps_send_cmd)(
 		void *cmdq, unsigned int cmd,
-		unsigned char count, unsigned char *para_list,
+		unsigned int count, unsigned char *para_list,
 		unsigned char force_update, enum LCM_Send_Cmd_Mode sendmode);
 
 };
@@ -1071,6 +1086,9 @@ struct LCM_DRIVER {
 		unsigned int from_level, unsigned int to_level, struct LCM_PARAMS *params);
 	bool (*dfps_need_send_cmd)(
 	unsigned int from_level, unsigned int to_level, struct LCM_PARAMS *params);
+
+	/* /////////////suspend////////////////////////// */
+	void (*disable)(void);
 };
 
 /* LCM Driver Functions */
@@ -1085,7 +1103,68 @@ extern enum LCM_DSI_MODE_CON lcm_dsi_mode;
 extern int display_bias_enable(void);
 extern int display_bias_disable(void);
 extern int display_bias_regulator_init(void);
+extern int mtk_tpd_smart_wakeup_support(void);
+extern bool g_system_is_shutdown;
+#ifdef CONFIG_HQ_PROJECT_HS03S
 
+/* HS03S code added for SR-AL5625-01-310 by gaozhengwei at 20210423 start */
+#define GPIO_OUT_LOW 0
+#define GPIO_OUT_ONE 1
+#define GPIO_OUT_ZERO 0
+extern void lcm_set_gpio_output(unsigned int GPIO, unsigned int output);
+extern unsigned int GPIO_LCD_RST;
+/* hs03s_NM code added for SR-AL5625-01-609 by fengzhigang at 20220424 start */
+extern unsigned int GPIO_TSP_RST;
+/* hs03s_NM code added for SR-AL5625-01-609 by fengzhigang at 20220424 end */
+extern struct pinctrl *lcd_pinctrl1;
+extern struct pinctrl_state *lcd_disp_pwm;
+extern struct pinctrl_state *lcd_disp_pwm_gpio;
 
+/* HS03S code added for SR-AL5625-01-310 by gaozhengwei at 20210423 end */
 
+/* HS03S code for SR-AL5625-01-313 by gaozhengwei at 2021/04/25 start */
+/* HS03S code for SR-AL5625-01-313 by gaozhengwei at 2021/04/25 end */
+#endif
+#ifdef CONFIG_HQ_PROJECT_O22
+
+#define GPIO_OUT_LOW 0
+#define GPIO_OUT_ONE 1
+#define GPIO_OUT_ZERO 0
+extern void lcm_set_gpio_output(unsigned int GPIO, unsigned int output);
+extern unsigned int GPIO_LCD_RST;
+extern unsigned int GPIO_TSP_RST;
+extern struct pinctrl *lcd_pinctrl1;
+extern struct pinctrl_state *lcd_disp_pwm;
+extern struct pinctrl_state *lcd_disp_pwm_gpio;
+
+/*hs14 code for SR-AL6528A-01-423 by duanyaoming at 20220910 start*/
+extern struct pinctrl_state *tp_rst_low;
+extern struct pinctrl_state *tp_rst_high;
+extern bool g_system_is_shutdown;
+/*hs14 code for SR-AL6528A-01-423 by duanyaoming at 20220910 end*/
+/*hs14 code for SR-AL6528A-01-457 by duanyaoming at 20220911 start*/
+extern bool smart_wakeup_open_flag;
+/*hs14 code for SR-AL6528A-01-457 by duanyaoming at 20220911 end*/
+/* A14 code for AL6528A-4 by duanyaoming at 20220829 end */
+#endif
+#ifdef CONFIG_HQ_PROJECT_HS04
+
+/* HS03S code added for SR-AL5625-01-310 by gaozhengwei at 20210423 start */
+#define GPIO_OUT_LOW 0
+#define GPIO_OUT_ONE 1
+#define GPIO_OUT_ZERO 0
+extern void lcm_set_gpio_output(unsigned int GPIO, unsigned int output);
+extern unsigned int GPIO_LCD_RST;
+/* hs03s_NM code added for SR-AL5625-01-609 by fengzhigang at 20220424 start */
+extern unsigned int GPIO_TSP_RST;
+/* hs03s_NM code added for SR-AL5625-01-609 by fengzhigang at 20220424 end */
+extern struct pinctrl *lcd_pinctrl1;
+extern struct pinctrl_state *lcd_disp_pwm;
+extern struct pinctrl_state *lcd_disp_pwm_gpio;
+
+/* HS03S code added for SR-AL5625-01-310 by gaozhengwei at 20210423 end */
+
+/* HS03S code for SR-AL5625-01-313 by gaozhengwei at 2021/04/25 start */
+/* HS03S code for SR-AL5625-01-313 by gaozhengwei at 2021/04/25 end */
+#endif
 #endif /* __LCM_DRV_H__ */

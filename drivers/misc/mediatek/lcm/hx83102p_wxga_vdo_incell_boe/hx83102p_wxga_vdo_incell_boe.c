@@ -444,8 +444,6 @@ static void lcm_init_lcm(void)
 	MDELAY(5);
 	//register
 	sgm37604a_write_byte(0x11, 0x00);
-	sgm37604a_write_byte(0x1A, 0);
-	sgm37604a_write_byte(0x19, 0);
 	MDELAY(10);
 
 	push_table(lcm_initinal_setting,
@@ -534,7 +532,6 @@ static void lcm_setbacklight_cmdq(void *handle, unsigned int level)
 		sgm37604a_write_byte(0x1A, (backlight_i2c_map_hx[s_last_backlight_level] & 0x0F));
 		sgm37604a_write_byte(0x19, (backlight_i2c_map_hx[s_last_backlight_level] >> 4));
 	}
-	pr_info("s_last_backlight_level=%d\n", s_last_backlight_level);
 }
 
 struct LCM_DRIVER hx83102p_wxga_vdo_incell_boe_lcm_drv = {
