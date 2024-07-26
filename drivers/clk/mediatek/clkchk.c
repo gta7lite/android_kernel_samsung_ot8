@@ -158,16 +158,8 @@ static int mtk_clk_rate_change(struct notifier_block *nb,
 	}
 
 	if (flags == PRE_RATE_CHANGE && clk_name) {
-		int mux2id = mtk_mux2id(&clk_name);
-
-		if (mux2id < 0) {
-			if (mux2id == -2)
-				pr_notice("%s: %s's id is invalid\n", __func__, clk_name);
-			return NOTIFY_OK;
-		}
-
 		warn_vcore(vcore_opp, clk_name,
-			ndata->new_rate, mux2id);
+			ndata->new_rate, mtk_mux2id(&clk_name));
 	}
 	return NOTIFY_OK;
 }
