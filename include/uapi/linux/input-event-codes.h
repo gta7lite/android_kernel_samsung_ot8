@@ -337,6 +337,8 @@
 
 #define KEY_MICMUTE		248	/* Mute / unmute the microphone */
 
+#define KEY_RECENT   		254
+
 /* Code 255 is reserved for special needs of AT keyboard driver */
 
 #define BTN_MISC		0x100
@@ -396,6 +398,7 @@
 #define BTN_MODE		0x13c
 #define BTN_THUMBL		0x13d
 #define BTN_THUMBR		0x13e
+#define BTN_GAME		0x13f
 
 #define BTN_DIGI		0x140
 #define BTN_TOOL_PEN		0x140
@@ -689,6 +692,23 @@
 #define BTN_TRIGGER_HAPPY39		0x2e6
 #define BTN_TRIGGER_HAPPY40		0x2e7
 
+#define KEY_DEX_ON				0x2bd
+#define BTN_HOTKEY_APP1 		0x2f5
+#define BTN_HOTKEY_APP2 		0x2f6
+#define BTN_HOTKEY_APP3 		0x2f7
+
+#ifdef HQ_FACTORY_BUILD
+/* hs03s code for SR-AL5625-01-168 by xiongxiaoliang at 2021/06/12 start */
+/* for top sar */
+#define KEY_SAR_CLOSE           0x279
+#define KEY_SAR_FAR             0x27a
+
+/* for bottom sar */
+#define KEY_SAR2_CLOSE          0x27b
+#define KEY_SAR2_FAR            0x27c
+/* hs03s code for SR-AL5625-01-168 by xiongxiaoliang at 2021/06/12 end */
+#endif
+
 /* We avoid low common keys in module aliases so they don't get huge. */
 #define KEY_MIN_INTERESTING	KEY_MUTE
 #define KEY_MAX			0x2ff
@@ -768,7 +788,7 @@
 #define ABS_MT_DISTANCE		0x3b	/* Contact hover distance */
 #define ABS_MT_TOOL_X		0x3c	/* Center X tool position */
 #define ABS_MT_TOOL_Y		0x3d	/* Center Y tool position */
-
+#define BTN_PALM            0x118        /* palm flag */
 
 #define ABS_MAX			0x3f
 #define ABS_CNT			(ABS_MAX+1)
