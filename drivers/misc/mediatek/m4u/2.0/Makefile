@@ -22,12 +22,14 @@ endif
 ifeq ($(CONFIG_MICROTRUST_TEE_SUPPORT),y)
 include $(srctree)/drivers/tee/teei/Makefile.include
 endif
-
+ifeq ($(CONFIG_TEEGRIS_TEE_SUPPORT),y)
+include $(srctree)/drivers/tee/tzdev/Makefile.include
+endif
 ifneq ($(filter $(CONFIG_MTK_SECURE_MEM_SUPPORT) $(CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM),y),)
 include $(srctree)/drivers/misc/mediatek/trusted_mem/Makefile.include
 endif
 
 obj-y += m4u.o m4u_mva.o m4u_pgtable.o m4u_debug.o
-ifeq ($(or $(strip $(CONFIG_TRUSTONIC_TEE_SUPPORT)), $(strip $(CONFIG_MICROTRUST_TEE_SUPPORT))),y)
+ifeq ($(or $(strip $(CONFIG_TRUSTONIC_TEE_SUPPORT)), $(strip $(CONFIG_MICROTRUST_TEE_SUPPORT)), $(strip $(CONFIG_TEEGRIS_TEE_SUPPORT))),y)
 obj-y += m4u_sec_gp.o
 endif

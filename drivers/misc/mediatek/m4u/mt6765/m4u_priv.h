@@ -94,7 +94,8 @@ extern int gM4U_log_to_uart;
 	}
 
 #if (defined(CONFIG_TRUSTONIC_TEE_SUPPORT) || \
-	defined(CONFIG_MICROTRUST_TEE_SUPPORT)) && \
+	defined(CONFIG_MICROTRUST_TEE_SUPPORT) || \
+	defined(CONFIG_TEEGRIS_TEE_SUPPORT)) && \
 	defined(CONFIG_TEE)
 #if defined(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
 #define M4U_TEE_SERVICE_ENABLE

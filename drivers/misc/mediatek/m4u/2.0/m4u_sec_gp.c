@@ -46,7 +46,8 @@ static int m4u_exec_session(struct m4u_sec_context *ctx)
 	memset(&m4u_operation, 0, sizeof(struct TEEC_Operation));
 
 #if defined(CONFIG_MICROTRUST_TEE_SUPPORT) || \
-	defined(CONFIG_TRUSTONIC_TEE_SUPPORT)
+	defined(CONFIG_TRUSTONIC_TEE_SUPPORT) || \
+	defined(CONFIG_TEEGRIS_TEE_SUPPORT)
 	m4u_operation.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_PARTIAL_INPUT,
 				TEEC_NONE, TEEC_NONE, TEEC_NONE);
 #endif

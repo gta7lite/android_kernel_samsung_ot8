@@ -44,6 +44,7 @@
 
 
 #ifdef M4U_TEE_SERVICE_ENABLE
+#include "m4u_sec_gp.h"
 #if defined(CONFIG_TRUSTONIC_TEE_SUPPORT) && \
 	!defined(CONFIG_TEE)
 #include "mobicore_driver_api.h"
@@ -1220,7 +1221,6 @@ static int MTK_M4U_flush(struct file *filp, fl_owner_t a_id)
 }
 
 #ifdef M4U_TEE_SERVICE_ENABLE
-#include "m4u_sec_gp.h"
 
 static DEFINE_MUTEX(gM4u_sec_init);
 
@@ -1593,21 +1593,27 @@ out:
 
 static void m4u_early_suspend(void)
 {
+#ifdef NEED_M4U_SEC_SUSPEND_AND_RESUME
+	// move these actions into m4u_suspend and m4u_restore.
 	m4u_err("%s +, %d\n", __func__, m4u_tee_en);
 
 	if (m4u_tee_en)
 		m4u_reg_backup_sec();
 	m4u_err("%s -\n", __func__);
+#endif
 }
 
 static void m4u_late_resume(void)
 {
+#ifdef NEED_M4U_SEC_SUSPEND_AND_RESUME
+	// move these actions into m4u_suspend and m4u_restore.
 	m4u_err("%s +, %d\n", __func__, m4u_tee_en);
 
 	if (m4u_tee_en)
 		m4u_reg_restore_sec();
 
 	m4u_err("%s -\n", __func__);
+#endif
 }
 
 static struct notifier_block m4u_fb_notifier;
@@ -1779,7 +1785,8 @@ static long MTK_M4U_ioctl(struct file *filp, unsigned int cmd,
 				ret);
 			return -EFAULT;
 		}
-		if (m4u_module.port >= M4U_PORT_UNKNOWN) {
+		if (m4u_module.port < 0
+			|| m4u_module.port >= M4U_PORT_UNKNOWN) {
 			m4u_err("MTK_M4U_T_ALLOC_MVA, port%d is invalid\n",
 			       m4u_module.port);
 			return -EFAULT;
@@ -1812,7 +1819,8 @@ static long MTK_M4U_ioctl(struct file *filp, unsigned int cmd,
 				ret);
 			return -EFAULT;
 		}
-		if (m4u_module.port >= M4U_PORT_UNKNOWN) {
+		if (m4u_module.port < 0
+			|| m4u_module.port >= M4U_PORT_UNKNOWN) {
 			m4u_err("MTK_M4U_T_DEALLOC_MVA, port%d is invalid\n",
 			       m4u_module.port);
 			return -EFAULT;
@@ -1904,7 +1912,7 @@ static long MTK_M4U_ioctl(struct file *filp, unsigned int cmd,
 				ret);
 			return -EFAULT;
 		}
-		if (rM4UTF.port >= M4U_PORT_UNKNOWN) {
+		if (rM4UTF.port < 0 || rM4UTF.port >= M4U_PORT_UNKNOWN) {
 			m4u_err("MTK_M4U_T_CONFIG_TF, port%d is invalid\n",
 				rM4UTF.port);
 			return -EFAULT;
@@ -2277,6 +2285,23 @@ static int m4u_remove(struct platform_device *pdev)
 static int m4u_suspend(struct platform_device *pdev,
 		       pm_message_t mesg)
 {
+#ifdef M4U_TEE_SERVICE_ENABLE
+	int i = 0;
+
+	m4u_info("%s, m4u_reg_backup_sec +, %d\n", __func__, m4u_tee_en);
+
+	//smi_debug_bus_hang_detect(false, M4U_DEV_NAME);
+	if (m4u_tee_en) {
+		for (i = 0; i < SMI_LARB_NR; i++)
+			larb_clock_on(i, 1);
+
+		m4u_reg_backup_sec();
+
+		for (i = 0; i < SMI_LARB_NR; i++)
+			larb_clock_off(i, 1);
+	}
+	m4u_info("%s, m4u_reg_backup_sec -\n", __func__);
+#endif
 	m4u_reg_backup();
 	m4u_info("M4U backup in suspend\n");
 
@@ -2285,6 +2310,24 @@ static int m4u_suspend(struct platform_device *pdev,
 
 static int m4u_resume(struct platform_device *pdev)
 {
+#ifdef M4U_TEE_SERVICE_ENABLE
+	int i = 0;
+
+	m4u_info("%s, m4u_reg_restore_sec +, %d\n", __func__, m4u_tee_en);
+
+	//smi_debug_bus_hang_detect(false, M4U_DEV_NAME);
+	if (m4u_tee_en) {
+		for (i = 0; i < SMI_LARB_NR; i++)
+			larb_clock_on(i, 1);
+
+		m4u_reg_restore_sec();
+
+		for (i = 0; i < SMI_LARB_NR; i++)
+			larb_clock_off(i, 1);
+	}
+
+	m4u_info("%s, m4u_reg_restore_sec -\n", __func__);
+#endif
 	m4u_reg_restore();
 	m4u_info("M4U restore in resume\n");
 	return 0;
