@@ -24,24 +24,30 @@
 	#address-cells = <2>;
 	#size-cells = <2>;
 
+	aliases {
+		i2c20 = &i2c20;
+	};
+
 	/* chosen */
 	chosen: chosen {
 		bootargs = "console=tty0 console=ttyS0,921600n1 vmalloc=400M \
-slub_debug=OFZPU page_owner=on \
+page_owner=on \
 swiotlb=noforce androidboot.hardware=mt6765 \
 maxcpus=8 loop.max_part=7 \
 firmware_class.path=/vendor/firmware";
 		kaslr-seed = <0 0>;
 	};
 
+	/* hs03s code for SR-AL5625-01-155 by xiongxiaoliang at 2021/04/25 start */
 	regulator_vibrator {
 		compatible = "regulator-vibrator";
-		min-volt = <2300000>;
-		max-volt = <3200000>;
+		min-volt = <3000000>;
+		max-volt = <3000000>;
 		min-limit = <15>;
 		max-limit = <15000>;
 		vib-supply = <&mt_pmic_vibr_ldo_reg>;
 	};
+	/* hs03s code for SR-AL5625-01-155 by xiongxiaoliang at 2021/04/25 end */
 
 	cluster0_opp: opp_table0 {
 		compatible = "operating-points-v2";
@@ -485,7 +491,27 @@ firmware_class.path=/vendor/firmware";
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
+#if defined(CONFIG_SEC_DEBUG)
+		sec-log-reserve-memory@0x46C00000 {
+			reg = <0 0x46C00000 0 0x200000>;
+		};
 
+		sec-lastklog@0x46E00000 {
+			reg = <0 0x46E00000 0 0x200000>;
+		};
+
+		sec-logger-reserve-memory@0x47000000 {
+			reg = <0 0x47000000 0 0x400000>;
+		};
+
+		sec-autocomment-reserve-memory@0x47400000 {
+			reg = <0 0x47400000 0 0x10000>;
+		};
+		
+		sec-extrainfo-reserve-memory@0x47410000 {
+			reg = <0 0x47410000 0 0x1F0000>;
+		};
+#endif
 		reserve-memory-sspm_share {
 			compatible = "mediatek,reserve-memory-sspm_share";
 			no-map;
@@ -510,7 +536,7 @@ firmware_class.path=/vendor/firmware";
 		consys_mem: consys-reserve-memory {
 			compatible = "mediatek,consys-reserve-memory";
 			no-map;
-			size = <0 0x400000>;
+			size = <0 0x440000>;
 			alignment = <0 0x1000000>;
 			alloc-ranges = <0 0x40000000 0 0x80000000>;
 		};
@@ -647,9 +673,9 @@ firmware_class.path=/vendor/firmware";
 		#clock-cells = <1>;
 	};
 
-	mcdi@00110100 {
+	mcdi@0010fc00 {
 		compatible = "mediatek,mt6765-mcdi";
-		reg = <0 0x00110100 0 0x800>;
+		reg = <0 0x0010fc00 0 0x800>;
 	};
 
 	scpsys: scpsys@10001000 {
@@ -802,6 +828,11 @@ firmware_class.path=/vendor/firmware";
 	mobicore {
 		compatible = "trustonic,mobicore";
 		interrupts = <GIC_SPI 271 IRQ_TYPE_EDGE_RISING>;
+	};
+	teegris {
+		compatible = "samsung,teegris";
+		interrupts = <GIC_SPI 123 IRQ_TYPE_LEVEL_LOW>,
+					<GIC_SPI 124 IRQ_TYPE_LEVEL_LOW>;
 	};
 
 	tee_sanity {
@@ -1019,8 +1050,8 @@ firmware_class.path=/vendor/firmware";
 
 	mrdump_ext_rst: mrdump_ext_rst {
 		compatible = "mediatek, mrdump_ext_rst-eint";
-		force_mode = "EINT";
-		mode = "IRQ";
+		force_mode = "SYSRST";
+		mode = "RST";
 		status = "okay";
 	};
 
@@ -1032,9 +1063,30 @@ firmware_class.path=/vendor/firmware";
 		compatible = "mediatek,pmic-accdet";
 	};
 
-	goodix_fp: fingerprint {
-		compatible = "mediatek,goodix-fp";
+	/* HS03S code added for SR-AL5625-01-160 by wurui at 20210429 start */
+	silead_fp: silead_fp {
+		compatible = "sil,silead_fp-pins";
 	};
+    /* HS03S code added for SR-AL5625-01-160 by wurui at 20210429 end */
+	
+	    /* HS03S code added for SR-AL5625-01-157 by wurui at 20210506 start */
+	fp_egistec:fp_egistec {
+		compatible = "fp-egistec";
+    };
+    /* HS03S code added for SR-AL5625-01-157 by wurui at 20210506 end */
+
+	    /* HS03S code added for SR-AL5625-01-159 by shibinbin at 20210506 start */
+    fpsensor_finger: fpsensor_finger {
+        compatible = "mediatek,fpsensor";
+    };
+    /* HS03S code added for SR-AL5625-01-159 by shibinbin at 20210506 end */
+
+    /* HS03S code added for SR-AL5625-01-158 by shibinbin at 20210425 start */
+    cdfinger:cdfinger {
+        compatible = "mediatek,mtk_finger";
+    };
+    /* HS03S code added for SR-AL5625-01-158 by shibinbin at 20210425 end */
+
 
 	topmisc@10011000 {
 		compatible = "mediatek,topmisc";
@@ -1075,9 +1127,9 @@ firmware_class.path=/vendor/firmware";
 			compatible = "mediatek,mt6765-dvfsrc-met";
 		};
 
-		qos@00110b80 {
+		qos@00110780 {
 			compatible = "mediatek,mt6765-qos";
-			reg = <0 0x00110b80 0 0x80>;
+			reg = <0 0x00110780 0 0x80>;
 		};
 	};
 
@@ -1416,9 +1468,26 @@ firmware_class.path=/vendor/firmware";
 
 	md_auxadc:md_auxadc {
 		compatible = "mediatek,md_auxadc";
+#ifdef CONFIG_HQ_PROJECT_HS03S
+    /* modify code for O6 */
+	io-channels = <&auxadc 2>;
+		io-channel-names = "md-channel",
+			"md-battery";
+#endif
+#ifdef CONFIG_HQ_PROJECT_HS04
+    /* modify code for O6 */
+	io-channels = <&auxadc 2>;
+		io-channel-names = "md-channel",
+			"md-battery";
+#endif
+#ifdef CONFIG_HQ_PROJECT_OT8
+    /* modify code for O8 */
+		/*
 		io-channels = <&auxadc 2>;
 		io-channel-names = "md-channel",
 			"md-battery";
+       */
+#endif
 	};
 
 	dramc_nao@1021d000 {
@@ -1446,18 +1515,16 @@ firmware_class.path=/vendor/firmware";
 		reg = <0 0x10227000 0 0x1000>;
 	};
 
-	dvfsp@00110c00 {
+	dvfsp@00110800 {
 		compatible = "mediatek,mt6765-dvfsp";
-		reg = <0 0x00110c00 0 0x1400>,
-		      <0 0x00110c00 0 0x1400>;
+		reg = <0 0x00110800 0 0x1400>,
+		      <0 0x00110800 0 0x1400>;
 		state = <1>;
 		change_flag = <0>;
 		little-rise-time = <1000>;
 		little-down-time = <750>;
 		big-rise-time = <1000>;
 		big-down-time = <750>;
-		nvmem = <&efuse>;
-		nvmem-names = "mtk_efuse";
 		nvmem-cells = <&efuse_segment &efuse_ly>;
 		nvmem-cell-names = "efuse_segment_cell","efuse_ly_cell";
 		L-table = <2000 96 1 1
@@ -2306,6 +2373,7 @@ firmware_class.path=/vendor/firmware";
 		interconnects = <&auxadc 1>;
 	};
 
+#ifdef CONFIG_HQ_PROJECT_HS03S
 	tboard_thermistor3: thermal-sensor3 {
 		compatible = "mediatek,mtboard-thermistor3";
 		io-channels = <&auxadc 2>;
@@ -2313,6 +2381,34 @@ firmware_class.path=/vendor/firmware";
 		interconnects = <&auxadc 2>;
 	};
 
+#endif
+#ifdef CONFIG_HQ_PROJECT_HS04
+	tboard_thermistor3: thermal-sensor3 {
+		compatible = "mediatek,mtboard-thermistor3";
+		io-channels = <&auxadc 2>;
+		io-channel-names = "thermistor-ch2";
+		interconnects = <&auxadc 2>;
+	};
+
+#endif
+
+	/*HS03s code for SR-AL5625-01-259 by wenyaqi at 20210422 start*/
+	tboard_thermistor4: thermal-sensor4 {
+		compatible = "mediatek,mtboard-thermistor4";
+		io-channels = <&auxadc 3>;
+		io-channel-names = "thermistor-ch3";
+		interconnects = <&auxadc 3>;
+	};
+	/*HS03s code for SR-AL5625-01-259 by wenyaqi at 20210422 end*/
+#ifdef CONFIG_HQ_PROJECT_OT8
+	tboard_thermistor5: thermal-sensor5 {
+		compatible = "mediatek,mtboard-thermistor5";
+		io-channels = <&auxadc 4>;
+		io-channel-names = "thermistor-ch4";
+		interconnects = <&auxadc 4>;
+	};
+	/*TabA7 Lite code for SR-AX3565-01-55 modify charger temp ntc by wenyaqi at 20201123 end*/
+#endif
 	btif@1100c000 {
 		compatible = "mediatek,btif";
 			/*btif base*/
@@ -2471,6 +2567,9 @@ firmware_class.path=/vendor/firmware";
 		clock-names = "usb0",
 			"usb0_clk_top_sel",
 			"usb0_clk_univpll3_d4";
+#ifdef CONFIG_HQ_PROJECT_OT8
+		charger = <&mt6370_chg>;
+#endif
 		pericfg= <&pericfg>;
 		interrupt-names = "mc";
 		phys = <&u2port0 PHY_TYPE_USB2>;
@@ -2548,6 +2647,7 @@ firmware_class.path=/vendor/firmware";
 		reg = <0 0x11220000 0 0x1000>;
 		/* interrupts = <GIC_SPI 153 IRQ_TYPE_LEVEL_LOW>; */
 		mediatek,btcvsd_snd = <&btcvsd_snd>;
+		mediatek,headset-codec = <&pmic_accdet>;
 	};
 
 	audgpio: mt_soc_dl1_pcm@11220000 {
@@ -2730,6 +2830,7 @@ firmware_class.path=/vendor/firmware";
 		reg = <0 0x14000000 0 0x1000>;
 		interrupts = <GIC_SPI 227 IRQ_TYPE_LEVEL_LOW>;
 		#clock-cells = <1>;
+		pwr-regmap = <&sleep>;
 	};
 
 	dispsys_config: dispsys_config@14000000 {
@@ -2807,6 +2908,7 @@ firmware_class.path=/vendor/firmware";
 		compatible = "mediatek,mt6765-imgsys", "syscon";
 		reg = <0 0x15020000 0 0x1000>;
 		#clock-cells = <1>;
+		pwr-regmap = <&sleep>;
 	};
 
 	imgsys@15020000 {
@@ -3071,6 +3173,7 @@ firmware_class.path=/vendor/firmware";
 		compatible =  "mediatek,mt6765-vcodecsys", "syscon";
 		reg = <0 0x17000000 0 0x10000>;
 		#clock-cells = <1>;
+		pwr-regmap = <&sleep>;
 	};
 
 	venc_gcon: venc_gcon@17000000 {
@@ -3134,12 +3237,12 @@ firmware_class.path=/vendor/firmware";
 		compatible = "mediatek,mt6765-camsys", "syscon";
 		reg = <0 0x1a000000  0 0x1000>;
 		#clock-cells = <1>;
+		pwr-regmap = <&sleep>;
 	};
 
 	camsys1: camsysisp@1a000000  {
 		compatible = "mediatek,camsys", "syscon";
 		reg = <0 0x1a000000  0 0x1000>;
-		#clock-cells = <1>;
 	};
 
 	smi_larb3: smi_larb3@1a002000 {
@@ -3289,6 +3392,9 @@ firmware_class.path=/vendor/firmware";
 			"CLK_TOP_CAMTM_SEL_CG",
 			"CLK_TOP_CAMTM_208_CG",
 			"CLK_SCP_SYS_CAM";
+			/* HS03s code for P210619-01144 by chenjun at 2021/07/15 start */
+        	pmic = <&main_pmic>;
+			/* HS03s code for P210619-01144 by chenjun at 2021/07/15 end */
 	};
 
 	camsv1@1a050000 {
@@ -3325,22 +3431,38 @@ firmware_class.path=/vendor/firmware";
 
 	flashlights_mt6370: flashlights_mt6370 {
 		compatible = "mediatek,flashlights_mt6370";
-		decouple = <0>;
+		decouple = <1>;
 		channel@1 {
 			type = <0>;
 			ct = <0>;
 			part = <0>;
 		};
-		channel@2 {
-			type = <0>;
-			ct = <1>;
-			part = <0>;
-		};
 	};
-
+/*hs03s code add for flashlights_aw36518 by chengzhi at 2021.06.13 begin*/
+    flashlights_aw36518: flashlights_aw36518 {
+        compatible = "mediatek,flashlights_aw36518";
+        decouple = <1>;
+        channel@1 {
+            type = <0>;
+            ct = <0>;
+            part = <0>;
+        };
+    };
+/*hs03s code add for flashlights_aw36518 by chengzhi at 2021.06.13 end*/
 	gps {
 		compatible = "mediatek,gps";
 	};
+/* hs03s code for CAM-AL5625-01-324 by lisizhou at 2021/05/31 start */
+        flashlights_sgm3785_gpio: flashlights_sgm3785_gpio {
+        compatible = "mediatek,flashlights_sgm3785_gpio";
+        decouple = <1>;
+        channel@1 {
+            type = <0>;
+            ct = <0>;
+            part = <0>;
+        };
+    };
+/* hs03s code for CAM-AL5625-01-324 by lisizhou at 2021/05/31 end */
 
 	ccu@1a0b1000 {
 		compatible = "mediatek,ccu";
@@ -3380,7 +3502,9 @@ firmware_class.path=/vendor/firmware";
 		compatible = "mediatek,charger,pe";
 		gauge = <&mtk_gauge>;
 
-		ta_12v_support;
+		/*HS03s for SR-AL5625-01-261 by wenyaqi at 20210425 start*/
+		// ta_12v_support;
+		/*HS03s for SR-AL5625-01-261 by wenyaqi at 20210425 end*/
 		ta_9v_support;
 
 		pe_ichg_level_threshold = <1000000>; /* uA */
@@ -3391,7 +3515,11 @@ firmware_class.path=/vendor/firmware";
 		ta_ac_12v_input_current = <3200000>;
 		ta_ac_9v_input_current = <3200000>;
 		ta_ac_7v_input_current = <3200000>;
+#if 0
 		pe_charger_current = <3000000>;
+#endif
+		pe_charger_current = <2700000>;
+
 	};
 
 	pe2: pe2 {
@@ -3410,7 +3538,10 @@ firmware_class.path=/vendor/firmware";
 
 		/* single charger */
 		sc_input_current = <3200000>;
+#if 0
 		sc_charger_current = <3000000>;
+#endif
+		sc_charger_current = <2700000>;
 
 		/* dual charger in series */
 		dcs_input_current = <3200000>;
@@ -3427,15 +3558,29 @@ firmware_class.path=/vendor/firmware";
 
 		min_charger_voltage = <4600000>;
 		pd_vbus_low_bound = <5000000>;
+#if 0
 		pd_vbus_upper_bound = <5000000>;
+#endif
+/* Tab A7 lite_T for P221206-04681 by shixuanxuan at 20221224 start */
+#ifdef CONFIG_HQ_PROJECT_OT8
+		pd_vbus_upper_bound = <10000000>;
+#else
+		pd_vbus_upper_bound = <15000000>;
+#endif
+/* Tab A7 lite_T for P221206-04681 by shixuanxuan at 20221224 end */
+
 		vsys_watt = <5000000>;
-		ibus_err = <14>;
+		ibus_err = <30>;
 
 		pd_stop_battery_soc = <80>;
 
 		/* single charger */
 		sc_input_current = <3200000>;
+#if 0
 		sc_charger_current = <3000000>;
+#endif
+		sc_charger_current = <2700000>;
+
 
 		/* dual charger in series */
 		dcs_input_current = <3200000>;
@@ -3458,7 +3603,7 @@ firmware_class.path=/vendor/firmware";
 		high_temp_to_enter_pe40 = <39>;
 		low_temp_to_leave_pe40 = <10>;
 		low_temp_to_enter_pe40 = <16>;
-		ibus_err = <14>;
+		ibus_err = <30>;
 
 		/* PE 4.0 cable impedance (mohm) */
 		pe40_r_cable_1a_lower = <500>;
@@ -3467,7 +3612,11 @@ firmware_class.path=/vendor/firmware";
 
 		/* single charger */
 		sc_input_current = <3200000>;
+#if 0
 		sc_charger_current = <3000000>;
+#endif
+		sc_charger_current = <2700000>;
+
 
 		/* dual charger in series*/
 		dcs_input_current = <3200000>;
@@ -3537,17 +3686,17 @@ firmware_class.path=/vendor/firmware";
 		compatible = "mediatek,pd_adapter";
 		adapter_name = "pd_adapter";
 	};
-
 	extcon_usb: extcon_usb {
 		compatible = "mediatek,extcon-usb";
 		charger = <&mt6370_chg>;
 		vbus-supply = <&otg_vbus>;
 		vbus-voltage = <5000000>;
-		vbus-current = <1800000>;
+		/*Tab A7 lite_T code for AL5626TDEV-170 by kangkai at 20220927 start*/
+		vbus-current = <1300000>;
+		/*Tab A7 lite_T code for AL5626TDEV-170 by kangkai at 20220927 end*/
 		dev-conn = <&usb>;
 		mediatek,bypss-typec-sink = <1>;
 	};
-
 	rt9465_slave_chr: rt9465_slave_chr {
 		compatible = "richtek,rt9465";
 		status = "disabled";
@@ -3579,7 +3728,8 @@ firmware_class.path=/vendor/firmware";
 		compatible = "mediatek,memory-ssmr-features";
 #if defined(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT) || \
 	defined(CONFIG_TRUSTONIC_TEE_SUPPORT) || \
-	defined(CONFIG_MICROTRUST_TEE_SUPPORT)
+	defined(CONFIG_MICROTRUST_TEE_SUPPORT) || \
+	defined(CONFIG_TEEGRIS_TEE_SUPPORT)
 		svp-region-based-size = <0 0x10000000>;
 #endif
 #ifdef CONFIG_MTK_CAM_SECURITY_SUPPORT
@@ -3723,7 +3873,7 @@ firmware_class.path=/vendor/firmware";
 		compatible = "mediatek,mt_soc_pcm_hp_impedance";
 	};
 
-	mt_soc_codec_name {
+	soc_codec: mt_soc_codec_name {
 		compatible = "mediatek,mt_soc_codec_63xx";
 		use_hp_depop_flow = <0>; /* select 1: use, 0: not use */
 		use_ul_260k = <0>; /* select 1: use, 0: not use */
@@ -3789,6 +3939,7 @@ firmware_class.path=/vendor/firmware";
 	i2c7:i2c7{};
 	i2c8:i2c8{};
 	i2c9:i2c9{};
+	i2c20:i2c-gpio@0{};
 	smart_pa: smart_pa{};
 	md1_sim1_hot_plug_eint:md1_sim1_hot_plug_eint{};
 	md1_sim2_hot_plug_eint:md1_sim2_hot_plug_eint{};
@@ -3823,15 +3974,308 @@ firmware_class.path=/vendor/firmware";
 		required-opps = <&dvfsrc_freq_opp0>,
 				<&dvfsrc_freq_opp1>;
 	};
+/*HS03s for SR-AL5628-01-162 by zhangjiangbin at 20220915 start*/
+	hwinfo:HardwareInfo {
+		compatible = "hardinfo,hardinfo_charger";
+		status = "okay";
+	};
+/*HS03s for SR-AL5628-01-162 by zhangjiangbin at 20220915 end*/
 
+	input_booster {
+		status = "okay";
+		compatible = "input_booster";
+		resValcount = "2";
+		max_resource_count = "3";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/* < CPU, DDR, SCHED_BOOST > */
+		ib_release_values = "-1, 16, 0";
+
+		booster_key@1 {
+			input_booster,label = "key";
+			input_booster,type = <0>;	/* BOOSTER_DEVICE_KEY */
+
+			/* Time table */
+			input_booster,head_time = <200>;
+			input_booster,tail_time = <200>;
+
+			/* Resource Table Sequentially identified with index
+			 * CPU's ID & Index : 0
+			 * DDR's ID & Index : 1
+			*/
+
+			/* Input Booster Resource Frequency */
+			inputbooster,resource {
+				compatible = "resource";
+				resource@1 {
+					resource,label = "CPU";
+					resource,value = <1484000 0>;
+				};
+
+				resource@2 {
+					resource,label = "DDR";
+					resource,value = <0 0>;
+				};
+
+				resource@3 {
+					resource,label = "SCHEDBOOST";
+					resource,value = <0 0>;
+				};
+			};
+		};
+
+		booster_key@2 {
+			input_booster,label = "touchkey";
+			input_booster,type = <1>;	/* BOOSTER_DEVICE_TOUCHKEY */
+
+			/* Time table */
+			input_booster,head_time = <1>;
+			input_booster,tail_time = <300>;
+
+			/* Input Booster Resource Frequency */
+			inputbooster,resource {
+				compatible = "resource";
+				resource@1 {
+					resource,label = "CPU";
+					resource,value = <1085000 0>;
+				};
+
+				resource@2 {
+					resource,label = "DDR";
+					resource,value = <0 0>;
+				};
+
+				resource@3 {
+					resource,label = "SCHEDBOOST";
+					resource,value = <0 0>;
+				};
+			};
+		};
+
+		booster_key@3 {
+			input_booster,label = "touch";
+			input_booster,type = <2>;	/* BOOSTER_DEVICE_TOUCH */
+
+			/* Time table */
+			input_booster,head_time = <130>;
+			input_booster,tail_time = <500>;
+
+			/* Input Booster Resource Frequency */
+			inputbooster,resource {
+				compatible = "resource";
+				resource@1 {
+					resource,label = "CPU";
+#ifndef CONFIG_HS03S_SUPPORT
+					resource,value = <2301000 1351000>;
+#else
+					resource,value = <1484000 1085000>;
+#endif
+				};
+
+				resource@2 {
+					resource,label = "DDR";
+					resource,value = <1866 1866>;
+				};
+
+				resource@3 {
+					resource,label = "SCHEDBOOST";
+					resource,value = <1 1>;
+				};
+			};
+		};
+
+		booster_key@4 {
+			input_booster,label = "multitouch";
+			input_booster,type = <3>;	/* BOOSTER_DEVICE_MULTITOUCH */
+
+			/* Time table */
+			input_booster,head_time = <1000>;
+			input_booster,tail_time = <500>;
+
+			/* Input Booster Resource Frequency */
+			inputbooster,resource {
+				compatible = "resource";
+				resource@1 {
+					resource,label = "CPU";
+					resource,value = <1484000 1085000>;
+				};
+
+				resource@2 {
+					resource,label = "DDR";
+					resource,value = <0 0>;
+				};
+
+				resource@3 {
+					resource,label = "SCHEDBOOST";
+					resource,value = <0 0>;
+				};
+			};
+		};
+
+		booster_key@5 {
+			input_booster,label = "keyboard";
+			input_booster,type = <4>;	/* BOOSTER_DEVICE_KEYBOARD */
+
+			/* Time table */
+			input_booster,head_time = <200>;
+			input_booster,tail_time = <0>;
+
+			/* Input Booster Resource Frequency */
+			inputbooster,resource {
+				compatible = "resource";
+				resource@1 {
+					resource,label = "CPU";
+					resource,value = <1085000 1085000>;
+				};
+
+				resource@2 {
+					resource,label = "DDR";
+					resource,value = <0 0>;
+				};
+
+				resource@3 {
+					resource,label = "SCHEDBOOST";
+					resource,value = <0 0>;
+				};
+			};
+		};
+
+		booster_key@6 {
+			input_booster,label = "mouse";
+			input_booster,type = <5>;	/* BOOSTER_DEVICE_MOUSE */
+
+			/* Time table */
+			input_booster,head_time = <200>;
+			input_booster,tail_time = <300>;
+
+			/* Input Booster Resource Frequency */
+			inputbooster,resource {
+				compatible = "resource";
+				resource@1 {
+					resource,label = "CPU";
+					resource,value = <1484000 1085000>;
+				};
+
+				resource@2 {
+					resource,label = "DDR";
+					resource,value = <0 0>;
+				};
+
+				resource@3 {
+					resource,label = "SCHEDBOOST";
+					resource,value = <0 0>;
+				};
+			};
+		};
+
+		booster_key@7 {
+			input_booster,label = "mouse_wheel";
+			input_booster,type = <6>;	/* BOOSTER_DEVICE_MOUSE */
+
+			/* Time table */
+			input_booster,head_time = <200>;
+			input_booster,tail_time = <0>;
+
+			/* Input Booster Resource Frequency */
+			inputbooster,resource {
+				compatible = "resource";
+				resource@1 {
+					resource,label = "CPU";
+					resource,value = <1484000 0>;
+				};
+
+				resource@2 {
+					resource,label = "DDR";
+					resource,value = <0 0>;
+				};
+
+				resource@3 {
+					resource,label = "SCHEDBOOST";
+					resource,value = <0 0>;
+				};
+			};
+		};
+
+		booster_key@8 {
+			input_booster,label = "pen_hover";
+			input_booster,type = <7>;	/* BOOSTER_DEVICE_MOUSE */
+
+			/* Time table */
+			input_booster,head_time = <200>;
+			input_booster,tail_time = <300>;
+
+			/* Input Booster Resource Frequency */
+			inputbooster,resource {
+				compatible = "resource";
+				resource@1 {
+					resource,label = "CPU";
+					resource,value = <1484000 1085000>;
+				};
+
+				resource@2 {
+					resource,label = "DDR";
+					resource,value = <0 0>;
+				};
+
+				resource@3 {
+					resource,label = "SCHEDBOOST";
+					resource,value = <0 0>;
+				};
+			};
+		};
+
+		booster_key@9 {
+			input_booster,label = "pen";
+			input_booster,type = <8>;	/* BOOSTER_DEVICE_MOUSE */
+
+			/* Time table */
+			input_booster,head_time = <200>;
+			input_booster,tail_time = <600>;
+
+			/* Input Booster Resource Frequency */
+			inputbooster,resource {
+				compatible = "resource";
+				resource@1 {
+					resource,label = "CPU";
+					resource,value = <1484000 1085000>;
+				};
+
+				resource@2 {
+					resource,label = "DDR";
+					resource,value = <0 0>;
+				};
+
+				resource@3 {
+					resource,label = "SCHEDBOOST";
+					resource,value = <0 0>;
+				};
+			};
+		};
+		/* If you need to add new key type, add it this position */
+	};
 };
 
 #include "mediatek/cust_mt6765_msdc.dtsi"
 #include "mediatek/mt6357.dtsi"
 #include "mediatek/bat_setting/mt6765_battery_prop.dtsi"
+#ifdef CONFIG_HQ_PROJECT_OT8
+#include "mediatek/TabA7_Lite/AX3565-OT8-common.dtsi"
+#endif
 #include "mediatek/mt6370.dtsi"
+/*HS03s for SR-AL5625-01-515 by wangzikang at 20210607 start*/
+#ifdef CONFIG_HQ_PROJECT_HS03S
+#include "mediatek/hs03s/ccic.dtsi"
+#endif
+#ifdef CONFIG_HQ_PROJECT_HS04
+#include "mediatek/hs04/ccic.dtsi"
+#endif
+#ifdef CONFIG_HQ_PROJECT_OT8
 #include "mediatek/mt6370_pd.dtsi"
+#endif
+/*HS03s for SR-AL5625-01-515 by wangzikang at 20210607 end*/
 #ifdef CONFIG_CHARGER_RT9471
 #include "mediatek/rt9471.dtsi"
 #endif
 #include "mediatek/trusty.dtsi"
+#include "modem-MT6765ap-pdata.dtsi"

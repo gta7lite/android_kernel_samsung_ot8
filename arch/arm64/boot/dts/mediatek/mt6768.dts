@@ -30,7 +30,7 @@
 	/* chosen */
 	chosen: chosen {
 		bootargs = "console=tty0 console=ttyS0,921600n1 root=/dev/ram \
-vmalloc=400M slub_debug=OFZPU swiotlb=noforce \
+vmalloc=400M swiotlb=noforce \
 cgroup.memory=nosocket,nokmem \
 firmware_class.path=/vendor/firmware \
 page_owner=on loop.max_part=7";
@@ -425,6 +425,12 @@ page_owner=on loop.max_part=7";
 		interrupts = <GIC_SPI 297 IRQ_TYPE_EDGE_RISING>;
 	};
 
+	teegris {
+		compatible = "samsung,teegris";
+		interrupts = <GIC_SPI 262 IRQ_TYPE_LEVEL_LOW>,
+				 <GIC_SPI 263 IRQ_TYPE_LEVEL_LOW>;
+	};
+
 	tee_sanity {
 		compatible = "mediatek,tee_sanity";
 		interrupts = <GIC_SPI 298 IRQ_TYPE_EDGE_RISING>;
@@ -458,12 +464,39 @@ page_owner=on loop.max_part=7";
 		#size-cells = <2>;
 		ranges;
 
+#if defined(CONFIG_SEC_DEBUG)
+		sec-log-reserve-memory@0x46C00000 {
+			reg = <0 0x46C00000 0 0x200000>;
+		};
+
+		sec-lastklog@0x46E00000 {
+			reg = <0 0x46E00000 0 0x200000>;
+		};
+
+		sec-logger-reserve-memory@0x47000000 {
+			reg = <0 0x47000000 0 0x400000>;
+		};
+
+		sec-autocomment-reserve-memory@0x47400000 {
+			reg = <0 0x47400000 0 0x10000>;
+		};
+		
+		sec-extrainfo-reserve-memory@0x47410000 {
+			reg = <0 0x47410000 0 0x1F0000>;
+		};
+#endif
+
 		ssmr_cma_mem: ssmr-reserved-cma_memory {
 			compatible = "shared-dma-pool";
 			reusable;
 			size = <0 0x10000000>;
 			alignment = <0 0x1000000>;
 			alloc-range = <0 0xc0000000 0 0x10000000>;
+		};
+
+		cccimdee-reserved-memory@0x4AE3E000 {
+			compatible = "mediatek,ccci-md-ee-dump";
+			reg = <0 0x4AE3E000 0 0x1c2000>;/* 1800KB */
 		};
 
 		reserve-memory-sspm_share {
@@ -498,7 +531,7 @@ page_owner=on loop.max_part=7";
 		consys_mem: consys-reserve-memory {
 			compatible = "mediatek,consys-reserve-memory";
 			no-map;
-			size = <0 0x400000>;
+			size = <0 0x440000>;
 			alignment = <0 0x1000000>;
 			alloc-ranges = <0 0x40000000 0 0x80000000>;
 		};
@@ -567,7 +600,9 @@ page_owner=on loop.max_part=7";
 	};
 
 	infracfg_ao: infracfg_ao@10001000 {
+/* hs14 code for AL6528ADEU-2607 by tangyuhang at 2022/11/29 start */
 		compatible = "mediatek,common-infracfg_ao","mediatek,infracfg_ao","syscon";
+/* hs14 code for AL6528ADEU-2607 by tangyuhang at 2022/11/29 end */
 		reg = <0 0x10001000 0 0x1000>;
 		interrupts = <GIC_SPI 71 IRQ_TYPE_EDGE_RISING>;
 		#clock-cells = <1>;
@@ -587,10 +622,10 @@ page_owner=on loop.max_part=7";
 		#clock-cells = <1>;
 	};
 
-	mcdi:mcdi@00110100 {
+	mcdi:mcdi@0010fc00 {
 		compatible = "mediatek,mt6768-mcdi";
 		mediatek,enabled = <1>;
-		reg = <0 0x00110100 0 0x800>,
+		reg = <0 0x0010fc00 0 0x800>,
 		      <0 0x0c53a000 0 0x1000>;
 	};
 
@@ -873,7 +908,8 @@ page_owner=on loop.max_part=7";
 
 	mrdump_ext_rst: mrdump_ext_rst {
 		compatible = "mediatek, mrdump_ext_rst-eint";
-		mode = "IRQ";
+		force_mode = "SYSRST";
+		mode = "RST";
 		status = "okay";
 	};
 
@@ -885,7 +921,7 @@ page_owner=on loop.max_part=7";
 	dvfsrc: dvfsrc@10012000 {
 		compatible = "mediatek,dvfsrc";
 		reg = <0 0x10012000 0 0x1000>,
-			<0 0x00110b80 0 0x80>;
+			<0 0x00110780 0 0x80>;
 	};
 
 	mbist_ao@10013000 {
@@ -928,7 +964,6 @@ page_owner=on loop.max_part=7";
 			      "mediatek,mt6765-timer",
 			      "mediatek,sys_timer";
 		reg = <0 0x10017000 0 0x1000>;
-		reg-names = "sys_timer_base";
 		interrupts = <GIC_SPI 207 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk13m>;
 	};
@@ -1086,7 +1121,7 @@ page_owner=on loop.max_part=7";
 		compatible = "mediatek,infracfg";
 		reg = <0 0x1020e000 0 0x1000>;
 	};
-	
+
 	efuse: efuse@11c10000 {
 		compatible = "mediatek,devinfo";
 		reg = <0 0x11c10000 0 0x10000>;
@@ -1335,10 +1370,10 @@ page_owner=on loop.max_part=7";
 		reg = <0 0x10227000 0 0x1000>;
 	};
 
-	dvfsp: dvfsp@00110c00 {
+	dvfsp: dvfsp@00110800 {
 		compatible = "mediatek,mt6768-dvfsp";
-		reg = <0 0x00110c00 0 0x1400>,
-		      <0 0x00110c00 0 0x1400>;
+		reg = <0 0x00110800 0 0x1400>,
+		      <0 0x00110800 0 0x1400>;
 		state = <1>;
 		change_flag = <0>;
 		little-rise-time = <1000>;
@@ -1421,6 +1456,7 @@ page_owner=on loop.max_part=7";
 		disp_mutex_reg = <0x14016000 0x1000>;
 		g3d_config_base = <0x13000000 0 0xffff0000>;
 		mmsys_config_base = <0x14000000 1 0xffff0000>;
+		mipitx0_base = <0x11c80000 99 0xffff0000>;
 		disp_dither_base = <0x14010000 2 0xffff0000>;
 		mm_na_base = <0x14020000 3 0xffff0000>;
 		imgsys_base = <0x15020000 4 0xffff0000>;
@@ -1679,6 +1715,12 @@ defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 	goodix_fp: fingerprint {
 		compatible = "mediatek,goodix-fp";
 	};
+
+	/* hs14 code for SR-AL6528A-01-282|SR-AL6528A-01-292 by xiongxiaoliang at 2022/10/10 start */
+	cdfinger: cdfinger {
+		compatible = "mediatek,mtk_finger";
+	};
+	/* hs14 code for SR-AL6528A-01-282|SR-AL6528A-01-292 by xiongxiaoliang at 2022/10/10 end */
 
 	accdet: accdet {
 		compatible = "mediatek,pmic-accdet";
@@ -2368,6 +2410,24 @@ defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 		io-channel-names = "thermistor-ch1";
 	};
 
+	/*hs14 code for SR-AL6528A-01-317 by wenyaqi at 2022/09/01 start*/
+	tboard_thermistor3: thermal-sensor3 {
+		compatible = "mediatek,mtboard-thermistor3";
+		io-channels = <&auxadc 2>;
+		io-channel-names = "thermistor-ch2";
+		interconnects = <&auxadc 2>;
+	};
+	/*hs14 code for SR-AL6528A-01-317 by wenyaqi at 2022/09/01 end*/
+
+	/* hs14 code for SR-AL6528A-01-305 by shanxinkai at 2022/09/06 start */
+	tboard_thermistor4: thermal-sensor4 {
+		compatible = "mediatek,mtboard-thermistor4";
+		io-channels = <&auxadc 3>;
+		io-channel-names = "thermistor-ch3";
+		interconnects = <&auxadc 3>;
+	};
+	/* hs14 code for SR-AL6528A-01-305 by shanxinkai at 2022/09/06 end */
+
 	drcc: drcc {
 		compatible = "mediatek,drcc";
 		state = <255>;
@@ -2740,6 +2800,9 @@ defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 		mtk_spk_i2s_out = <3>;
 		mtk_spk_i2s_in = <0>;
 		/* mtk_spk_i2s_mck = <3>; */
+		/* hs14 code for SR-AL6528A-01-392  by yingboyang at 20220918 start */
+		ctrl-mod = <&pio 151 0x0>;
+		/* hs14 code for SR-AL6528A-01-392  by yingboyang at 20220918 end */
 		mediatek,speaker-codec {
 			sound-dai = <&speaker_amp>;
 		};
@@ -3673,6 +3736,17 @@ defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 		};
 	};
 
+	flashlights_sgm3785_gpio: flashlights_sgm3785_gpio {
+		compatible = "mediatek,flashlights_sgm3785_gpio";
+		decouple = <1>;
+		status = "okay";
+		channel@1 {
+			type = <0>;
+			ct = <0>;
+			part = <0>;
+		};
+	};
+
 	camsv1@1a050000 {
 		compatible = "mediatek,camsv1";
 		reg = <0 0x1a050000 0 0x1000>;
@@ -3910,7 +3984,9 @@ defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 
 	extcon_usb: extcon_usb {
 		compatible = "mediatek,extcon-usb";
-		charger = <&mt6370_chg>;
+		/* hs14 code for SR-AL6528A-01-312 by wenyaqi at 2022/09/08 start */
+		// charger = <&mt6370_chg>;
+		/* hs14 code for SR-AL6528A-01-312 by wenyaqi at 2022/09/08 end */
 		dev-conn = <&usb>;
 		mediatek,bypss-typec-sink = <1>;
 	};
@@ -3945,6 +4021,17 @@ defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 	touch: touch {
 		compatible = "goodix,touch";
 	};
+	/* hs14 code for SR-AL6528A-01-262 by zhangziyi at 2022/10/05 start */
+	silead_fp: silead_fp {
+		compatible = "sil,silead_fp-pins";
+	};
+	/* hs14 code for SR-AL6528A-01-262 by zhangziyi at 2022/10/05 end */
+
+	/* hs14 code added for SR-AL6528A-01-272 by Wentao at 2022/10/09 start */
+	focaltech_fp: focaltech_fp {
+		compatible = "focaltech,fp";
+	};
+	/* hs14 code added for SR-AL6528A-01-272 by Wentao at 2022/10/09 end */
 
 	nfc:nfc {
 		compatible = "mediatek,nfc-gpio-v2";
@@ -3985,8 +4072,12 @@ defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 &pio {
 	aud_clk_mosi_off: aud_clk_mosi_off {
 		pins_cmd0_dat {
-			pinmux = <PINMUX_GPIO136__FUNC_GPIO136>,
-				 <PINMUX_GPIO137__FUNC_GPIO137>;
+			pinmux = <PINMUX_GPIO136__FUNC_GPIO136>;
+			bias-pull-down;
+		};
+		pins_cmd1_dat {
+			pinmux = <PINMUX_GPIO137__FUNC_GPIO137>;
+			bias-pull-down;
 		};
 	};
 
@@ -3994,17 +4085,23 @@ defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 		pins_cmd0_dat {
 			pinmux = <PINMUX_GPIO136__FUNC_AUD_CLK_MOSI>;
 			input-schmitt-enable;
+			bias-disable;
 		};
 		pins_cmd1_dat {
 			pinmux = <PINMUX_GPIO137__FUNC_AUD_SYNC_MOSI>;
 			input-schmitt-enable;
+			bias-disable;
 		};
 	};
 
 	aud_clk_miso_off: aud_clk_miso_off {
 		pins_cmd0_dat {
-			pinmux = <PINMUX_GPIO140__FUNC_GPIO140>,
-				 <PINMUX_GPIO141__FUNC_GPIO141>;
+			pinmux = <PINMUX_GPIO140__FUNC_GPIO140>;
+			bias-pull-down;
+		};
+		pins_cmd1_dat {
+			pinmux = <PINMUX_GPIO141__FUNC_GPIO141>;
+			bias-pull-down;
 		};
 	};
 
@@ -4012,31 +4109,32 @@ defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 		pins_cmd0_dat {
 			pinmux = <PINMUX_GPIO140__FUNC_AUD_CLK_MISO>;
 			input-schmitt-enable;
+			bias-disable;
 		};
 		pins_cmd1_dat {
 			pinmux = <PINMUX_GPIO141__FUNC_AUD_SYNC_MISO>;
 			input-schmitt-enable;
+			bias-disable;
 		};
 	};
 
 	aud_dat_mosi_off: aud_dat_mosi_off {
 		pins_cmd0_dat {
 			pinmux = <PINMUX_GPIO136__FUNC_GPIO136>;
-			input-enable;
 			slew-rate = <0>;
-			bias-disable;
+			bias-pull-down;
 		};
 		pins_cmd1_dat {
 			pinmux = <PINMUX_GPIO137__FUNC_GPIO137>;
 			input-enable;
 			slew-rate = <0>;
-			bias-disable;
+			bias-pull-down;
 		};
 		pins_cmd2_dat {
 			pinmux = <PINMUX_GPIO138__FUNC_GPIO138>;
 			input-enable;
 			slew-rate = <0>;
-			bias-disable;
+			bias-pull-down;
 		};
 		pins_cmd3_dat {
 			pinmux = <PINMUX_GPIO139__FUNC_GPIO139>;
@@ -4050,18 +4148,22 @@ defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 		pins_cmd0_dat {
 			pinmux = <PINMUX_GPIO136__FUNC_AUD_CLK_MOSI>;
 			input-schmitt-enable;
+			bias-disable;
 		};
 		pins_cmd1_dat {
 			pinmux = <PINMUX_GPIO137__FUNC_AUD_SYNC_MOSI>;
 			input-schmitt-enable;
+			bias-disable;
 		};
 		pins_cmd2_dat {
 			pinmux = <PINMUX_GPIO138__FUNC_AUD_DAT_MOSI0>;
 			input-schmitt-enable;
+			bias-disable;
 		};
 		pins_cmd3_dat {
 			pinmux = <PINMUX_GPIO139__FUNC_AUD_DAT_MOSI1>;
 			input-schmitt-enable;
+			bias-disable;
 		};
 	};
 
@@ -4070,25 +4172,25 @@ defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 			pinmux = <PINMUX_GPIO140__FUNC_GPIO140>;
 			input-enable;
 			slew-rate = <0>;
-			bias-disable;
+			bias-pull-down;
 		};
 		pins_cmd1_dat {
 			pinmux = <PINMUX_GPIO141__FUNC_GPIO141>;
 			input-enable;
 			slew-rate = <0>;
-			bias-disable;
+			bias-pull-down;
 		};
 		pins_cmd2_dat {
 			pinmux = <PINMUX_GPIO142__FUNC_GPIO142>;
 			input-enable;
 			slew-rate = <0>;
-			bias-disable;
+			bias-pull-down;
 		};
 		pins_cmd3_dat {
 			pinmux = <PINMUX_GPIO143__FUNC_GPIO143>;
 			input-enable;
 			slew-rate = <0>;
-			bias-disable;
+			bias-pull-down;
 		};
 	};
 
@@ -4096,18 +4198,22 @@ defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 		pins_cmd0_dat {
 			pinmux = <PINMUX_GPIO140__FUNC_AUD_CLK_MISO>;
 			input-schmitt-enable;
+			bias-disable;
 		};
 		pins_cmd1_dat {
 			pinmux = <PINMUX_GPIO141__FUNC_AUD_SYNC_MISO>;
 			input-schmitt-enable;
+			bias-disable;
 		};
 		pins_cmd2_dat {
 			pinmux = <PINMUX_GPIO142__FUNC_AUD_DAT_MISO0>;
 			input-schmitt-enable;
+			bias-disable;
 		};
 		pins_cmd3_dat {
 			pinmux = <PINMUX_GPIO143__FUNC_AUD_DAT_MISO1>;
 			input-schmitt-enable;
+			bias-disable;
 		};
 	};
 
@@ -4174,6 +4280,276 @@ defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 			pinmux = <PINMUX_GPIO143__FUNC_VOW_CLK_MISO>;
 		};
 	};
+
+	input_booster {
+		status = "okay";
+		compatible = "input_booster";
+		resValcount = "2";
+		max_resource_count = "3";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/* < CPU, DDR, SCHED_BOOST > */
+		ib_release_values = "-1, 16, 0";
+
+		booster_key@1 {
+			input_booster,label = "key";
+			input_booster,type = <0>;	/* BOOSTER_DEVICE_KEY */
+
+			/* Time table */
+			input_booster,head_time = <200>;
+			input_booster,tail_time = <200>;
+
+			/* Resource Table Sequentially identified with index
+			 * CPU's ID & Index : 0
+			 * DDR's ID & Index : 1
+			*/
+
+			/* Input Booster Resource Frequency */
+			inputbooster,resource {
+				compatible = "resource";
+				resource@1 {
+					resource,label = "CPU";
+					resource,value = <1354000 0>;
+				};
+
+				resource@2 {
+					resource,label = "DDR";
+					resource,value = <0 0>;
+				};
+
+				resource@3 {
+					resource,label = "SCHEDBOOST";
+					resource,value = <0 0>;
+				};
+			};
+		};
+
+		booster_key@2 {
+			input_booster,label = "touchkey";
+			input_booster,type = <1>;	/* BOOSTER_DEVICE_TOUCHKEY */
+
+			/* Time table */
+			input_booster,head_time = <1>;
+			input_booster,tail_time = <300>;
+
+			/* Input Booster Resource Frequency */
+			inputbooster,resource {
+				compatible = "resource";
+				resource@1 {
+					resource,label = "CPU";
+					resource,value = <0 1176000>;
+				};
+
+				resource@2 {
+					resource,label = "DDR";
+					resource,value = <0 0>;
+				};
+
+				resource@3 {
+					resource,label = "SCHEDBOOST";
+					resource,value = <0 0>;
+				};
+			};
+		};
+
+		booster_key@3 {
+			input_booster,label = "touch";
+			input_booster,type = <2>;	/* BOOSTER_DEVICE_TOUCH */
+
+			/* Time table */
+			input_booster,head_time = <130>;
+			input_booster,tail_time = <500>;
+
+			/* Input Booster Resource Frequency */
+			inputbooster,resource {
+				compatible = "resource";
+				resource@1 {
+					resource,label = "CPU";
+					resource,value = <1354000 1176000>;
+				};
+
+				resource@2 {
+					resource,label = "DDR";
+					resource,value = <3600 3600>;
+				};
+
+				resource@3 {
+					resource,label = "SCHEDBOOST";
+					resource,value = <1 1>;
+				};
+			};
+		};
+
+		booster_key@4 {
+			input_booster,label = "multitouch";
+			input_booster,type = <3>;	/* BOOSTER_DEVICE_MULTITOUCH */
+
+			/* Time table */
+			input_booster,head_time = <1000>;
+			input_booster,tail_time = <500>;
+
+			/* Input Booster Resource Frequency */
+			inputbooster,resource {
+				compatible = "resource";
+				resource@1 {
+					resource,label = "CPU";
+					resource,value = <1354000 1176000>;
+				};
+
+				resource@2 {
+					resource,label = "DDR";
+					resource,value = <0 0>;
+				};
+
+				resource@3 {
+					resource,label = "SCHEDBOOST";
+					resource,value = <0 0>;
+				};
+			};
+		};
+
+		booster_key@5 {
+			input_booster,label = "keyboard";
+			input_booster,type = <4>;	/* BOOSTER_DEVICE_KEYBOARD */
+
+			/* Time table */
+			input_booster,head_time = <200>;
+			input_booster,tail_time = <0>;
+
+			/* Input Booster Resource Frequency */
+			inputbooster,resource {
+				compatible = "resource";
+				resource@1 {
+					resource,label = "CPU";
+					resource,value = <1176000 1176000>;
+				};
+
+				resource@2 {
+					resource,label = "DDR";
+					resource,value = <0 0>;
+				};
+
+				resource@3 {
+					resource,label = "SCHEDBOOST";
+					resource,value = <0 0>;
+				};
+			};
+		};
+
+		booster_key@6 {
+			input_booster,label = "mouse";
+			input_booster,type = <5>;	/* BOOSTER_DEVICE_MOUSE */
+
+			/* Time table */
+			input_booster,head_time = <200>;
+			input_booster,tail_time = <300>;
+
+			/* Input Booster Resource Frequency */
+			inputbooster,resource {
+				compatible = "resource";
+				resource@1 {
+					resource,label = "CPU";
+					resource,value = <1354000 1176000>;
+				};
+
+				resource@2 {
+					resource,label = "DDR";
+					resource,value = <0 0>;
+				};
+
+				resource@3 {
+					resource,label = "SCHEDBOOST";
+					resource,value = <0 0>;
+				};
+			};
+		};
+
+		booster_key@7 {
+			input_booster,label = "mouse_wheel";
+			input_booster,type = <6>;	/* BOOSTER_DEVICE_MOUSE */
+
+			/* Time table */
+			input_booster,head_time = <200>;
+			input_booster,tail_time = <0>;
+
+			/* Input Booster Resource Frequency */
+			inputbooster,resource {
+				compatible = "resource";
+				resource@1 {
+					resource,label = "CPU";
+					resource,value = <1354000 0>;
+				};
+
+				resource@2 {
+					resource,label = "DDR";
+					resource,value = <0 0>;
+				};
+
+				resource@3 {
+					resource,label = "SCHEDBOOST";
+					resource,value = <0 0>;
+				};
+			};
+		};
+
+		booster_key@8 {
+			input_booster,label = "pen_hover";
+			input_booster,type = <7>;	/* BOOSTER_DEVICE_MOUSE */
+
+			/* Time table */
+			input_booster,head_time = <200>;
+			input_booster,tail_time = <300>;
+
+			/* Input Booster Resource Frequency */
+			inputbooster,resource {
+				compatible = "resource";
+				resource@1 {
+					resource,label = "CPU";
+					resource,value = <1354000 1176000>;
+				};
+
+				resource@2 {
+					resource,label = "DDR";
+					resource,value = <0 0>;
+				};
+
+				resource@3 {
+					resource,label = "SCHEDBOOST";
+					resource,value = <0 0>;
+				};
+			};
+		};
+
+		booster_key@9 {
+			input_booster,label = "pen";
+			input_booster,type = <8>;	/* BOOSTER_DEVICE_MOUSE */
+
+			/* Time table */
+			input_booster,head_time = <200>;
+			input_booster,tail_time = <600>;
+
+			/* Input Booster Resource Frequency */
+			inputbooster,resource {
+				compatible = "resource";
+				resource@1 {
+					resource,label = "CPU";
+					resource,value = <1354000 1176000>;
+				};
+
+				resource@2 {
+					resource,label = "DDR";
+					resource,value = <0 0>;
+				};
+
+				resource@3 {
+					resource,label = "SCHEDBOOST";
+					resource,value = <0 0>;
+				};
+			};
+		};
+		/* If you need to add new key type, add it this position */
+	};
 };
 
 
@@ -4191,3 +4567,4 @@ defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 #ifdef CONFIG_MTK_ENABLE_GENIEZONE
 #include "mediatek/trusty.dtsi"
 #endif
+#include "modem-MTK-pdata.dtsi"

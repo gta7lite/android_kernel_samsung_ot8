@@ -137,8 +137,10 @@
 	sd-uhs-sdr50;
 	sd-uhs-sdr104;
 	sd-uhs-ddr50;
-	cd-gpios = <&pio 18 GPIO_ACTIVE_LOW>;
-	vmmc-supply = <&mt6358_vmch_eint_high>;
+	/* hs14 code for SR-AL6528A-01-181 by gaochao at 20220905 start */
+	cd-gpios = <&pio 18 GPIO_ACTIVE_HIGH>;
+	/* hs14 code for SR-AL6528A-01-181 by gaochao at 20220905 end */
+	vmmc-supply = <&mt_pmic_vmch_ldo_reg>;
 	vqmmc-supply = <&mt_pmic_vmc_ldo_reg>;
 	no-mmc;
 	no-sdio;
