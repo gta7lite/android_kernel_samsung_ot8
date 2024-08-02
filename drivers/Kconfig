@@ -226,4 +226,11 @@ source "drivers/slimbus/Kconfig"
 source "drivers/interconnect/Kconfig"
 
 source "drivers/energy_model/Kconfig"
+
+source "drivers/switch/Kconfig"
+
+source "drivers/samsung/Kconfig"
+
+source "drivers/battery/Kconfig"
+
 endmenu
