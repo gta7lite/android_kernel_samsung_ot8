@@ -27,6 +27,13 @@
 #include <linux/pid_namespace.h>
 #include <linux/refcount.h>
 #include <linux/user_namespace.h>
+#include <linux/freezer.h>
+
+#ifdef CONFIG_FUSE_SUPPORT_STLOG
+#include <linux/fslog.h>
+#else
+#define ST_LOG(fmt, ...)
+#endif
 
 /** Max number of pages that can be used in a single read request */
 #define FUSE_MAX_PAGES_PER_REQ 32
@@ -947,7 +954,6 @@ int fuse_allow_current_process(struct fuse_conn *fc);
 
 u64 fuse_lock_owner_id(struct fuse_conn *fc, fl_owner_t id);
 
-void fuse_flush_time_update(struct inode *inode);
 void fuse_update_ctime(struct inode *inode);
 
 int fuse_update_attributes(struct inode *inode, struct file *file);
@@ -1026,6 +1032,50 @@ extern const struct xattr_handler *fuse_no_acl_xattr_handlers[];
 struct posix_acl;
 struct posix_acl *fuse_get_acl(struct inode *inode, int type);
 int fuse_set_acl(struct inode *inode, struct posix_acl *acl, int type);
+
+#ifdef CONFIG_FREEZER
+static inline void fuse_freezer_do_not_count(void)
+{
+	current->flags |= PF_FREEZER_SKIP;
+}
+
+static inline void fuse_freezer_count(void)
+{
+	current->flags &= ~PF_FREEZER_SKIP;
+}
+#else /* !CONFIG_FREEZER */
+static inline void fuse_freezer_do_not_count(void) {}
+static inline void fuse_freezer_count(void) {}
+#endif
+
+#define fuse_wait_event(wq, condition)						\
+({										\
+	fuse_freezer_do_not_count();						\
+	wait_event(wq, condition);						\
+	fuse_freezer_count();							\
+})
+
+#define fuse_wait_event_killable(wq, condition)					\
+({										\
+	int __ret = 0;								\
+										\
+	fuse_freezer_do_not_count();						\
+	__ret = wait_event_killable(wq, condition);				\
+	fuse_freezer_count();							\
+										\
+	__ret;									\
+})
+
+#define fuse_wait_event_killable_exclusive(wq, condition)			\
+({										\
+	int __ret = 0;								\
+										\
+	fuse_freezer_do_not_count();						\
+	__ret = wait_event_killable_exclusive(wq, condition);			\
+	fuse_freezer_count();							\
+										\
+	__ret;									\
+})
 
 /* passthrough.c */
 int fuse_passthrough_open(struct fuse_dev *fud,
