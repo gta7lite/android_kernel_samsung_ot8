@@ -438,6 +438,8 @@ static long ion_sys_cache_sync(struct ion_client *client,
 #else
 	unsigned int kernel_size = 0;
 #endif
+	struct sg_table *table;
+	struct ion_heap *heap = NULL;
 	int is_kernel_addr = from_kernel;
 
 	/* Get kernel handle
@@ -518,8 +520,6 @@ static long ion_sys_cache_sync(struct ion_client *client,
 	case ION_CACHE_FLUSH_BY_RANGE_USE_PA:
 		sync_va = param->iova;
 #ifdef	CONFIG_MTK_PSEUDO_M4U
-		struct sg_table *table;
-		struct ion_heap *heap = NULL;
 		table = buffer->sg_table;
 #if defined(CONFIG_MTK_IOMMU_PGTABLE_EXT) && \
 	(CONFIG_MTK_IOMMU_PGTABLE_EXT > 32)
@@ -673,6 +673,42 @@ static long ion_sys_ioctl(struct ion_client *client, unsigned int cmd,
 			ion_drv_put_kernel_handle(kernel_handle);
 		}
 		break;
+	case ION_SYS_GET_IOVA:
+	{
+		struct ion_buffer *buffer;
+		struct ion_handle *kernel_handle;
+		ion_phys_addr_t real_phys = 0;
+		size_t len = 0;
+
+		kernel_handle =
+			ion_drv_get_handle(client,
+					   param.get_phys_param.handle,
+					   param.get_phys_param.kernel_handle,
+					   from_kernel);
+		if (IS_ERR(kernel_handle)) {
+			IONMSG("ION_SYS_GET_IOVA fail!\n");
+			ret = -EINVAL;
+			break;
+		}
+		buffer = ion_handle_buffer(kernel_handle);
+		if ((int)buffer->heap->type != ION_HEAP_TYPE_DMA_RESERVED) {
+			IONMSG("heap %d don't support get read phys\n",
+			       buffer->heap->type);
+			ion_drv_put_kernel_handle(kernel_handle);
+			param.get_phys_param.phy_addr = 0;
+			param.get_phys_param.len = 0;
+			ret = -EINVAL;
+			break;
+		}
+
+		ret = ion_dma_reserved_heap_iova(buffer->heap,
+						 buffer, &real_phys, &len);
+		param.get_phys_param.phy_addr = real_phys;
+		param.get_phys_param.len = len;
+
+		ion_drv_put_kernel_handle(kernel_handle);
+	}
+		break;
 	case ION_SYS_SET_CLIENT_NAME:
 		ret = ion_sys_copy_client_name(param.client_name_param.name,
 					       client->dbg_name);
@@ -734,6 +770,35 @@ static long ion_custom_ioctl(struct ion_client *client, unsigned int cmd,
 	return _ion_ioctl(client, cmd, arg, 0);
 }
 
+int dump_heap_info_to_log(struct ion_heap *heap, int log_level)
+{
+	struct seq_file s;
+	char *buf;
+
+	if (!heap->debug_show)
+		return 0;
+
+	buf = kzalloc(PAGE_SIZE, GFP_KERNEL | __GFP_NOWARN);
+	if (!buf)
+		return -ENOMEM;
+
+	memset(&s, 0, sizeof(s));
+	s.buf = buf;
+	s.size = PAGE_SIZE;
+	mutex_init(&s.lock);
+
+	if (heap->debug_show)
+		heap->debug_show(heap, &s, NULL);
+
+	if (log_level <= LOGLEVEL_WARNING)
+		pr_info("%s\n", s.buf);
+	else
+		pr_debug("%s\n", s.buf);
+
+	kfree(s.buf);
+	return 0;
+}
+
 #ifdef CONFIG_PM
 /* FB event notifier */
 static int ion_fb_event(struct notifier_block *notifier, unsigned long event,
@@ -785,6 +850,9 @@ struct ion_heap *ion_mtk_heap_create(struct ion_platform_heap *heap_data)
 	case ION_HEAP_TYPE_MULTIMEDIA_SEC:
 		heap = ion_sec_heap_create(heap_data);
 		break;
+	case ION_HEAP_TYPE_DMA_RESERVED:
+		heap = ion_dma_reserved_heap_create(heap_data);
+		break;
 	default:
 		heap = ion_heap_create(heap_data);
 	}
@@ -815,6 +883,9 @@ void ion_mtk_heap_destroy(struct ion_heap *heap)
 		break;
 	case ION_HEAP_TYPE_MULTIMEDIA_SEC:
 		ion_sec_heap_destroy(heap);
+		break;
+	case ION_HEAP_TYPE_DMA_RESERVED:
+		ion_dma_reserved_heap_destroy(heap);
 		break;
 	default:
 		ion_heap_destroy(heap);
@@ -1140,6 +1211,15 @@ static struct ion_platform_heap ion_drv_platform_heaps[] = {
 	 .size = 0xc000, /* reserve 48KB for Audio; */
 #endif
 	 .align = 0x1000, /* this must not be 0 if enable */
+	 .priv = NULL,
+	 },
+	{
+	 .type = (unsigned int)ION_HEAP_TYPE_DMA_RESERVED,
+	 .id = ION_HEAP_TYPE_DMA_RESERVED,
+	 .name = "ion_dma_reserved_heap",
+	 .base = 0,
+	 .size = 3 * 1024 * 1024, /* size <= 4M !!!*/
+	 .align = 0x1000,
 	 .priv = NULL,
 	 },
 };

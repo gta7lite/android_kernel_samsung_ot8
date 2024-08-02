@@ -2255,6 +2255,7 @@ static int ion_debug_heap_show(struct seq_file *s, void *unused)
 	size_t total_orphaned_size = 0;
 	unsigned long long current_ts = 0;
 	unsigned int heap_id = heap->id;
+	unsigned int mm_id = ION_HEAP_TYPE_MULTIMEDIA;
 	unsigned int cam_id = ION_HEAP_TYPE_MULTIMEDIA_FOR_CAMERA;
 
 	seq_printf(s, "total sz[%llu]\n",
@@ -2355,7 +2356,10 @@ static int ion_debug_heap_show(struct seq_file *s, void *unused)
 	return 0;
 }
 
-static int debug_shrink_set(void *data, u64 val)
+/* HS03_T code for DEVAL5626T-668 by gaochao at 20220914 start */
+// static int debug_shrink_set(void *data, u64 val)
+int debug_shrink_set(void *data, u64 val)
+/* HS03_T code for DEVAL5626T-668 by gaochao at 20220914 end */
 {
 	struct ion_heap *heap = data;
 	struct shrink_control sc;
@@ -2365,10 +2369,20 @@ static int debug_shrink_set(void *data, u64 val)
 	sc.nr_to_scan = val;
 
 	if (!val) {
+		/* HS03_T code for DEVAL5626T-666 by gaochao at 20220914 start */
+		if (heap->shrinker.count_objects == NULL) {
+			return 0;
+		}
+		/* HS03_T code for DEVAL5626T-666 by gaochao at 20220914 end */
 		objs = heap->shrinker.count_objects(&heap->shrinker, &sc);
 		sc.nr_to_scan = objs;
 	}
 
+	/* HS03_T code for DEVAL5626T-666 by gaochao at 20220914 start */
+	if (heap->shrinker.scan_objects == NULL) {
+		return 0;
+	}
+	/* HS03_T code for DEVAL5626T-666 by gaochao at 20220914 end */
 	heap->shrinker.scan_objects(&heap->shrinker, &sc);
 	return 0;
 }
