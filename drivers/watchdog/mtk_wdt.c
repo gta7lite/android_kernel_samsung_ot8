@@ -181,9 +181,6 @@ static void mtk_wdt_parse_dt(struct device_node *np,
 		reg &= ~(WDT_DFD_THERMAL2_DIS | WDT_DFD_TIMEOUT_MASK);
 		reg |= (WDT_DFD_EN | WDT_DFD_THERMAL1_DIS |
 			WDT_LATCH_CTL2_KEY | tmp);
-#if defined(CONFIG_MEDIATEK_DFD_DISABLE)
-		reg &= ~(WDT_DFD_EN);
-#endif
 		writel(reg, wdt_base + WDT_LATCH_CTL2);
 	}
 }
