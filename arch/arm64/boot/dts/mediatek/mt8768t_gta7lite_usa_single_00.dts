@@ -6,7 +6,7 @@
 /dts-v1/;
 /plugin/;
 
-#include "../mediatek/ot8_fem.dts"
+#include "ot8_fem.dts"
 #include "mt8768t-gta7lite_common.dtsi"
 
 /* Add Samsung configuration over here */

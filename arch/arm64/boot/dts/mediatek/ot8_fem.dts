@@ -9,6 +9,9 @@
 #include <dt-bindings/clock/mt6765-clk.h>
 #include <dt-bindings/mmc/mt6765-msdc.h>
 
+/dts-v1/;
+/plugin/;
+
 /* chosen */
 &chosen {
 	atag,videolfb-fb_base_h = <0x0>;
@@ -520,7 +523,7 @@
 };
 
 #include "ot8/cust_fem.dtsi"
-#include "mediatek/cust_mt8768_camera.dtsi"
+#include "cust_mt8768_camera.dtsi"
 
 &msdc1 {
 	cd_level = /bits/ 8 <MSDC_CD_HIGH>;
