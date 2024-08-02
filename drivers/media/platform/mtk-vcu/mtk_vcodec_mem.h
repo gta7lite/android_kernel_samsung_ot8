@@ -46,6 +46,7 @@ struct mtk_vcu_mem {
 	struct dma_buf *dbuf;
 	dma_addr_t iova;
 	atomic_t ref_cnt;
+	uint64_t va_id;
 };
 
 struct vcu_pa_pages {
@@ -75,6 +76,7 @@ struct mtk_vcu_queue {
 	void *vcu;
 	struct mutex mmap_lock;
 	struct device *dev;
+	struct mutex dev_lock;
 	struct device *cmdq_dev;
 	unsigned int num_buffers;
 	const struct vb2_mem_ops *mem_ops;
