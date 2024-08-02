@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
 //
-// audio_ringbuf.c
-//
 // Copyright (c) 2018 MediaTek Inc.
 
 #include <audio_ringbuf.h>
@@ -11,17 +9,12 @@
 
 #include <audio_assert.h>
 
-
-
 #ifdef LOG_TAG
 #undef LOG_TAG
 #endif
 #define LOG_TAG "audio_ringbuf"
 
-
-
 #define MAX_SIZE_OF_ONE_FRAME (16) /* 32-bits * 4ch */
-
 
 #define DUMP_RINGBUF(LOG_F, description, rb, count) \
 	do { \
@@ -43,8 +36,6 @@
 		} \
 	} while (0)
 
-
-
 uint32_t audio_ringbuf_count(const struct audio_ringbuf_t *rb)
 {
 	uint32_t count = 0;
@@ -56,7 +47,6 @@ uint32_t audio_ringbuf_count(const struct audio_ringbuf_t *rb)
 	}
 	if (!rb->base || !rb->size)
 		return 0;
-
 
 	if (rb->write >= rb->read)
 		count = rb->write - rb->read;
@@ -70,7 +60,6 @@ uint32_t audio_ringbuf_count(const struct audio_ringbuf_t *rb)
 
 	return count;
 }
-
 
 uint32_t audio_ringbuf_free_space(const struct audio_ringbuf_t *rb)
 {
@@ -95,7 +84,6 @@ uint32_t audio_ringbuf_free_space(const struct audio_ringbuf_t *rb)
 
 	return free_spece;
 }
-
 
 void audio_ringbuf_copy_to_linear(
 	char *linear,
@@ -142,7 +130,6 @@ void audio_ringbuf_copy_to_linear(
 	}
 }
 
-
 void audio_ringbuf_copy_from_linear_impl(
 	struct audio_ringbuf_t *rb,
 	const char *linear,
@@ -168,7 +155,6 @@ void audio_ringbuf_copy_from_linear_impl(
 		return;
 	}
 
-
 	end = rb->base + rb->size;
 
 	if (rb->read <= rb->write) {
@@ -189,7 +175,6 @@ void audio_ringbuf_copy_from_linear_impl(
 	}
 }
 
-
 void audio_ringbuf_copy_from_linear(
 	struct audio_ringbuf_t *rb,
 	const char *linear,
@@ -202,11 +187,9 @@ void audio_ringbuf_copy_from_linear(
 		return;
 	}
 
-
 	dynamic_change_ring_buf_size(rb, count);
 	audio_ringbuf_copy_from_linear_impl(rb, linear, count);
 }
-
 
 void audio_ringbuf_copy_from_ringbuf_impl(
 	struct audio_ringbuf_t *rb_des,
@@ -237,7 +220,6 @@ void audio_ringbuf_copy_from_ringbuf_impl(
 		AUD_WARNING("overflow");
 		return;
 	}
-
 
 	if (rb_src->read <= rb_src->write) {
 		audio_ringbuf_copy_from_linear_impl(
@@ -270,7 +252,6 @@ void audio_ringbuf_copy_from_ringbuf_impl(
 	}
 }
 
-
 void audio_ringbuf_copy_from_ringbuf(
 	struct audio_ringbuf_t *rb_des,
 	struct audio_ringbuf_t *rb_src,
@@ -297,7 +278,6 @@ void audio_ringbuf_copy_from_ringbuf(
 	audio_ringbuf_copy_from_ringbuf_impl(rb_des, rb_src, count);
 }
 
-
 void audio_ringbuf_copy_from_ringbuf_all(
 	struct audio_ringbuf_t *rb_des,
 	struct audio_ringbuf_t *rb_src)
@@ -311,7 +291,6 @@ void audio_ringbuf_copy_from_ringbuf_all(
 		rb_src,
 		audio_ringbuf_count(rb_src));
 }
-
 
 void audio_ringbuf_write_value(
 	struct audio_ringbuf_t *rb,
@@ -340,7 +319,6 @@ void audio_ringbuf_write_value(
 		return;
 	}
 
-
 	end = rb->base + rb->size;
 
 	if (rb->read <= rb->write) {
@@ -361,7 +339,6 @@ void audio_ringbuf_write_value(
 	}
 }
 
-
 void audio_ringbuf_write_zero(struct audio_ringbuf_t *rb, uint32_t count)
 {
 	if (!count)
@@ -373,7 +350,6 @@ void audio_ringbuf_write_zero(struct audio_ringbuf_t *rb, uint32_t count)
 
 	audio_ringbuf_write_value(rb, 0, count);
 }
-
 
 void audio_ringbuf_drop_data(struct audio_ringbuf_t *rb, const uint32_t count)
 {
@@ -406,7 +382,6 @@ void audio_ringbuf_drop_data(struct audio_ringbuf_t *rb, const uint32_t count)
 	}
 }
 
-
 void audio_ringbuf_drop_all(struct audio_ringbuf_t *rb)
 {
 	if (!rb) {
@@ -414,10 +389,9 @@ void audio_ringbuf_drop_all(struct audio_ringbuf_t *rb)
 		return;
 	}
 
-	rb->read = rb->base;
-	rb->write = rb->base;
+	rb->read = 0;
+	rb->write = 0;
 }
-
 
 void audio_ringbuf_compensate_value_impl(
 	struct audio_ringbuf_t *rb,
@@ -471,7 +445,6 @@ void audio_ringbuf_compensate_value_impl(
 	}
 }
 
-
 void audio_ringbuf_compensate_value(
 	struct audio_ringbuf_t *rb,
 	const uint8_t value,
@@ -507,7 +480,6 @@ void audio_ringbuf_rollback(struct audio_ringbuf_t *rb, const uint32_t count)
 		return;
 	}
 
-
 	b2r = rb->read - rb->base;
 	end = rb->base + rb->size;
 
@@ -525,7 +497,6 @@ void audio_ringbuf_rollback(struct audio_ringbuf_t *rb, const uint32_t count)
 	} else
 		rb->read -= count;
 }
-
 
 void dynamic_change_ring_buf_size(
 	struct audio_ringbuf_t *rb,
@@ -558,18 +529,9 @@ void dynamic_change_ring_buf_size(
 		data_count = audio_ringbuf_count(rb);
 		free_space = audio_ringbuf_free_space(rb);
 
-		if (free_space < write_size) {
-			change_size = data_count + free_space;
-			while ((change_size - data_count) < write_size)
-				change_size *= 2;
-		} else if (free_space > (8 * (data_count + write_size))) {
-			change_size = data_count + free_space;
-			while ((change_size - data_count) >
-			       (8 * (data_count + write_size)))
-				change_size /= 2;
-		}
-
-		if (change_size) {
+		if ((free_space  <       write_size) ||
+		    (free_space  > (8 * (data_count + write_size)))) {
+			change_size  = (2 * (data_count + write_size));
 			change_size += MAX_SIZE_OF_ONE_FRAME;
 
 			pr_info("%s(), %p: %u -> %u, data_count %u, write_size %u, free_space %u\n",
@@ -605,6 +567,4 @@ void dynamic_change_ring_buf_size(
 		}
 	}
 }
-
-
 

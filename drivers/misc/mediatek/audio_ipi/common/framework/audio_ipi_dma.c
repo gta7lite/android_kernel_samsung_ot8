@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 //
-// adsp_ipi_dma.c
-//
-// Copyright (c) 2018 MediaTek Inc.
+// Copyright (c) 2016 MediaTek Inc.
 
 #include <audio_ipi_dma.h>
 
@@ -58,7 +56,7 @@
 #undef ipi_dbg
 #endif
 
-#if 0
+#ifdef DEBUG_IPI
 #define ipi_dbg(x...) pr_info(x)
 #else
 #define ipi_dbg(x...)
@@ -391,7 +389,6 @@ int audio_ipi_dma_init_dsp(const uint32_t dsp_id)
 	struct ipi_msg_t ipi_msg;
 	int ret = 0;
 	uint8_t task = TASK_SCENE_INVALID;
-	uint64_t payload[2];
 
 	if (dsp_id >= NUM_OPENDSP_TYPE) {
 		pr_info("dsp_id(%u) invalid!!!", dsp_id);
@@ -413,19 +410,17 @@ int audio_ipi_dma_init_dsp(const uint32_t dsp_id)
 	if (is_audio_use_adsp(dsp_id))
 		adsp_register_feature(AUDIO_CONTROLLER_FEATURE_ID);
 #endif
-	payload[0] = g_dma[dsp_id]->base_phy.addr_val;
-	payload[1] = (uint64_t)g_dma[dsp_id]->size;
 
 	ret = audio_send_ipi_msg(
 		      &ipi_msg,
 		      task,
 		      AUDIO_IPI_LAYER_TO_DSP,
-		      AUDIO_IPI_PAYLOAD,
+		      AUDIO_IPI_MSG_ONLY,
 		      AUDIO_IPI_MSG_DIRECT_SEND,
 		      AUD_CTL_MSG_A2D_DMA_INIT,
-		      sizeof(payload),
-		      0,
-		      &payload);
+		      g_dma[dsp_id]->base_phy.addr_val,
+		      g_dma[dsp_id]->size,
+		      NULL);
 
 #if defined(CONFIG_MTK_AUDIODSP_SUPPORT)
 	if (is_audio_use_adsp(dsp_id))
@@ -1491,26 +1486,10 @@ static int hal_dma_init_msg_queue(struct hal_dma_queue_t *msg_queue,
 				  const uint32_t size)
 {
 	int i = 0;
-	uint32_t dma_rb_sz = size / 2; /* tmp push-pop ring buffer */
 
 	if (msg_queue == NULL) {
 		pr_info("NULL!! msg_queue: %p", msg_queue);
 		return -EFAULT;
-	}
-
-	if (msg_queue->dma_data.base ||
-	    msg_queue->tmp_buf_d2k ||
-	    msg_queue->tmp_buf_k2h) {
-		pr_info("already init!! %u %u", msg_queue->dma_data.size, size);
-		if (dma_rb_sz > msg_queue->dma_data.size) {
-			vfree(msg_queue->dma_data.base);
-
-			msg_queue->dma_data.size = dma_rb_sz;
-			msg_queue->dma_data.base = vmalloc(dma_rb_sz);
-			msg_queue->dma_data.read = msg_queue->dma_data.base;
-			msg_queue->dma_data.write = msg_queue->dma_data.base;
-		}
-		return 0;
 	}
 
 
@@ -1525,7 +1504,7 @@ static int hal_dma_init_msg_queue(struct hal_dma_queue_t *msg_queue,
 	spin_lock_init(&msg_queue->queue_lock);
 	init_waitqueue_head(&msg_queue->queue_wq);
 
-	msg_queue->dma_data.size = dma_rb_sz;
+	msg_queue->dma_data.size = size;
 	msg_queue->dma_data.base = vmalloc(msg_queue->dma_data.size);
 	msg_queue->dma_data.read = msg_queue->dma_data.base;
 	msg_queue->dma_data.write = msg_queue->dma_data.base;
@@ -1621,7 +1600,7 @@ int audio_ipi_dma_msg_to_hal(struct ipi_msg_t *p_ipi_msg)
 		return -EFAULT;
 	}
 
-#if 0
+#ifdef DEBUG_IPI
 	DUMP_IPI_MSG("dma dsp -> kernel", p_ipi_msg);
 #endif
 
@@ -1669,7 +1648,7 @@ size_t audio_ipi_dma_msg_read(void __user *buf, size_t count)
 	}
 	p_ipi_msg = &msg_queue->msg[idx_msg];
 
-#if 0
+#ifdef DEBUG_IPI
 	DUMP_IPI_MSG("dma kernel -> hal", p_ipi_msg);
 #endif
 
