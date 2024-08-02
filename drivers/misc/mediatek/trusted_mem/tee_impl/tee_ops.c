@@ -33,18 +33,34 @@
 #endif
 #include "tee_client_api.h"
 
+#if defined(CONFIG_TEEGRIS_TEE_SUPPORT)
+#include <tee_client_api.h>
+#endif
+
+#if IS_ENABLED(CONFIG_TEEGRIS_TEE_SUPPORT)
+	#define TYPE_STRUCT
+#else
+	#define TYPE_STRUCT struct
+#endif
+
 /* clang-format off */
+#if defined(CONFIG_TEEGRIS_TEE_SUPPORT)
+#define SECMEM_TL_GP_UUID_STRING NULL
+#define SECMEM_TL_GP_UUID \
+	{ 0x00000000, 0x4D54, 0x4B5F, \
+	{ 0x42, 0x46, 0x53, 0x4D, 0x45, 0x4D, 0x54, 0x41 } }
+#else
+#define SECMEM_TL_GP_UUID_STRING "08030000000000000000000000000000"
 #define SECMEM_TL_GP_UUID \
 	{ 0x08030000, 0x0000, 0x0000, \
 	{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } }
+#endif
 /* clang-format on */
 
-#define SECMEM_TL_GP_UUID_STRING "08030000000000000000000000000000"
-
 struct TEE_GP_SESSION_DATA {
-	struct TEEC_Context context;
-	struct TEEC_Session session;
-	struct TEEC_SharedMemory wsm;
+	TYPE_STRUCT TEEC_Context context;
+	TYPE_STRUCT TEEC_Session session;
+	TYPE_STRUCT TEEC_SharedMemory wsm;
 	void *wsm_buffer;
 };
 
@@ -79,7 +95,7 @@ static void tee_gp_destroy_session_data(void)
 static int tee_session_open_single_session_unlocked(void)
 {
 	int ret = TMEM_OK;
-	struct TEEC_UUID destination = SECMEM_TL_GP_UUID;
+	TYPE_STRUCT TEEC_UUID destination = SECMEM_TL_GP_UUID;
 
 	if (is_sess_ready) {
 		pr_debug("UT_SUITE:Session is already created!\n");
@@ -202,7 +218,7 @@ int tee_session_close(void *tee_data, void *dev_desc)
 static int secmem_execute(u32 cmd, struct secmem_param *param)
 {
 	int ret = TEEC_SUCCESS;
-	struct TEEC_Operation op;
+	TYPE_STRUCT TEEC_Operation op;
 	struct secmem_ta_msg_t *msg;
 
 	TEE_SESSION_LOCK();
@@ -220,7 +236,7 @@ static int secmem_execute(u32 cmd, struct secmem_param *param)
 	msg->size = param->size;
 	msg->refcount = param->refcount;
 
-	memset(&op, 0, sizeof(struct TEEC_Operation));
+	memset(&op, 0, sizeof(TYPE_STRUCT TEEC_Operation));
 	op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_PARTIAL_INOUT, TEEC_NONE,
 					 TEEC_NONE, TEEC_NONE);
 	op.params[0].memref.parent = &g_sess_data->wsm;
