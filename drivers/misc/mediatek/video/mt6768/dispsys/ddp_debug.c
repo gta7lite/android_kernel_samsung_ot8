@@ -50,6 +50,7 @@
 #include "disp_drv_log.h"
 #include "disp_recovery.h"
 #include "disp_cust.h"
+#include "mtk_notify.h"
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 static struct dentry *debugfs;
@@ -669,27 +670,35 @@ static void process_dbg_opt(const char *opt)
 		DDPMSG("set_dsi_cmd cmd=0x%x\n", cmd);
 		for (i = 0; i < para_cnt; i++)
 			DDPMSG("para[%d] = 0x%x\n", i, para[i]);
-		set_lcm(&test, 1, hs);
+		set_lcm(&test, 1, hs, true);
 
 	} else if (strncmp(opt, "read_customer_cmd:", 18) == 0) {
 		int cmd;
 		int size, i;
 		char para[15] = {0};
 		int sendhs;
+		unsigned char offset = 0;
 
-		ret = sscanf(opt, "read_customer_cmd:0x%x, %d, %d\n",
-						&cmd, &size, &sendhs);
+		ret = sscanf(opt, "read_customer_cmd:0x%x, %d, %d %hhx\n",
+						&cmd, &size, &sendhs, &offset);
 
-		if (ret != 3 || size > ARRAY_SIZE(para)) {
+		if (ret != 4 || size > ARRAY_SIZE(para)) {
 			snprintf(buf, 50, "error to parse cmd %s\n", opt);
 			return;
 		}
 		pr_info(" read_lcm: 0x%x, size= %d %d\n", cmd, size, sendhs);
-		read_lcm(cmd, para, size, sendhs);
+		read_lcm(cmd, para, size, sendhs, true, offset);
 
 		for (i = 0; i < size; i++)
 			pr_info("para[%d] = 0x%x\n", i, para[i]);
-	} else {
+	} else if (strncmp(opt, "lcd:", 4) == 0) {
+		if (strncmp(opt + 4, "on", 2) == 0)
+			noti_uevent_user(&uevent_data, 1);
+		else if (strncmp(opt + 4, "off", 3) == 0)
+			noti_uevent_user(&uevent_data, 0);
+	}
+
+	else {
 		dbg_buf[0] = '\0';
 		goto Error;
 	}

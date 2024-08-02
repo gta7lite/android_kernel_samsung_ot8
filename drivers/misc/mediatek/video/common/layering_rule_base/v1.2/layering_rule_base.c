@@ -35,6 +35,7 @@ static int ext_id_tuning(struct disp_layer_info *disp_info, int disp_idx);
 static unsigned int adaptive_dc_request;
 static unsigned int roll_gpu_for_idle;
 static int g_emi_bound_table[HRT_LEVEL_NUM];
+#define DISP_LAYER_RULE_MAX_NUM 1024
 
 static struct {
 	enum LYE_HELPER_OPT opt;
@@ -72,7 +73,7 @@ int get_layering_opt(enum LYE_HELPER_OPT opt)
 #ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
 void set_round_corner_opt(enum LYE_HELPER_OPT opt, int value)
 {
-	if (opt >= LYE_OPT_NUM) {
+	if (opt >= LYE_OPT_NUM || opt < 0) {
 		DISPMSG("%s invalid round corner opt:%d\n", __func__, opt);
 		return;
 	}
@@ -82,7 +83,7 @@ void set_round_corner_opt(enum LYE_HELPER_OPT opt, int value)
 
 int get_round_corner_opt(enum LYE_HELPER_OPT opt)
 {
-	if (opt >= LYE_OPT_NUM) {
+	if (opt >= LYE_OPT_NUM || opt < 0) {
 		DISPMSG("%s invalid round corner opt:%d\n", __func__, opt);
 		return -1;
 	}
@@ -1754,6 +1755,13 @@ int check_disp_info(struct disp_layer_info *disp_info)
 
 	for (disp_idx = 0 ; disp_idx < 2 ; disp_idx++) {
 		layer_num = disp_info->layer_num[disp_idx];
+
+		if (layer_num < 0 || layer_num > DISP_LAYER_RULE_MAX_NUM) {
+			DISP_PR_ERR("[HRT] disp_idx %d, invalid layer num %d\n",
+				disp_idx, layer_num);
+			return -1;
+		}
+
 		if (layer_num > 0 &&
 			disp_info->input_config[disp_idx] == NULL) {
 			n = scnprintf(msg, len,
@@ -1941,7 +1949,7 @@ int layering_rule_start(struct disp_layer_info *disp_info_user, int debug_mode)
 	if (l_rule_info->hrt_idx == 0xffffffff)
 		l_rule_info->hrt_idx = 0;
 
-	l_rule_ops->copy_hrt_bound_table(0, g_emi_bound_table, disp_info_user->active_config_id[0]);
+	l_rule_ops->copy_hrt_bound_table(0, g_emi_bound_table);
 
 	/* 1.Pre-distribution */
 	l_rule_info->dal_enable = is_DAL_Enabled();
@@ -2355,6 +2363,8 @@ static int load_hrt_test_data(struct disp_layer_info *disp_info)
 				is_test_pass = false;
 			}
 
+			if (!tok)
+				goto end;
 			tok = parse_hrt_data_value(tok, &hrt_num);
 			if (!tok)
 				goto end;

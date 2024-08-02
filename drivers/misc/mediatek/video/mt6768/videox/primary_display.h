@@ -55,6 +55,8 @@ extern unsigned int ap_fps_changed;
 extern unsigned int arr_fps_backup;
 extern unsigned int arr_fps_enable;
 extern unsigned int round_corner_offset_enable;
+extern int def_data_rate;
+extern int def_dsi_hbp;
 
 extern bool g_force_cfg;
 extern unsigned int g_force_cfg_id;
@@ -492,12 +494,14 @@ int dynamic_debug_msg_print(unsigned int mva, int w, int h, int pitch,
 
 int display_enter_tui(void);
 int display_exit_tui(void);
+bool primary_display_is_tui_started(void);
 
 int primary_display_config_full_roi(struct disp_ddp_path_config *pconfig,
 	disp_path_handle disp_handle,
 		struct cmdqRecStruct *cmdq_handle);
 int primary_display_set_scenario(int scenario);
 enum DISP_MODULE_ENUM _get_dst_module_by_lcm(struct disp_lcm_handle *plcm);
+void set_cam_max_bw(int bw);
 extern void check_mm0_clk_sts(void);
 
 extern unsigned int dump_output;
@@ -529,5 +533,6 @@ bool primary_display_need_update_hrt_fps(
 
 /**************function for DynFPS end************************/
 #endif
+extern int mtk_notifier_call_chain(unsigned long val, void *v);
 
 #endif

@@ -541,11 +541,7 @@ int disp_hal_allocate_framebuffer(phys_addr_t pa_start, phys_addr_t pa_end,
 		struct m4u_client_t *client;
 		struct sg_table *sg_table = &table;
 
-		ret = sg_alloc_table(sg_table, 1, GFP_KERNEL);
-		if (ret) {
-			DISP_PR_ERR("allocate sg table failed: %d\n", ret);
-			return ret;
-		}
+		sg_alloc_table(sg_table, 1, GFP_KERNEL);
 
 		sg_dma_address(sg_table->sgl) = pa_start;
 		sg_dma_len(sg_table->sgl) = (pa_end - pa_start + 1);

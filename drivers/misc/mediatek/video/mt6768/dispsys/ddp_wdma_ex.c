@@ -25,6 +25,7 @@ enum TRUSTED_MEM_REQ_TYPE mem_type;
 #else
 int mem_type;
 #endif
+static int wdma_is_sec[2];
 
 /*****************************************************************************/
 unsigned int wdma_index(enum DISP_MODULE_ENUM module)
@@ -334,6 +335,8 @@ void wdma_dump_golden_setting(enum DISP_MODULE_ENUM module)
 
 	DDPDUMP("dump WDMA golden setting\n");
 
+	if (wdma_is_sec[index])
+		return;
 	DDPDUMP(
 		"WDMA_SMI_CON:\n[3:0]:%x [4:4]:%x [7:5]:%x [15:8]:%x [19:16]:%u [23:20]:%u [27:24]:%u\n",
 		DISP_REG_GET_FIELD(SMI_CON_FLD_THRESHOLD,
@@ -463,6 +466,11 @@ void wdma_dump_analysis(enum DISP_MODULE_ENUM module)
 	unsigned int idx_offst = index * DISP_WDMA_INDEX_OFFSET;
 
 	DDPDUMP("== DISP WDMA%d ANALYSIS ==\n", index);
+	if (wdma_is_sec[index]) {
+		DDPDUMP("WDMA%d in secure state\n", index);
+		return;
+	}
+
 	DDPDUMP(
 		"wdma%d:en=%d,w=%d,h=%d,clip=(%d,%d,%dx%d),pitch=(W=%d,UV=%d),addr=(0x%x,0x%x,0x%x),fmt=%s\n",
 		index, DISP_REG_GET(DISP_REG_WDMA_EN + idx_offst) & 0x01,
@@ -506,8 +514,14 @@ void wdma_dump_analysis(enum DISP_MODULE_ENUM module)
 
 void wdma_dump_reg(enum DISP_MODULE_ENUM module)
 {
+	unsigned int idx = wdma_index(module);
+
+	if (wdma_is_sec[idx]) {
+		DDPDUMP("WDMA%d in secure state\n", idx);
+		return;
+	}
+
 	if (disp_helper_get_option(DISP_OPT_REG_PARSER_RAW_DUMP)) {
-		unsigned int idx = wdma_index(module);
 		unsigned long module_base = DISPSYS_WDMA0_BASE +
 			idx * DISP_WDMA_INDEX_OFFSET;
 
@@ -597,7 +611,6 @@ void wdma_dump_reg(enum DISP_MODULE_ENUM module)
 			0xF08, INREG32(module_base + 0xF08));
 		DDPDUMP("-- END: DISP WDMA0 REGS --\n");
 	} else {
-		unsigned int idx = wdma_index(module);
 		unsigned int off_sft = idx * DISP_WDMA_INDEX_OFFSET;
 
 		DDPDUMP("== DISP WDMA%d REGS ==\n", idx);
@@ -668,7 +681,7 @@ wdma_golden_setting(enum DISP_MODULE_ENUM module,
 	unsigned int ultra_high_us = 4;
 	unsigned int preultra_low_us = 7;
 	unsigned int preultra_high_us = ultra_low_us;
-	unsigned int fifo_pseudo_size = 288;
+	unsigned int fifo_pseudo_size = 244;
 	unsigned int frame_rate = 60;
 	unsigned int bytes_per_sec = 3;
 	/*unsigned int is_primary_flag = 1;*/  /*primary or external*/
@@ -1108,7 +1121,6 @@ static int wdma_check_input_param(struct WDMA_CONFIG_STRUCT *config)
 	return 0;
 }
 
-static int wdma_is_sec[2];
 static inline int wdma_switch_to_sec(enum DISP_MODULE_ENUM module,
 	void *handle)
 {
@@ -1169,8 +1181,8 @@ int wdma_switch_to_nonsec(enum DISP_MODULE_ENUM module, void *handle)
 				cmdqRecWaitNoClear(nonsec_switch_handle,
 					cmdq_event);
 			else
-				_cmdq_insert_wait_frame_done_token_mira(
-					nonsec_switch_handle);
+				cmdqRecWaitNoClear(nonsec_switch_handle,
+					CMDQ_SYNC_DISP_EXT_STREAM_EOF);
 		} else {
 			/* External Mode */
 			/* ovl1->wdma1 */
@@ -1187,24 +1199,35 @@ int wdma_switch_to_nonsec(enum DISP_MODULE_ENUM module, void *handle)
 			(1LL << cmdq_engine));
 		if (handle != NULL) {
 			/* Async Flush method */
-			enum CMDQ_EVENT_ENUM cmdq_event_nonsec_end;
+			DDPERR("[SVP] %s should sync flush\n", __func__);
 
-			cmdq_event_nonsec_end =
-				wdma_idx == 0 ?
-				CMDQ_SYNC_DISP_WDMA0_2NONSEC_END :
-				CMDQ_SYNC_DISP_WDMA1_2NONSEC_END;
-			cmdqRecSetEventToken(nonsec_switch_handle,
-				cmdq_event_nonsec_end);
-			cmdqRecFlushAsync(nonsec_switch_handle);
-			cmdqRecWait(handle, cmdq_event_nonsec_end);
+			ret = cmdqRecFlush(nonsec_switch_handle);
 		} else {
 			/* Sync Flush method */
-			cmdqRecFlush(nonsec_switch_handle);
+			ret = cmdqRecFlush(nonsec_switch_handle);
 		}
 		cmdqRecDestroy(nonsec_switch_handle);
 		DDPSVPMSG("[SVP] switch wdma%d to nonsec\n", wdma_idx);
 		mmprofile_log_ex(ddp_mmp_get_events()->svp_module[module],
 			MMPROFILE_FLAG_END, 0, 0);
+
+		if (ret) {
+			DDPSVPMSG("[SVP] switch nonsec fail, disable sec again\n");
+			cmdqRecCreate(CMDQ_SCENARIO_DISP_PRIMARY_DISABLE_SECURE_PATH,
+				&(nonsec_switch_handle));
+
+			cmdqRecReset(nonsec_switch_handle);
+			cmdqRecSetSecure(nonsec_switch_handle, 1);
+
+			/* in fact, dapc/port_sec will be disabled by cmdq */
+			cmdqRecSecureEnablePortSecurity(nonsec_switch_handle,
+					(1LL << cmdq_engine));
+			cmdqRecSecureEnableDAPC(nonsec_switch_handle,
+					(1LL << cmdq_engine));
+
+			cmdqRecFlush(nonsec_switch_handle);
+			cmdqRecDestroy(nonsec_switch_handle);
+		}
 	}
 	wdma_is_sec[wdma_idx] = 0;
 

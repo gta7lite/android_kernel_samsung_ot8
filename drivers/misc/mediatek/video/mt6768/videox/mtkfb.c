@@ -71,6 +71,17 @@
 
 #include "smi_public.h"
 
+/* hs14 code for AL6528A-318 by gaozhengwei at 2022/10/18 start */
+#if defined(CONFIG_HQ_PROJECT_O22) && defined(HQ_FACTORY_BUILD)
+#include <linux/input.h>
+#include <uapi/linux/input-event-codes.h>
+#include <mt-plat/v1/mtk_charger.h>
+
+#define PRESSED 1
+#define RELEASED 0
+#endif
+/* hs14 code for AL6528A-318 by gaozhengwei at 2022/10/18 end */
+
 /* static variable */
 static u32 MTK_FB_XRES;
 static u32 MTK_FB_YRES;
@@ -2499,6 +2510,62 @@ static struct fb_info *allocate_fb_by_index(struct device *dev)
 }
 #endif
 
+/* hs14 code for AL6528A-318 by gaozhengwei at 2022/10/18 start */
+#if defined(CONFIG_HQ_PROJECT_O22) && defined(HQ_FACTORY_BUILD)
+static int mtkfb_usb_plug_notify_callback(struct notifier_block *self,
+        unsigned long event, void *data)
+{
+	static bool connect_status = false;
+
+	struct mtkfb_device *fbdev = container_of(self, struct mtkfb_device,
+							usbplug_notify);
+
+	/* hs14 code for AL6528ADEU-2946|AL6528A-1067 by gaozhengwei at 2023/01/10 start */
+	if (fbdev == NULL) {
+		DISPERR("fbdev == NULL, return\n");
+		return -ENOMEM;
+	}
+
+	mutex_lock(&fbdev->lock);
+	if (fbdev->input == NULL) {
+		DISPERR("fbdev->input == NULL, return\n");
+		mutex_unlock(&fbdev->lock);
+		return -ENOMEM;
+	}
+	/* hs14 code for AL6528ADEU-2946|AL6528A-1067 by gaozhengwei at 2023/01/10 end */
+
+	if (event == CHARGER_NOTIFY_START_CHARGING) {
+		connect_status = true;
+	} else if (event == CHARGER_NOTIFY_STOP_CHARGING) {
+		connect_status = false;
+	}
+
+	if (connect_status != fbdev->usb_connected) {
+
+		if (connect_status) {
+			fbdev->usb_connected = true;
+		} else {
+			fbdev->usb_connected = false;
+		}
+
+		if (primary_display_get_lcm_power_state() == LCM_OFF) {
+			DISPMSG("%s USB Notify LCD ON\n", __func__);
+			input_report_key(fbdev->input, KEY_POWER, PRESSED);
+			input_sync(fbdev->input);
+			input_report_key(fbdev->input, KEY_POWER, RELEASED);
+			input_sync(fbdev->input);
+		}
+
+	}
+	/* hs14 code for AL6528A-1067 by gaozhengwei at 2023/01/10 start */
+	mutex_unlock(&fbdev->lock);
+	/* hs14 code for AL6528A-1067 by gaozhengwei at 2023/01/10 end */
+
+	return 0;
+}
+#endif
+/* hs14 code for AL6528A-318 by gaozhengwei at 2022/10/18 end */
+
 static int mtkfb_probe(struct platform_device *pdev)
 {
 	struct mtkfb_device *fbdev = NULL;
@@ -2644,12 +2711,48 @@ static int mtkfb_probe(struct platform_device *pdev)
 	fbdev->state = MTKFB_ACTIVE;
 
 	if (!strcmp(mtkfb_find_lcm_driver(),
-		"nt35521_hd_dsi_vdo_truly_rt5081_drv")) {
+		"ea8076g_fhdplus_dis_cmd_drv")) {
 #ifdef CONFIG_MTK_CCCI_DRIVER
 		register_ccci_sys_call_back(MD_SYS1,
 			MD_DISPLAY_DYNAMIC_MIPI, mipi_clk_change);
 #endif
 	}
+
+/* hs14 code for AL6528A-318 by gaozhengwei at 2022/10/18 start */
+#if defined(CONFIG_HQ_PROJECT_O22) && defined(HQ_FACTORY_BUILD)
+	/* Create input device */
+	fbdev->input = input_allocate_device();
+	if (!fbdev->input) {
+		DISPERR("%s input_allocate_device fail.\n", __func__);
+		input_free_device(fbdev->input);
+	}
+
+	fbdev->input->name = "mtkfb-dev-input";
+
+	set_bit(EV_SYN, fbdev->input->evbit);
+	set_bit(EV_KEY, fbdev->input->evbit);
+	set_bit(KEY_POWER, fbdev->input->evbit);
+	input_set_capability(fbdev->input, EV_KEY, KEY_POWER);
+
+	r = input_register_device(fbdev->input);
+	if (r) {
+		DISPERR("%s input_register_device fail.ret:%d\n", __func__,
+			r);
+		input_free_device(fbdev->input);
+		fbdev->input = NULL;
+	}
+
+	fbdev->usbplug_notify.notifier_call = mtkfb_usb_plug_notify_callback;
+	r = register_usb_check_notifier(&fbdev->usbplug_notify);
+	if (r) {
+		DISPERR("usbplug_notify register fail\n");
+	}
+
+	/* hs14 code for AL6528A-1067 by gaozhengwei at 2023/01/10 start */
+	mutex_init(&fbdev->lock);
+	/* hs14 code for AL6528A-1067 by gaozhengwei at 2023/01/10 end */
+#endif
+/* hs14 code for AL6528A-318 by gaozhengwei at 2022/10/18 end */
 
 	MSG_FUNC_LEAVE();
 	pr_info("disp driver(2) %s end\n", __func__);
@@ -2670,6 +2773,19 @@ static int mtkfb_remove(struct platform_device *pdev)
 
 	MSG_FUNC_ENTER();
 	/* FIXME: wait till completion of pending events */
+
+/* hs14 code for AL6528A-318 by gaozhengwei at 2022/10/18 start */
+#if defined(CONFIG_HQ_PROJECT_O22) && defined(HQ_FACTORY_BUILD)
+	unregister_usb_check_notifier(&fbdev->usbplug_notify);
+	/* hs14 code for AL6528A-1067 by gaozhengwei at 2023/01/10 start */
+	mutex_lock(&fbdev->lock);
+	input_unregister_device(fbdev->input);
+	input_free_device(fbdev->input);
+	fbdev->input = NULL;
+	mutex_unlock(&fbdev->lock);
+	/* hs14 code for AL6528A-1067 by gaozhengwei at 2023/01/10 end */
+#endif
+/* hs14 code for AL6528A-318 by gaozhengwei at 2022/10/18 start */
 
 	fbdev->state = MTKFB_DISABLED;
 	mtkfb_free_resources(fbdev, saved_state);
@@ -2704,6 +2820,12 @@ static int mtkfb_resume(struct platform_device *pdev)
 
 static void mtkfb_shutdown(struct platform_device *pdev)
 {
+/* hs14 code for AL6528A-318 by gaozhengwei at 2022/10/18 start */
+#if defined(CONFIG_HQ_PROJECT_O22) && defined(HQ_FACTORY_BUILD)
+	struct mtkfb_device *fbdev = dev_get_drvdata(&pdev->dev);
+#endif
+/* hs14 code for AL6528A-318 by gaozhengwei at 2022/10/18 start */
+
 	MTKFB_LOG("[FB Driver] %s()\n", __func__);
 	if (primary_display_is_sleepd()) {
 		MTKFB_LOG("mtkfb has been power off\n");
@@ -2711,6 +2833,20 @@ static void mtkfb_shutdown(struct platform_device *pdev)
 	}
 	primary_display_set_power_mode(FB_SUSPEND);
 	primary_display_suspend();
+
+/* hs14 code for AL6528A-318 by gaozhengwei at 2022/10/18 start */
+#if defined(CONFIG_HQ_PROJECT_O22) && defined(HQ_FACTORY_BUILD)
+	unregister_usb_check_notifier(&fbdev->usbplug_notify);
+	/* hs14 code for AL6528A-1067 by gaozhengwei at 2023/01/10 start */
+	mutex_lock(&fbdev->lock);
+	input_unregister_device(fbdev->input);
+	input_free_device(fbdev->input);
+	fbdev->input = NULL;
+	mutex_unlock(&fbdev->lock);
+	/* hs14 code for AL6528A-1067 by gaozhengwei at 2023/01/10 end */
+#endif
+/* hs14 code for AL6528A-318 by gaozhengwei at 2022/10/18 start */
+
 	MTKFB_LOG("[FB Driver] leave %s\n", __func__);
 }
 

@@ -27,6 +27,9 @@ struct disp_lcm_handle {
 
 /* these 2 variables are defined in mt65xx_lcm_list.c */
 extern struct LCM_DRIVER *lcm_driver_list[];
+/*hs14 code for AL6528A-20 by duanyaoming at 20220906 start*/
+extern struct LCM_DRIVER *o22_lcm_driver_list[];
+/*hs14 code for AL6528A-20 by duanyaoming at 20220906 end*/
 extern unsigned int lcm_count;
 
 

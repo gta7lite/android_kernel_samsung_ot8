@@ -1,7 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+// SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2019 MediaTek Inc.
-*/
+ * Copyright (c) 2021 MediaTek Inc.
+ */
 #include "primary_display.h"
 #include "disp_drv_log.h"
 #include "ddp_dsi.h"
