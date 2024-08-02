@@ -8,21 +8,35 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/processor.h>
-
+#include <linux/kallsyms.h>
 #include <mt-plat/mboot_params.h>
 #include <mrdump.h>
 #include "mrdump_private.h"
+#include <asm/stacktrace.h>
+#include <linux/slab.h>
 
 static unsigned long mrdump_output_lbaooo;
 
 void __mrdump_create_oops_dump(enum AEE_REBOOT_MODE reboot_mode,
 		struct pt_regs *regs, const char *msg, ...)
 {
-	va_list ap;
 	struct mrdump_crash_record *crash_record;
 	void *creg;
 	int cpu;
 	elf_gregset_t *reg;
+//hs03s code for dump display by yanghui start at 20210429
+#ifdef HQ_FACTORY_BUILD
+	char *trace_msg = NULL;
+	struct stackframe frame;
+	int skip = 1;
+	struct task_struct *tsk = current;
+	char sym[KSYM_SYMBOL_LEN];
+	unsigned long offset, size;
+	char *err_msg = "Kernel Panic";
+#else
+	va_list ap;
+#endif
+//hs03s code for dump display by yanghui end at 20210429
 
 	if (mrdump_cblock) {
 		crash_record = &mrdump_cblock->crash_record;
@@ -49,11 +63,45 @@ void __mrdump_create_oops_dump(enum AEE_REBOOT_MODE reboot_mode,
 				elf_core_copy_kernel_regs(reg, regs);
 			mrdump_save_control_register(creg);
 		}
+//hs03s code for dump display by yanghui start at 20210429
+#ifdef HQ_FACTORY_BUILD
+		trace_msg = kzalloc(512, GFP_ATOMIC);
+		if (!trace_msg) {
+			pr_err("alloc trace_msg memory faild\n");
+			snprintf(crash_record->msg, sizeof(crash_record->msg), err_msg);
+			goto out;
+		}
+		frame.fp = (unsigned long)__builtin_frame_address(0);
+		frame.pc = (unsigned long)__mrdump_create_oops_dump;
+		do {
+			if (!skip) {
+				kallsyms_lookup(frame.pc, &size, &offset, NULL, sym);
+				sprintf(trace_msg, "%s\n%s", trace_msg, sym);
+			/*HS03S code for SR-AL5625-01-547 by renwanzhen at 2021/02/16 start */
+			} else if (!regs) {
+				pr_err("null regs, no register dump\n");
+				snprintf(crash_record->msg, sizeof(crash_record->msg), err_msg);
+				goto out;
+			/*HS03S code for SR-AL5625-01-547 by renwanzhen at 2021/02/16 end */
+			} else if (frame.fp == regs->regs[29]) {
+				skip = 0;
+				kallsyms_lookup(regs->pc, &size, &offset, NULL, sym);
+				sprintf(trace_msg, "%s\n%s", trace_msg, sym);
+			}
+		} while (!unwind_frame(tsk, &frame));
 
+		snprintf(crash_record->msg, sizeof(crash_record->msg), trace_msg);
+		kfree(trace_msg);
+#else
 		va_start(ap, msg);
 		vsnprintf(crash_record->msg, sizeof(crash_record->msg), msg,
 				ap);
 		va_end(ap);
+#endif
+#ifdef HQ_FACTORY_BUILD
+out:
+#endif
+//hs03s code for dump display by yanghui  end at 20210429
 
 		crash_record->fault_cpu = cpu;
 

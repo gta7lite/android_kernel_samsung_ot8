@@ -26,6 +26,9 @@
 /* for arm_smccc_smc */
 #include <linux/arm-smccc.h>
 #include <uapi/linux/psci.h>
+#ifdef CONFIG_SEC_DEBUG
+#include <linux/sec_debug.h>
+#endif
 
 static inline unsigned long get_linear_memory_size(void)
 {
@@ -163,6 +166,12 @@ int mrdump_common_die(u8 fiq_step, int reboot_reason, const char *msg,
 		aee_rr_rec_fiq_step(AEE_FIQ_STEP_COMMON_DIE_DONE);
 		/* FALLTHRU */
 	default:
+#ifdef CONFIG_SEC_DEBUG
+		sec_debug_dump_info();
+#endif
+#ifdef CONFIG_SEC_DEBUG_AUTO_COMMENT
+		dump_backtrace_auto_comment(regs, NULL);
+#endif
 		aee_nested_printf("num_die-%d, fiq_step-%d, last_step-%d, next_step-%d\n",
 				  num_die, fiq_step,
 				  last_step, next_step);
@@ -180,6 +189,11 @@ int ipanic(struct notifier_block *this, unsigned long event, void *ptr)
 
 	aee_rr_rec_exp_type(AEE_EXP_TYPE_KE);
 	crash_setup_regs(&saved_regs, NULL);
+
+#ifdef CONFIG_SEC_DEBUG
+	sec_upload_cause(ptr);
+#endif
+
 	return mrdump_common_die(AEE_FIQ_STEP_KE_IPANIC_START,
 				 AEE_REBOOT_MODE_KERNEL_PANIC,
 				 "Kernel Panic", &saved_regs);
@@ -190,6 +204,11 @@ static int ipanic_die(struct notifier_block *self, unsigned long cmd, void *ptr)
 	struct die_args *dargs = (struct die_args *)ptr;
 
 	aee_rr_rec_exp_type(AEE_EXP_TYPE_KE);
+
+#ifdef CONFIG_SEC_DEBUG
+	sec_upload_cause((void *)(dargs->str));
+#endif
+
 	return mrdump_common_die(AEE_FIQ_STEP_KE_IPANIC_DIE,
 				 AEE_REBOOT_MODE_KERNEL_OOPS,
 				 "Kernel Oops", dargs->regs);
@@ -217,8 +236,8 @@ static __init int mrdump_parse_chosen(struct mrdump_params *mparams)
 					       reg, ARRAY_SIZE(reg)) == 0) {
 			mparams->cb_addr = reg[0];
 			mparams->cb_size = reg[1];
-			pr_notice("%s: mrdump_cbaddr=%pa, mrdump_cbsize=%pa\n",
-				  __func__, &mparams->cb_addr, &mparams->cb_size);
+			pr_notice("%s: mrdump_cbaddr=%x, mrdump_cbsize=%x\n",
+				  __func__, mparams->cb_addr, mparams->cb_size);
 		}
 
 		if (of_property_read_string(node, "mrdump,lk", &lkver) == 0) {
