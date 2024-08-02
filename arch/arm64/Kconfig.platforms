@@ -344,7 +344,6 @@ config MACH_MT6771
 	select MTK_DRAMC
 	select CPU_IDLE
 	select MTK_BASE_POWER
-	select MTK_SWPM if !FPGA_EARLY_PORTING
 	select MTK_GIC_V3_EXT
 	select MTK_LM_MODE if !MTK_GMO_RAM_OPTIMIZE
 	select MTK_SYSIRQ
@@ -358,7 +357,6 @@ config MACH_MT6771
 	select MTK_CQDMA
 	select MTK_IRQ_NEW_DESIGN
 	select MTK_GIC_TARGET_ALL
-	select MTK_SYS_CIRQ
 	select FAST_CIRQ_CLONE_FLUSH
 	select MTK_BOUNCING_CHECK if MTK_AEE_FEATURE
 	select MTK_TIMER_APXGPT_V1
@@ -366,7 +364,6 @@ config MACH_MT6771
 	select OVERLAY_FS
 	select MTK_SYSTRACKER_V2
 	select MTK_SECURITY_SW_SUPPORT
-	select PM_OPP
 	help
 	  This enables support for MediaTek MT6771
 	  Support for aarch64 Architecture
@@ -395,8 +392,6 @@ config MACH_MT6779
 	select MTK_AVB20_SUPPORT
 	select MTK_DVFSRC
 	select MTK_TINYSYS_SCP_CM4_SUPPORT
-	select MTK_PLAT_SRAM_FLAG
-	select MTK_SYSTRACKER_V2
 
 	help
 	  This enables support for MediaTek MT6779. Highly power-efficient,
@@ -465,6 +460,7 @@ config MACH_MT6785
 	bool "MediaTek MT6785"
 	select ARCH_MEDIATEK
 	select ARM_DSU_PMU
+	select MTK_TIMER_SYSTIMER
 	select MTK_GIC_V3_EXT
 	select PINCTRL
 	select PINCTRL_MT6785
@@ -539,7 +535,7 @@ config MACH_MT6885
 	select PM_DEVFREQ
 	select MTK_ES_REG
 	select MEDIATEK_MC if MEMORY
-	select MEDIATEK_CQDMA
+	select MTK_CQDMA
 	select MTK_DBGTOP
 	select MTK_L3C_PART
 	select MTK_BOUNCING_CHECK if MTK_AEE_FEATURE
@@ -568,7 +564,6 @@ config MACH_MT6885
 	select MTK_DEBUG_LATCH
 	select MTK_DFD_INTERNAL_DUMP
 	select MTK_PID_MAP
-	select MTK_SDA
 	select MTK_CACHE_PARITY_CHECK
 	select HW_RANDOM
 	select HW_RANDOM_MT67XX
