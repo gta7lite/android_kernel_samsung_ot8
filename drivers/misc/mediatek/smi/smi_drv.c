@@ -458,7 +458,7 @@ EXPORT_SYMBOL_GPL(smi_bwl_update);
 void smi_ostd_update(const struct plist_head *head, const char *user)
 {
 	struct mm_qos_request *req;
-	u32 larb = 0, port, ostd;
+	u32 larb, port, ostd;
 
 	if (plist_head_empty(head))
 		return;
@@ -527,7 +527,7 @@ EXPORT_SYMBOL_GPL(smi_sysram_enable);
 static inline void
 smi_debug_print(const bool gce, const u32 num, const u32 *pos, const u32 *val)
 {
-	char buf[LINK_MAX + 1] = {0};
+	char buf[LINK_MAX + 1];
 	s32 len, i, j, ret;
 
 	for (i = 0; i < num; i += j) {
@@ -992,7 +992,7 @@ static int smi_bwc_info_compat_get(
 	struct MTK_SMI_COMPAT_BWC_MM_INFO __user *data32)
 {
 	compat_uint_t u;
-	compat_int_t p[2] = {0};
+	compat_int_t p[2];
 	compat_int_t i;
 	int ret;
 
@@ -1026,7 +1026,7 @@ static int smi_bwc_info_compat_put(
 	struct MTK_SMI_COMPAT_BWC_MM_INFO __user *data32)
 {
 	compat_uint_t u;
-	compat_int_t p[2] = {0};
+	compat_int_t p[2];
 	compat_int_t i;
 	int ret;
 
