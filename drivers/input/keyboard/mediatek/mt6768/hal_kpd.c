@@ -17,6 +17,14 @@
 #ifdef CONFIG_MTK_PMIC_NEW_ARCH /*for pmic not ready*/
 static int kpd_enable_lprst = 1;
 #endif
+/*hs14 code for SR-AL6528A-01-403 by hehaoran5 at 20220908 start*/
+#if defined(CONFIG_HQ_PROJECT_O22)
+extern void get_volumedown_state(int keycode,int pressed);
+extern void get_power_state(int keycode,int pressed);
+#else
+//no new add
+#endif
+/*hs14 code for SR-AL6528A-01-403 by hehaoran5 at 20220908 end*/
 static u16 kpd_keymap_state[KPD_NUM_MEMS] = {
 	0xffff, 0xffff, 0xffff, 0xffff, 0x00ff
 };
@@ -25,6 +33,39 @@ unsigned int get_boot_mode(void)
 {
 	return 0;
 }
+
+/*hs14 code for AL6528ADEU-723 by hehaoran5 at 20221021 start*/
+#ifdef CONFIG_HQ_PROJECT_O22
+struct tag_bootmode {
+	u32 size;
+	u32 tag;
+	u32 bootmode;
+	u32 boottype;
+};
+
+enum boot_mode_t tp_get_boot_mode(void) {
+	struct device_node *np_chosen = NULL;
+	struct tag_bootmode *tag = NULL;
+	enum boot_mode_t boot_mode = UNKNOWN_BOOT;
+
+	np_chosen = of_find_node_by_path("/chosen");
+	if (!np_chosen) {
+		np_chosen = of_find_node_by_path("/chosen@0");
+	}
+
+	tag = (struct tag_bootmode *)of_get_property(np_chosen, "atag,boot", NULL);
+	if (!tag) {
+		pr_err("%s: fail to get atag,boot\n", __func__);
+	} else {
+		pr_info("%s: boot_mode: %d\n", __func__, tag->bootmode);
+		boot_mode = tag->bootmode;
+	}
+
+	return boot_mode;
+}
+EXPORT_SYMBOL(tp_get_boot_mode);
+#endif
+/*hs14 code for AL6528ADEU-723 by hehaoran5 at 20221021 end*/
 
 static void enable_kpd(int enable)
 {
@@ -171,6 +212,30 @@ void kpd_double_key_enable(int en)
 		writew((u16) (tmp & ~KPD_DOUBLE_KEY_MASK), KP_SEL);
 }
 
+#if defined(PMIC_KEY_STATUS)
+unsigned int kpd_pmic_pwrkey_status_hal(void)
+{
+	unsigned int pressed;
+
+	pressed = mt6358_upmu_get_pwrkey_deb();
+	pressed = !pressed;
+	kpd_print("[%s] %s power key\n", __func__, pressed ? "pressed" : "released");
+
+	return pressed;
+}
+
+unsigned int kpd_pmic_homekey_status_hal(void)
+{
+	unsigned int pressed;
+
+	pressed = mt6358_upmu_get_homekey_deb();
+	pressed = !pressed;
+	kpd_print("[%s] %s home key\n", __func__, pressed ? "pressed" : "released");
+
+	return pressed;
+}
+#endif
+
 /********************************************************************/
 void kpd_pmic_rstkey_hal(unsigned long pressed)
 {
@@ -181,6 +246,13 @@ void kpd_pmic_rstkey_hal(unsigned long pressed)
 		kpd_print(KPD_SAY "(%s) HW keycode =%d using PMIC\n",
 		       pressed ? "pressed" : "released",
 		       kpd_dts_data.kpd_sw_rstkey);
+/*hs14 code for SR-AL6528A-01-403 by hehaoran5 at 20220908 start*/
+#if defined(CONFIG_HQ_PROJECT_O22)
+		get_volumedown_state(kpd_dts_data.kpd_sw_rstkey,pressed);
+#else
+//no new add
+#endif
+/*hs14 code for SR-AL6528A-01-403 by hehaoran5 at 20220908 end*/
 	}
 }
 
@@ -190,6 +262,13 @@ void kpd_pmic_pwrkey_hal(unsigned long pressed)
 	input_sync(kpd_input_dev);
 	kpd_print(KPD_SAY "(%s) HW keycode =%d using PMIC\n",
 	       pressed ? "pressed" : "released", kpd_dts_data.kpd_sw_pwrkey);
+/*hs14 code for SR-AL6528A-01-403 by hehaoran5 at 20220908 start*/
+#if defined(CONFIG_HQ_PROJECT_O22)
+	get_power_state(kpd_dts_data.kpd_sw_pwrkey,pressed);
+#else
+//no new add
+#endif
+/*hs14 code for SR-AL6528A-01-403 by hehaoran5 at 20220908 end*/
 }
 
 static int mrdump_eint_state;

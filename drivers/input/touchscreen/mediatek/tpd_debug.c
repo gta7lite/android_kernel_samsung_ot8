@@ -1,7 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+// SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2019 MediaTek Inc.
-*/
+ * Copyright (C) 2019 MediaTek Inc.
+ */
 
 #include <linux/vmalloc.h>
 #include <linux/uaccess.h>
@@ -205,7 +205,7 @@ static ssize_t tpd_debug_log_read(struct file *file, char __user *buffer,
 			break;
 		}
 		spin_unlock_irq(&tpd_buf->buffer_lock);
-		/* printk("%s, tmp_buf:0x%x\n", tmp_buf, tmp_buf); */
+		/* pr_info("%s, tmp_buf:0x%x\n", tmp_buf, tmp_buf); */
 		if (copy_to_user(buffer + retval, tmp_buf, unit))
 			return -EFAULT;
 
@@ -328,7 +328,7 @@ void tpd_em_log_store(int raw_x, int raw_y,
 	unsigned char *buffer = NULL;
 	/* unsigned int unit = tpd_log_line_buffer; */
 
-	/* printk("[tpd_em_log]: start register log file"); */
+	/* pr_info("[tpd_em_log]: start register log file"); */
 
 	buffer = tpd_log_find_buffer();
 	if (buffer == NULL) {

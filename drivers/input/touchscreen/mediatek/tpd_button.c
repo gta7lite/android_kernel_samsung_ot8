@@ -1,7 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+// SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2019 MediaTek Inc.
-*/
+ * Copyright (C) 2019 MediaTek Inc.
+ */
 
 #include "tpd.h"
 
@@ -48,12 +48,7 @@ struct kobject *properties_kobj;
 void tpd_button_init(void)
 {
 	int ret = 0, i = 0;
-#if 0
-	for (i = 0; i < TPD_VIRTUAL_KEY_MAX; i++) {
-		for (j = 0; j < 4; j++)
-			tpd_keys_dim[i][j] = 0;
-	}
-#endif
+
 /* if((tpd->kpd=input_allocate_device())==NULL) return -ENOMEM; */
 	tpd->kpd = input_allocate_device();
 	/* struct input_dev kpd initialization and registration */
