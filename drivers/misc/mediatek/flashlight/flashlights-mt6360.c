@@ -44,7 +44,7 @@
 #define MT6360_ENABLE_TORCH 1
 #define MT6360_ENABLE_FLASH 2
 
-#define MT6360_LEVEL_NUM 32
+#define MT6360_LEVEL_NUM 38
 #define MT6360_LEVEL_TORCH 16
 #define MT6360_LEVEL_FLASH MT6360_LEVEL_NUM
 #define MT6360_WDT_TIMEOUT 1248 /* ms */
@@ -78,8 +78,7 @@ struct mt6360_platform_data {
 };
 
 #if defined(CONFIG_MACH_MT6877) || defined(CONFIG_MACH_MT6833) \
-|| defined(CONFIG_MACH_MT6893) || defined(CONFIG_MACH_MT6785) \
-|| defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6873)
+|| defined(CONFIG_MACH_MT6893)
 /* define charger consumer */
 static struct charger_consumer *flashlight_charger_consumer;
 #define CHARGER_SUPPLY_NAME "charger_port1"
@@ -117,7 +116,7 @@ static const int mt6360_current[MT6360_LEVEL_NUM] = {
 	  25,   50,  75, 100, 125, 150, 175,  200,  225,  250,
 	 275,  300, 325, 350, 375, 400, 450,  500,  550,  600,
 	 650,  700, 750, 800, 850, 900, 950, 1000, 1050, 1100,
-	1150, 1200
+	1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500
 };
 
 static const unsigned char mt6360_torch_level[MT6360_LEVEL_TORCH] = {
@@ -130,7 +129,7 @@ static const unsigned char mt6360_strobe_level[MT6360_LEVEL_FLASH] = {
 	0x00, 0x04, 0x08, 0x0C, 0x10, 0x14, 0x18, 0x1C, 0x20, 0x24,
 	0x28, 0x2C, 0x30, 0x34, 0x38, 0x3C, 0x44, 0x4C, 0x54, 0x5C,
 	0x64, 0x6C, 0x74, 0x78, 0x7C, 0x80, 0x84, 0x88, 0x8C, 0x90,
-	0x94, 0x98
+	0x94, 0x98, 0x9C, 0xA0, 0xA4, 0xA8, 0xAC, 0xB0
 };
 
 static int mt6360_decouple_mode;
@@ -359,8 +358,7 @@ static int mt6360_set_scenario(int scenario)
 		if (!is_decrease_voltage) {
 			pr_info("Decrease voltage level.\n");
 #if defined(CONFIG_MACH_MT6877) || defined(CONFIG_MACH_MT6833) \
-|| defined(CONFIG_MACH_MT6893) || defined(CONFIG_MACH_MT6785) \
-|| defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6873)
+|| defined(CONFIG_MACH_MT6893)
 			charger_manager_enable_high_voltage_charging(
 				flashlight_charger_consumer, false);
 #else
@@ -372,8 +370,7 @@ static int mt6360_set_scenario(int scenario)
 		if (is_decrease_voltage) {
 			pr_info("Increase voltage level.\n");
 #if defined(CONFIG_MACH_MT6877) || defined(CONFIG_MACH_MT6833) \
-|| defined(CONFIG_MACH_MT6893) || defined(CONFIG_MACH_MT6785) \
-|| defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6873)
+|| defined(CONFIG_MACH_MT6893)
 			charger_manager_enable_high_voltage_charging(
 				flashlight_charger_consumer, true);
 #else
@@ -664,8 +661,7 @@ static int mt6360_release(void)
 	if (fd_use_count == 0 && is_decrease_voltage) {
 		pr_info("Increase voltage level.\n");
 #if defined(CONFIG_MACH_MT6877) || defined(CONFIG_MACH_MT6833) \
-|| defined(CONFIG_MACH_MT6893) || defined(CONFIG_MACH_MT6785) \
-|| defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6873)
+|| defined(CONFIG_MACH_MT6893)
 			charger_manager_enable_high_voltage_charging(
 				flashlight_charger_consumer, true);
 #else
@@ -856,8 +852,7 @@ static int mt6360_probe(struct platform_device *pdev)
 				MT6360_HW_TIMEOUT, MT6360_HW_TIMEOUT + 200) < 0)
 		pr_info("Failed to set strobe timeout.\n");
 #if defined(CONFIG_MACH_MT6877) || defined(CONFIG_MACH_MT6833) \
-|| defined(CONFIG_MACH_MT6893) || defined(CONFIG_MACH_MT6785) \
-|| defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6873)
+|| defined(CONFIG_MACH_MT6893)
 	/* get charger consumer manager */
 	flashlight_charger_consumer = charger_manager_get_by_name(
 			&flashlight_dev_ch1->dev, CHARGER_SUPPLY_NAME);

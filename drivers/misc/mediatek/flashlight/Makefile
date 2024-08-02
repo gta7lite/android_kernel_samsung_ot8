@@ -6,7 +6,6 @@ flashlight-y := flashlight-core.o
 flashlight-y += flashlight-device.o
 
 obj-$(CONFIG_MTK_FLASHLIGHT)             += flashlight.o
-obj-$(CONFIG_MTK_V4L2_FLASHLIGHT)        += mtk-composite.o
 obj-$(CONFIG_MTK_FLASHLIGHT_LED191)      += flashlights-led191.o
 obj-$(CONFIG_MTK_FLASHLIGHT_LM3642)      += flashlights-lm3642.o
 obj-$(CONFIG_MTK_FLASHLIGHT_LM3643)      += flashlights-lm3643.o
@@ -20,6 +19,24 @@ obj-$(CONFIG_MTK_FLASHLIGHT_AW3644)      += flashlights-aw3644.o
 obj-$(CONFIG_MTK_FLASHLIGHT_SYWT78)      += flashlights-sywt78.o
 obj-$(CONFIG_MTK_FLASHLIGHT_DUMMY)       += flashlights-dummy.o
 obj-$(CONFIG_MTK_FLASHLIGHT_DUMMY_GPIO)  += flashlights-dummy-gpio.o
+#hs03s code add for flashlights_aw36518 by chengzhi at 2021.06.13 begin
+#can't change this order,iic device must be first,otherwise can't compatible device
+obj-$(CONFIG_MTK_FLASHLIGHT_AW36518)  += flashlights-aw36518.o
+#hs03s code add for flashlights_aw36518 by chengzhi at 2021.06.13 end
+
+#hs04 code for DEVAL6398A-46 by renxinglin at  2022/10/18 start
+ifeq ($(CONFIG_HQ_PROJECT_HS04),y)
+obj-$(CONFIG_MTK_FLASHLIGHT_O21_SGM3785_GPIO)  += flashlights-o21-sgm3785-gpio.o
+endif
+#hs04 code for DEVAL6398A-46 by renxinglin at  2022/10/18 end
+
+# hs14 code for SR-AL5628-01-161 by lisizhou at 2022-9-26 start
+ifeq ($(CONFIG_HQ_PROJECT_O22), y)
+obj-$(CONFIG_MTK_FLASHLIGHT_SGM3785_GPIO)  += flashlights-sgm3785-gpio-hq.o
+else
+obj-$(CONFIG_MTK_FLASHLIGHT_SGM3785_GPIO)  += flashlights-sgm3785-gpio.o
+endif
+# hs14 code for SR-AL5628-01-161 by lisizhou at 2022-9-26 end
 
 ccflags-$(CONFIG_MTK_FLASHLIGHT_DEBUG)     := -DDEBUG
 ccflags-$(CONFIG_MTK_FLASHLIGHT_SYWT78)    += -DCONFIG_MTK_FLASHLIGHT_SYWT78
