@@ -21,12 +21,10 @@
 #include <linux/workqueue.h>
 
 #include <mt-plat/rt-regmap.h>
-#define RT_REGMAP_VERSION	"1.2.2_G"
+#define RT_REGMAP_VERSION	"1.2.1_G"
 
 #define ERR_MSG_SIZE		128
 #define MAX_BYTE_SIZE		32
-
-#define PREALLOC_WBUFFER_SIZE	(1000)
 
 struct rt_regmap_ops {
 	int (*regmap_block_write)(struct rt_regmap_device *rd, u32 reg,
@@ -940,19 +938,12 @@ do {									\
 
 static int get_parameters(char *buf, unsigned long *param, int num_of_par)
 {
-	char *token;
-	int base = 0, cnt = 0;
-
-	token = strsep(&buf, " ");
+	int cnt = 0;
+	char *token = strsep(&buf, " ");
 
 	for (cnt = 0; cnt < num_of_par; cnt++) {
-		if (token != NULL) {
-			if ((token[1] == 'x') || (token[1] == 'X'))
-				base = 16;
-			else
-				base = 10;
-
-			if (kstrtoul(token, base, &param[cnt]) != 0)
+		if (token) {
+			if (kstrtoul(token, 0, &param[cnt]) != 0)
 				return -EINVAL;
 
 			token = strsep(&buf, " ");
@@ -1123,18 +1114,19 @@ static ssize_t general_write(struct file *file, const char __user *ubuf,
 		((struct seq_file *)file->private_data)->private;
 	struct rt_regmap_device *rd = st->info;
 	struct reg_index_offset rio = {-1, -1};
-	char lbuf[PREALLOC_WBUFFER_SIZE + 1];
+	char lbuf[128];
+	ssize_t res = 0;
 	unsigned int size = 0;
 	unsigned long param = 0;
 
 	dev_info(&rd->dev, "%s @ %p, count = %u, pos = %llu\n",
-		 __func__, ubuf, (unsigned int)count, *ppos);
-
-	if (count > PREALLOC_WBUFFER_SIZE)
-		return -ENOMEM;
-	if (copy_from_user(lbuf, ubuf, count))
+			   __func__, ubuf, (unsigned int)count, *ppos);
+	*ppos = 0;
+	res = simple_write_to_buffer(lbuf, sizeof(lbuf) - 1, ppos, ubuf, count);
+	if (res <= 0)
 		return -EFAULT;
-	lbuf[count] = 0;
+	count = res;
+	lbuf[count] = '\0';
 
 	switch (st->id) {
 	case RT_DBG_REG_ADDR:
@@ -1355,7 +1347,8 @@ static ssize_t eachreg_write(struct file *file, const char __user *ubuf,
 	struct rt_debug_st *st = file->private_data;
 	struct rt_regmap_device *rd = st->info;
 	const rt_register_map_t rm = rd->props.rm[st->id];
-	char lbuf[PREALLOC_WBUFFER_SIZE + 1];
+	char lbuf[128];
+	ssize_t res = 0;
 
 	if ((rm->size - 1) * 3 + 5 != count) {
 		dev_notice(&rd->dev,
@@ -1366,11 +1359,12 @@ static ssize_t eachreg_write(struct file *file, const char __user *ubuf,
 
 	dev_info(&rd->dev, "%s @ %p, count = %u, pos = %llu\n",
 			   __func__, ubuf, (unsigned int)count, *ppos);
-	if (count > PREALLOC_WBUFFER_SIZE)
-		return -ENOMEM;
-	if (copy_from_user(lbuf, ubuf, count))
+	*ppos = 0;
+	res = simple_write_to_buffer(lbuf, sizeof(lbuf) - 1, ppos, ubuf, count);
+	if (res <= 0)
 		return -EFAULT;
-	lbuf[count] = 0;
+	count = res;
+	lbuf[count] = '\0';
 
 	memset(rd->regval, 0, sizeof(rd->regval));
 	ret = get_data(lbuf, count, rd->regval, rm->size);
@@ -1511,7 +1505,6 @@ struct rt_regmap_device *rt_regmap_device_register_ex
 	if (!rd)
 		return NULL;
 
-	memset(rd, 0, sizeof(struct rt_regmap_device));
 	memcpy(&rd->props, props, sizeof(rd->props));
 	rd->rops = rops;
 	rd->dev.parent = parent;
