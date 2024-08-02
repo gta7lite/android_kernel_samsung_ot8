@@ -14,7 +14,6 @@
 #include <linux/mutex.h>
 #include <linux/spinlock.h>
 #include <linux/spinlock_types.h>
-#include <linux/math64.h>
 
 #include <linux/vmalloc.h>
 #include <linux/blk_types.h>
@@ -296,7 +295,7 @@ EXPORT_SYMBOL_GPL(mtk_btag_pidlog_add_mmc);
 static void mt_bio_context_eval(struct mt_bio_context *ctx)
 {
 	struct mt_bio_context_task *tsk;
-	uint64_t min, period, tsk_start, usage, result;
+	uint64_t min, period, tsk_start;
 	int i;
 
 	min = ctx->period_end_t;

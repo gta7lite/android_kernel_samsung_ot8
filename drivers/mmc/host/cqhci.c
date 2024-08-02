@@ -24,7 +24,7 @@
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/host.h>
 #include <linux/mmc/card.h>
-
+#include "mtk-msdc.h"
 #include "cqhci.h"
 #include "cqhci-crypto.h"
 
@@ -371,8 +371,10 @@ static int cqhci_enable(struct mmc_host *mmc, struct mmc_card *card)
 	cq_host->rca = card->rca;
 
 	err = cqhci_host_alloc_tdl(cq_host);
-	if (err)
+	if (err) {
+		mmc_card_error_logging(mmc->card, NULL, CQ_EN_DIS_ERR);
 		return err;
+	}
 
 	__cqhci_enable(cq_host);
 
@@ -408,8 +410,10 @@ static void cqhci_off(struct mmc_host *mmc)
 
 	err = readx_poll_timeout(cqhci_read_ctl, cq_host, reg,
 				 reg & CQHCI_HALT, 0, CQHCI_OFF_TIMEOUT);
-	if (err < 0)
+	if (err < 0) {
 		pr_err("%s: cqhci: CQE stuck on\n", mmc_hostname(mmc));
+		mmc_card_error_logging(mmc->card, NULL, HALT_UNHALT_ERR);
+	}
 	else
 		pr_debug("%s: cqhci: CQE off\n", mmc_hostname(mmc));
 
@@ -639,6 +643,7 @@ static int cqhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		if (cqhci_readl(cq_host, CQHCI_CTL) && CQHCI_HALT) {
 			pr_err("%s: cqhci: CQE failed to exit halt state\n",
 			       mmc_hostname(mmc));
+			mmc_card_error_logging(mmc->card, NULL, HALT_UNHALT_ERR);
 		}
 		if (cq_host->ops->enable)
 			cq_host->ops->enable(mmc);
@@ -974,8 +979,10 @@ static bool cqhci_halt(struct mmc_host *mmc, unsigned int timeout)
 
 	ret = cqhci_halted(cq_host);
 
-	if (!ret)
+	if (!ret) {
 		pr_debug("%s: cqhci: Failed to halt\n", mmc_hostname(mmc));
+		mmc_card_error_logging(mmc->card, NULL, HALT_UNHALT_ERR);
+	}
 
 	return ret;
 }
@@ -1000,7 +1007,6 @@ static void cqhci_recovery_start(struct mmc_host *mmc)
 
 	if (cq_host->ops->disable)
 		cq_host->ops->disable(mmc, true);
-
 	mmc->cqe_on = false;
 }
 
@@ -1067,6 +1073,7 @@ static void cqhci_recovery_finish(struct mmc_host *mmc)
 	unsigned long flags;
 	u32 cqcfg;
 	bool ok;
+	u32 reg;
 
 	pr_debug("%s: cqhci: %s\n", mmc_hostname(mmc), __func__);
 
@@ -1100,6 +1107,16 @@ static void cqhci_recovery_finish(struct mmc_host *mmc)
 	cqhci_recover_mrqs(cq_host);
 
 	WARN_ON(cq_host->qcnt);
+
+	/*
+	 * MTK PATCH: need disable cqhci for legacy cmds coz legacy cmds using
+	 * GPD DMA and it can only work when CQHCI disable.
+	 */
+	if (cq_host->quirks & CQHCI_QUIRK_DIS_BEFORE_NON_CQ_CMD) {
+		reg = cqhci_readl(cq_host, CQHCI_CFG);
+		reg &= ~CQHCI_ENABLE;
+		cqhci_writel(cq_host, reg, CQHCI_CFG);
+	}
 
 	spin_lock_irqsave(&cq_host->lock, flags);
 	cq_host->qcnt = 0;
