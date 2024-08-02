@@ -110,3 +110,81 @@ config MTK_TYPEC_WATER_DETECT_BY_PCB
 	  need to be enabled.
 	  Say Yes to let PCB decides enabling water detection or not.
 	  If unsure, say N.
+
+# HS03s for SR-AL5625-01-515 by wangzikang at 21210610 start
+config TCPC_WUSB3801
+	bool "IGC WUSB3801X Configuration Channel Controller for USB Type-C"
+	depends on USB || I2C
+	default n
+	help
+	  Enable this to support WUSB3801X CC Controller for USB Type C.
+
+config TYPEC_SGM7220
+	tristate "SG-Micro SGM7220 Type-C chip driver"
+	depends on I2C
+	help
+	  The SG-Micro SGM7220 Type-C chip driver that works with
+	  Type-C Port Controller Manager to provide USB Type-C
+	  functionalities.
+# HS03s for SR-AL5625-01-515 by wangzikang at 21210610 end
+
+#HS03s for SR-AL5625-01-541 by wangzikang at 20210614 start
+config FUSB301A
+	tristate "fusb301 driver"
+	depends on I2C
+	default n
+	help
+	  Say Y here to enable support for type-c CC and SBU protection
+	  IC FUSB301.
+#HS03s for SR-AL5625-01-541 by wangzikang at 20210614 end
+
+# AL6528A code for SR-AL6528A-01-307 by wenyaqi at 2022/08/30 start
+config TCPC_HUSB311
+	bool "Hynetek HUSB311 TypeC port Controller Driver"
+	depends on TCPC_CLASS
+	default n
+	help
+	  Say Y to enable
+	  Hynetek HUSB311
+	  TypeC port Controller
+	  Driver
+
+config HUSB_REGMAP
+	tristate "regmap"
+	default n
+	help
+	  Say Y to enable HUSB_REGMAP
+	  information
+	  Say N to disable
+# AL6528A code for SR-AL6528A-01-307 by wenyaqi at 2022/08/30 end
+
+# hs14 code for SR-AL6528A-01-309 by wenyaqi at 2022/09/11 start
+config TCPC_ET7304
+	bool "ETEK ET7304 TypeC port Controller Driver"
+	depends on TCPC_CLASS
+	default n
+	help
+	  Say Y to enable
+	  ETEK ET7304
+	  TypeC port Controller
+	  Driver
+config ET_REGMAP
+	tristate "regmap"
+	default n
+	help
+	  Say Y to enable ET_REGMAP
+	  information
+	  Say N to disable
+# hs14 code for SR-AL6528A-01-309 by wenyaqi at 2022/09/11 start
+
+# hs14 code for SR-AL6528A-01-308 by wenyaqi at 2022/09/09 start
+config FUSB302_EXT
+	tristate "ONSAIMEI USB Power Delivery controller driver"
+	depends on I2C
+	default n
+	help
+	  Say Y or M here if your system has ONSAIMEI USB Power
+	  Delivery controller.
+
+source "drivers/misc/mediatek/typec/tcpc/tcpc_fusb302b/Kconfig"
+# hs14 code for SR-AL6528A-01-308 by wenyaqi at 2022/09/09 end

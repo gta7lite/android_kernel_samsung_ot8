@@ -243,8 +243,15 @@ DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_BIST_CONT_MODE, 30, 60),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_HARD_RESET_COMPLETE, 4, 5),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_NO_RESPONSE, 4500, 5500),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_PS_HARD_RESET, 25, 35),
+/* hs14 code for P221201-03712 by wenyaqi at 2022/12/09 start */
+#if defined(CONFIG_HQ_PROJECT_O22)
+DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_PS_SOURCE_OFF, 1400, 1400),
+DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_PS_SOURCE_ON, 950, 950),
+#else
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_PS_SOURCE_OFF, 750, 920),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_PS_SOURCE_ON, 390, 480),
+#endif
+/* hs14 code for P221201-03712 by wenyaqi at 2022/12/09 end */
 
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_PS_TRANSITION, 450, 550),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_SENDER_RESPONSE, 24, 30),
@@ -1362,7 +1369,7 @@ int tcpci_timer_init(struct tcpc_device *tcpc)
 		tcpc->tcpc_timer[i].function = tcpc_timer_call[i];
 	}
 	tcpc->wakeup_wake_lock =
-		wakeup_source_register(NULL, "tcpc_wakeup_wake_lock");
+		wakeup_source_register(&tcpc->dev, "tcpc_wakeup_wake_lock");
 	INIT_DELAYED_WORK(&tcpc->wake_up_work, wake_up_work_func);
 	alarm_init(&tcpc->wake_up_timer, ALARM_REALTIME, tcpc_timer_wakeup);
 
