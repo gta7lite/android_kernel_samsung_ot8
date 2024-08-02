@@ -294,7 +294,7 @@ mt_bootprof_write(struct file *filp, const char *ubuf, size_t cnt, loff_t *data)
 
 static int mt_bootprof_show(struct seq_file *m, void *v)
 {
-	int i;
+	unsigned int i;
 	struct log_t *p;
 
 	if (!m) {

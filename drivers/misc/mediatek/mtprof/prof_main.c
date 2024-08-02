@@ -65,7 +65,7 @@ static unsigned int enabled_signal_log;
 static void probe_signal_generate(void *ignore, int sig, struct siginfo *info,
 		struct task_struct *task, int group, int result)
 {
-	unsigned int state = task->state ? __ffs(task->state) + 1 : 0;
+	unsigned long state = task->state ? __ffs(task->state) + 1 : 0;
 	int errno, code;
 	bool res_state = true;
 	/*
@@ -100,7 +100,7 @@ static void probe_death_signal(void *ignore, int sig, struct siginfo *info,
 		struct task_struct *task, int _group, int result)
 {
 	struct signal_struct *signal = task->signal;
-	unsigned int state;
+	unsigned long state;
 	int group;
 
 	/*
@@ -205,7 +205,7 @@ static ssize_t mt_signal_log_write(struct file *filp, const char *ubuf,
 			unregister_trace_signal_deliver(probe_signal_deliver,
 				NULL);
 	}
-	enabled_signal_log = val;
+	enabled_signal_log = (unsigned int)val;
 
 	return cnt;
 }
