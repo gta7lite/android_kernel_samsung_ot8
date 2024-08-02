@@ -102,4 +102,18 @@ ifneq ($(strip $(TARGET_NO_KERNEL)),true)
     BUILT_KERNEL_TARGET := $(TARGET_PREBUILT_KERNEL)
   endif #TARGET_PREBUILT_KERNEL is empty
     KERNEL_MAKE_OPTION += PROJECT_DTB_NAMES='$(PROJECT_DTB_NAMES)'
+    ifeq ($(strip $(HQ_D85_BUILD)), true)
+      KERNEL_MAKE_OPTION += HQ_D85_BUILD=$(HQ_D85_BUILD)
+    endif
+    ifeq ($(strip $(FTY_TP_GESTURE)), true)
+      KERNEL_MAKE_OPTION += FTY_TP_GESTURE=$(FTY_TP_GESTURE)
+    endif
+    ifeq ($(strip $(HQ_FACTORY_BUILD)), true)
+      KERNEL_MAKE_OPTION += HQ_FACTORY_BUILD=$(HQ_FACTORY_BUILD)
+    endif
+#hs14 code for SR-AL6528A-01-111 by  TangYuhang at 20221110 start
+    ifeq ($(strip $(HUAQIN_BUILD)), true)
+      KERNEL_MAKE_OPTION += HUAQIN_BUILD=$(HUAQIN_BUILD)
+    endif
+#hs14 code for SR-AL6528A-01-111 by  TangYuhang at 20221110 end
 endif #TARGET_NO_KERNEL
