@@ -153,6 +153,21 @@ static void _set_vbus(int is_on)
 	}
 }
 
+#if defined(CONFIG_CABLE_TYPE_NOTIFIER)
+void mt_otg_accessory_power(int is_on)
+{
+	DBG(0, "is_on<%d>, control<%d>\n", is_on, vbus_control);
+
+	if (!vbus_control)
+		return;
+
+	if (is_on)
+		_set_vbus(1);
+	else
+		_set_vbus(0);
+}
+#endif
+
 int mt_usb_get_vbus_status(struct musb *musb)
 {
 #if 1
@@ -228,7 +243,11 @@ void mt_usb_host_disconnect(int delay)
 }
 EXPORT_SYMBOL(mt_usb_host_disconnect);
 
+#if defined(CONFIG_CABLE_TYPE_NOTIFIER)
+bool musb_is_host(void)
+#else
 static bool musb_is_host(void)
+#endif
 {
 	bool host_mode = 0;
 
@@ -239,6 +258,15 @@ static bool musb_is_host(void)
 
 	return host_mode;
 }
+
+/* hs14 code for SR-AL6528A-01-245 by wenyaqi at 2022/10/02 start */
+#ifndef HQ_FACTORY_BUILD	//ss version
+bool ss_musb_is_host(void)
+{
+	return musb_is_host();
+}
+#endif
+/* hs14 code for SR-AL6528A-01-245 by wenyaqi at 2022/10/02 end */
 
 void musb_session_restart(struct musb *musb)
 {
@@ -434,8 +462,7 @@ static void do_host_work(struct work_struct *data)
 		/* setup fifo for host mode */
 		ep_config_from_table_for_host(mtk_musb);
 
-		if (!mtk_musb->host_suspend)
-			__pm_stay_awake(mtk_musb->usb_lock);
+		__pm_stay_awake(mtk_musb->usb_lock);
 
 
 		/* this make PHY operation workable */

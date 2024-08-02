@@ -33,7 +33,14 @@
 #include <usb20_phy.h>
 #endif
 
+#ifdef CONFIG_USB_NOTIFY_PROC_LOG
+#include <linux/usblog_proc_notify.h>
+#endif
+
 #include <usb20.h>
+
+#define PHY_MODE_DPPULLUP_SET 5
+#define PHY_MODE_DPPULLUP_CLR 6
 
 int musb_fake_CDP;
 
@@ -898,6 +905,14 @@ static irqreturn_t musb_stage0_irq(struct musb *musb, u8 int_usb, u8 devctl)
 			if (!musb->is_active)
 				break;
 		case OTG_STATE_B_PERIPHERAL:
+			/*HS03s for SR-AL5625-01-370 by wenyaqi at 20210429 start*/
+			if (musb->ignore_fist_suspend && !musb->address) {
+				DBG(0, "device mode 1st suspend after reset\n");
+				musb->ignore_fist_suspend = 0;
+				break;
+			}
+			musb->ignore_fist_suspend = 0;
+			/*HS03s for SR-AL5625-01-370 by wenyaqi at 20210429 end*/
 			musb_g_suspend(musb);
 			musb->is_active = otg->gadget->b_hnp_enable;
 			if (musb->is_active) {
@@ -1104,6 +1119,11 @@ b_host:
 		DBG(0, "%s:%d MUSB_INTR_RESET (%s)\n",
 			__func__, __LINE__,
 			otg_state_string(musb->xceiv->otg->state));
+
+#ifdef CONFIG_USB_NOTIFY_PROC_LOG
+			store_usblog_notify(NOTIFY_USBSTATE,
+						(void *)"USB_STATE=RESET", NULL);
+#endif
 		if ((devctl & MUSB_DEVCTL_HM) != 0) {
 			/*
 			 * Looks like non-HS BABBLE can be ignored, but
@@ -1169,6 +1189,9 @@ b_host:
 				/* FALLTHROUGH */
 			case OTG_STATE_B_PERIPHERAL:
 				musb_g_reset(musb);
+				/*HS03s for SR-AL5625-01-370 by wenyaqi at 20210429 start*/
+				musb->ignore_fist_suspend = 1;
+				/*HS03s for SR-AL5625-01-370 by wenyaqi at 20210429 end*/
 				break;
 			default:
 				DBG(0, "Unhandled BUS RESET as %s\n",
@@ -1222,6 +1245,23 @@ b_host:
 	schedule_work(&musb->irq_work);
 
 	return handled;
+}
+
+static void musb_dp_pullup_work(struct work_struct *w)
+{
+	//struct musb *musb = container_of(w, struct musb, dp_work);
+
+	phy_set_mode_ext(glue->phy, PHY_MODE_USB_DEVICE,
+		PHY_MODE_DPPULLUP_SET);
+	mdelay(50);
+	phy_set_mode_ext(glue->phy, PHY_MODE_USB_DEVICE,
+		PHY_MODE_DPPULLUP_CLR);
+}
+
+void musb_phy_dp_pullup(struct musb *musb)
+{
+	DBG(0, "%s\n", __func__);
+	queue_work(system_power_efficient_wq, &musb->dp_work);
 }
 
 /*-------------------------------------------------------------------------*/
@@ -1296,6 +1336,9 @@ void musb_start(struct musb *musb)
 		if (musb->softconnect) {
 			DBG(0, "add softconn\n");
 			val |= MUSB_POWER_SOFTCONN;
+		} else if (!musb->is_ready) {
+			DBG(0, "pullup dp\n");
+			musb_phy_dp_pullup(musb);
 		}
 		musb_writeb(regs, MUSB_POWER, val);
 	}
@@ -2577,6 +2620,8 @@ static int musb_init_controller
 	if (status)
 		goto fail5;
 #endif
+
+	INIT_WORK(&musb->dp_work, musb_dp_pullup_work);
 
 	pm_runtime_put(musb->controller);
 

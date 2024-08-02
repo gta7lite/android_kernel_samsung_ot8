@@ -37,9 +37,11 @@ static struct proc_dir_entry *proc_files[PROC_FILE_NUM] = {
 #define PROC_FILE_MODE "mtk_usb/mode"
 #define PROC_FILE_VBUS "mtk_usb/vbus"
 
+#ifdef CONFIG_MTK_MUSB_DUAL_ROLE
 #define PROC_FILE_DR_NUM 2
 static struct proc_dir_entry *proc_dr_files[PROC_FILE_DR_NUM] = {
 	NULL, NULL};
+#endif
 
 struct musb_register_map {
 	char *name;
@@ -664,6 +666,7 @@ void /* __init_or_exit */ musb_exit_debugfs(struct musb *musb)
 	}
 }
 
+#ifdef CONFIG_MTK_MUSB_DUAL_ROLE
 static int musb_mode_show(struct seq_file *sf, void *unused)
 {
 	struct musb *musb = sf->private;
@@ -774,3 +777,5 @@ void musb_dr_debugfs_init(struct musb *musb)
 	proc_dr_files[idx++] = proc_create_data(PROC_FILE_VBUS, 0644,
 			NULL, &musb_vbus_fops, musb);
 }
+#endif
+

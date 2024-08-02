@@ -100,6 +100,43 @@ void usb_phy_switch_to_usb(void)
 #define SHFT_RG_USB20_TERM_VREF_SEL 8
 #define OFFSET_RG_USB20_PHY_REV6 0x18
 #define SHFT_RG_USB20_PHY_REV6 30
+/*HS03s for DEVAL5625-8 by wangzikang at 20210615 start*/
+#ifdef CONFIG_HQ_PROJECT_HS03S
+#define U2_VRT_REF 0x7
+#define U2_TERM_REF 0x7
+#define U2_HSTX_SRCTRL 0x7
+#define U2_ENHANCE 0x3
+#define HOST_U2_VRT_REF 0x7
+#define HOST_U2_TERM_REF 0x7
+#define HOST_U2_HSTX_SRCTRL 0x7
+#define HOST_U2_ENHANCE 0x3
+#endif /*ELSE CONFIG_HQ_PROJECT_HS03S*/
+#ifdef CONFIG_HQ_PROJECT_HS04
+#define U2_VRT_REF 0x7
+#define U2_TERM_REF 0x7
+#define U2_HSTX_SRCTRL 0x7
+#define U2_ENHANCE 0x3
+#define HOST_U2_VRT_REF 0x7
+#define HOST_U2_TERM_REF 0x7
+#define HOST_U2_HSTX_SRCTRL 0x7
+#define HOST_U2_ENHANCE 0x3
+#endif /*ELSE CONFIG_HQ_PROJECT_HS04*/
+#ifdef CONFIG_HQ_PROJECT_OT8
+/*HS03s for DEVAL5625-8 by wangzikang at 20210615 end*/
+/*HS03s for DEVAL5625-8 by wenyaqi at 20210425 start*/
+#define U2_VRT_REF 0x7
+#define U2_TERM_REF 0x5
+#define U2_HSTX_SRCTRL 0x7
+#define U2_ENHANCE 0x3
+#define HOST_U2_VRT_REF 0x4
+#define HOST_U2_TERM_REF 0x4
+#define HOST_U2_HSTX_SRCTRL 0x5
+#define HOST_U2_ENHANCE 0x1
+/*HS03s for DEVAL5625-8 by wenyaqi at 20210425 end*/
+/*HS03s for DEVAL5625-8 by wangzikang at 20210615 start*/
+#endif /*END CONFIG_HQ_PROJECT_OT8*/
+/*HS03s for DEVAL5625-8 by wangzikang at 20210615 end*/
+
 void usb_phy_tuning(void)
 {
 	static bool inited;
@@ -213,7 +250,10 @@ static atomic_t clk_prepare_cnt = ATOMIC_INIT(0);
 
 bool usb_prepare_clock(bool enable)
 {
-	int before_cnt = atomic_read(&clk_prepare_cnt);
+	int before_cnt = 0;
+	pr_notice("wlc 07 usb_prepare_clock start \n");
+	before_cnt = atomic_read(&clk_prepare_cnt);
+	pr_notice("wlc 08 usb_prepare_clock start \n");
 
 	mutex_lock(&prepare_lock);
 
@@ -372,8 +412,12 @@ static void hs_slew_rate_cal(void)
 
 #define MSK_RG_USB20_HSTX_SRCTRL 0x7
 	/* all clr first then set */
+	/*HS03s for DEVAL5625-8 by wenyaqi at 20210425 start*/
+	#if 0
 	USBPHY_CLR32(0x14, (MSK_RG_USB20_HSTX_SRCTRL << 12));
 	USBPHY_SET32(0x14, ((value & MSK_RG_USB20_HSTX_SRCTRL) << 12));
+	#endif
+	/*HS03s for DEVAL5625-8 by wenyaqi at 20210425 end*/
 
 	/* disable usb ring oscillator. */
 	USBPHY_CLR32(0x14, (0x1 << 15));
@@ -482,6 +526,45 @@ void usb_phy_switch_to_usb(void)
 }
 #endif
 
+/*HS03s for DEVAL5625-8 by wenyaqi at 20210425 start*/
+void set_usb_eye_diagram(s32 u2_vrt_ref, s32 u2_term_ref, s32 u2_hstx_srctrl,
+	s32 u2_enhance)
+{
+	if (u2_vrt_ref != -1) {
+		if (u2_vrt_ref <= VAL_MAX_WIDTH_3) {
+			USBPHY_CLR32(OFFSET_RG_USB20_VRT_VREF_SEL,
+				VAL_MAX_WIDTH_3 << SHFT_RG_USB20_VRT_VREF_SEL);
+			USBPHY_SET32(OFFSET_RG_USB20_VRT_VREF_SEL,
+				u2_vrt_ref << SHFT_RG_USB20_VRT_VREF_SEL);
+		}
+	}
+	if (u2_term_ref != -1) {
+		if (u2_term_ref <= VAL_MAX_WIDTH_3) {
+			USBPHY_CLR32(OFFSET_RG_USB20_TERM_VREF_SEL,
+				VAL_MAX_WIDTH_3 << SHFT_RG_USB20_TERM_VREF_SEL);
+			USBPHY_SET32(OFFSET_RG_USB20_TERM_VREF_SEL,
+				u2_term_ref << SHFT_RG_USB20_TERM_VREF_SEL);
+		}
+	}
+	if (u2_hstx_srctrl != -1) {
+		if (u2_hstx_srctrl <= VAL_MAX_WIDTH_3) {
+			USBPHY_CLR32(0x14, VAL_MAX_WIDTH_3 << 12);
+			USBPHY_SET32(0x14, u2_hstx_srctrl << 12);
+		}
+	}
+	if (u2_enhance != -1) {
+		if (u2_enhance <= VAL_MAX_WIDTH_2) {
+			USBPHY_CLR32(OFFSET_RG_USB20_PHY_REV6,
+				VAL_MAX_WIDTH_2 << SHFT_RG_USB20_PHY_REV6);
+			USBPHY_SET32(OFFSET_RG_USB20_PHY_REV6,
+					u2_enhance<<SHFT_RG_USB20_PHY_REV6);
+		}
+	}
+	/*HS03s for DEVAL5625-8 by wangzikang at 20210615 start*/
+	pr_info("%s:u2_vrt_ref=0x%x, u2_term_ref=0x%x, u2_hstx_srctrl=0x%x,u2_enhance=0x%x\n",
+			__func__,u2_vrt_ref,u2_term_ref,u2_hstx_srctrl,u2_enhance);
+	/*HS03s for DEVAL5625-8 by wangzikang at 20210615 end*/
+}
 void set_usb_phy_mode(int mode)
 {
 	switch (mode) {
@@ -490,20 +573,40 @@ void set_usb_phy_mode(int mode)
 		USBPHY_CLR32(0x6C, (0x10<<0));
 		USBPHY_SET32(0x6C, (0x2F<<0));
 		USBPHY_SET32(0x6C, (0x3F<<8));
+#ifdef CONFIG_HQ_PROJECT_OT8
+    /* modify code for OT8 */
+		USBPHY_CLR32(0x14, 1 << 16);
+		set_usb_eye_diagram(U2_VRT_REF, U2_TERM_REF, U2_HSTX_SRCTRL, U2_ENHANCE);
+#endif
 		break;
 	case PHY_MODE_USB_HOST:
 	/* VBUSVALID=1, AVALID=1, BVALID=1, SESSEND=0, IDDIG=0, IDPULLUP=1 */
 		USBPHY_CLR32(0x6c, (0x12<<0));
 		USBPHY_SET32(0x6c, (0x2d<<0));
 		USBPHY_SET32(0x6c, (0x3f<<8));
+#ifdef CONFIG_HQ_PROJECT_OT8
+    /* modify code for OT8 */
+		USBPHY_CLR32(0x14, 1 << 16);
+		set_usb_eye_diagram(HOST_U2_VRT_REF, HOST_U2_TERM_REF, HOST_U2_HSTX_SRCTRL,
+			HOST_U2_ENHANCE);
+#endif
 		break;
 	case PHY_MODE_INVALID:
 	/* VBUSVALID=0, AVALID=0, BVALID=0, SESSEND=1, IDDIG=0, IDPULLUP=1 */
 		USBPHY_SET32(0x6c, (0x11<<0));
 		USBPHY_CLR32(0x6c, (0x2e<<0));
 		USBPHY_SET32(0x6c, (0x3f<<8));
+#ifdef CONFIG_HQ_PROJECT_OT8
+    /* modify code for OT8 */
+		USBPHY_CLR32(0x14, 1 << 16);
+		set_usb_eye_diagram(U2_VRT_REF, U2_TERM_REF, U2_HSTX_SRCTRL, U2_ENHANCE);
+#endif
 		break;
 	default:
+#ifdef CONFIG_HQ_PROJECT_OT8
+    /* modify code for OT8 */
+		set_usb_eye_diagram(U2_VRT_REF, U2_TERM_REF, U2_HSTX_SRCTRL, U2_ENHANCE);
+#endif
 		DBG(0, "mode error %d\n", mode);
 	}
 	DBG(0, "force PHY to mode %d, 0x6c=%x\n", mode, USBPHY_READ32(0x6c));

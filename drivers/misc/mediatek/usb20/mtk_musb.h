@@ -6,7 +6,6 @@
 #ifndef __MUSB_MTK_MUSB_H__
 #define __MUSB_MTK_MUSB_H__
 
-#ifdef CONFIG_MTK_MUSB_PHY
 #ifdef CONFIG_OF
 extern struct musb *mtk_musb;
 
@@ -39,7 +38,6 @@ extern struct musb *mtk_musb;
 	USBPHY_WRITE32(offset, (USBPHY_READ32(offset)) & (~(mask)))
 
 #endif /* End of CONFIG_OF define */
-#endif /* End of CONFIG_MTK_MUSB_PHY */
 
 struct musb;
 
@@ -51,23 +49,38 @@ enum usb_state_enum {
 
 /* USB phy and clock */
 extern bool usb_pre_clock(bool enable);
-#ifdef CONFIG_MTK_UART_USB_SWITCH
+extern void usb_phy_poweron(void);
+extern unsigned int usb_phy_get_efuse_val(struct device *dev);
+extern void usb_phy_recover(struct musb *musb);
+extern void usb_phy_savecurrent(void);
 extern void usb_phy_context_restore(void);
 extern void usb_phy_context_save(void);
-#endif
+extern bool usb_enable_clock(bool enable);
+extern void usb_rev6_setting(int value);
+extern void usb_dpdm_pullup(bool enable);
 
 /* general USB */
 extern bool mt_usb_is_device(void);
 extern void mt_usb_connect(void);
 extern void mt_usb_disconnect(void);
 extern void mt_usb_reconnect(void);
+#if defined(CONFIG_EXTCON_MTK_USB) && IS_ENABLED(CONFIG_USB_NOTIFY_LAYER)
+extern bool usb_cable_connected(void);
+#else
 extern bool usb_cable_connected(struct musb *musb);
+#endif
 extern void musb_sync_with_bat(struct musb *musb, int usb_state);
 
 bool is_saving_mode(void);
 
 /* host and otg */
+extern void mt_usb_host_connect(int delay);
+extern void mt_usb_host_disconnect(int delay);
+extern void mt_otg_accessory_power(int is_on);
+extern void mt_usb_otg_init(struct musb *musb);
+extern void mt_usb_otg_exit(struct musb *musb);
 extern void mt_usb_init_drvvbus(void);
+extern int mt_usb_get_vbus_status(struct musb *musb);
 extern void mt_usb_iddig_int(struct musb *musb);
 extern void switch_int_to_device(struct musb *musb);
 extern void switch_int_to_host(struct musb *musb);

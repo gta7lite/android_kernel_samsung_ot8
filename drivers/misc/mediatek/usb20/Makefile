@@ -43,6 +43,10 @@ ifeq ($(CONFIG_TCPC_CLASS),y)
 	ccflags-y += -I$(srctree)/drivers/misc/mediatek/typec/tcpc/inc
 endif
 
+#HS03s for SR-AL5625-01-515 by wangzikang at 21210610 start
+#for otg vbus
+ccflags-y += -I$(srctree)/drivers/power/supply/
+#HS03s for SR-AL5625-01-515 by wangzikang at 21210610 end
 #for 6739
 ccflags-y += -I$(srctree)/drivers/usb/core/
 
@@ -74,3 +78,4 @@ endif
 
 subdir-ccflags-$(CONFIG_MACH_MT6781) += -DUSB2_PHY_V2
 subdir-ccflags-$(CONFIG_MACH_MT6833) += -DUSB2_PHY_V2
+obj-$(CONFIG_DUAL_ROLE_USB_INTF) += mtk_dual_role.o

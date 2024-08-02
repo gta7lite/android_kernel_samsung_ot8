@@ -1189,11 +1189,28 @@ static int is_db_ok(struct musb *musb, struct musb_ep *musb_ep)
 
 	addr = ((ep->address & 0x80) >> 3)
 			| (ep->address & 0x0f);
+	/* HS04_T for DEAL6398A-1879 by shixuanxuan at 20221012 start */
+/* hs14 code for AL6528A-657 by shanxinkai at 2022/11/08 start */
+#if defined (CONFIG_HQ_PROJECT_HS04) || defined(CONFIG_HQ_PROJECT_O22)
+/* hs14 code for AL6528A-657 by shanxinkai at 2022/11/08 end */
+	if (!IS_ERR_OR_NULL(cdev->config)) {
+		list_for_each_entry(f, &cdev->config->functions, list) {
+			if (test_bit(addr, f->endpoints))
+				goto find_f;
+		}
+		goto done;
+	} else {
+		pr_err("%s:%d NULL pointer\n", __func__, __LINE__);
+		goto done;
+	}
+#else
 	list_for_each_entry(f, &cdev->config->functions, list) {
 		if (test_bit(addr, f->endpoints))
 			goto find_f;
 	}
 	goto done;
+#endif
+	/* HS04_T for DEAL6398A-1879 by shixuanxuan at 20221012 end*/
 find_f:
 	f_desc = get_function_descriptors(f, gadget->speed);
 	if (f_desc)
@@ -1439,8 +1456,21 @@ static int musb_gadget_enable
 		musb_writew(regs, MUSB_RXCSR, csr);
 #endif
 	}
-
+	/* HS04_T for DEAL6398A-1879 by shixuanxuan at 20221012 start */
+/* hs14 code for AL6528A-657 by shanxinkai at 2022/11/08 start */
+#if defined (CONFIG_HQ_PROJECT_HS04) || defined(CONFIG_HQ_PROJECT_O22)
+/* hs14 code for AL6528A-657 by shanxinkai at 2022/11/08 end */
+	if (musb->is_active) {
+		fifo_setup(musb, musb_ep);
+	} else {
+		pr_err("musb->is_active == NULL, return!\n");
+		goto fail;
+	}
+#else
 	fifo_setup(musb, musb_ep);
+#endif
+	/* HS04_T for DEAL6398A-1879 by shixuanxuan at 20221012 end*/
+
 
 #ifndef CONFIG_MTK_MUSB_QMU_SUPPORT
 	/* NOTE:  all the I/O code _should_ work fine without DMA, in case
@@ -1762,7 +1792,7 @@ static int musb_gadget_dequeue(struct usb_ep *ep, struct usb_request *request)
 {
 	struct musb_ep *musb_ep = to_musb_ep(ep);
 	struct musb_request *req = to_musb_request(request);
-	struct musb_request *r;
+	struct musb_request *r = NULL;
 	unsigned long flags;
 	int status = 0;
 	struct musb *musb = musb_ep->musb;
@@ -2250,8 +2280,8 @@ static int musb_gadget_vbus_draw
 	return usb_phy_set_power(musb->xceiv, mA);
 }
 
-/* default value 0 */
-static int usb_rdy;
+/* hs14 code for AL6528A-1068 by shanxinkai at 2023/1/11 start */
+static int usb_rdy = 0;
 void set_usb_rdy(void)
 {
 	DBG(0, "set usb_rdy, wake up bat\n");
@@ -2260,12 +2290,14 @@ void set_usb_rdy(void)
 
 bool is_usb_rdy(void)
 {
-	if (usb_rdy)
+	if (usb_rdy) {
 		return true;
-	else
+	} else {
 		return false;
+	}
 }
 EXPORT_SYMBOL(is_usb_rdy);
+/* hs14 code for AL6528A-1068 by shanxinkai at 2023/1/11 end */
 
 static int musb_gadget_pullup(struct usb_gadget *gadget, int is_on)
 {
@@ -2294,7 +2326,9 @@ static int musb_gadget_pullup(struct usb_gadget *gadget, int is_on)
 
 	if (!musb->is_ready && is_on) {
 		musb->is_ready = true;
-		//set_usb_rdy();
+		/* hs14 code for AL6528A-1068 by shanxinkai at 2023/1/11 start */
+		set_usb_rdy();
+		/* hs14 code for AL6528A-1068 by shanxinkai at 2023/1/11 end */
 		/* direct issue connection work if usb is forced on */
 		if (musb_force_on) {
 			DBG(0, "mt_usb_connect() on is_ready begin\n");
@@ -2304,9 +2338,6 @@ static int musb_gadget_pullup(struct usb_gadget *gadget, int is_on)
 			mt_usb_reconnect();
 		}
 	}
-
-	if (!is_usb_rdy() && is_on)
-		set_usb_rdy();
 
 	spin_unlock_irqrestore(&musb->lock, flags);
 
@@ -3006,6 +3037,11 @@ void musb_g_reset(struct musb *musb)
 	/* active wake lock */
 	if (!musb->usb_lock->active)
 		__pm_stay_awake(musb->usb_lock);
+
+#ifndef FPGA_PLATFORM
+	musb_platform_reset(musb);
+	musb_generic_disable(musb);
+#endif
 
 	/* re-init interrupt setting */
 	musb->intrrxe = 0;

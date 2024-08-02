@@ -384,6 +384,7 @@ struct musb {
 #endif
 
 	struct usb_phy *xceiv;
+	unsigned int efuse_val;
 	struct phy *phy;
 
 	u8 xceiv_event;
@@ -401,6 +402,7 @@ struct musb {
 	u8 nr_endpoints;
 
 	int (*board_set_power)(int state);
+	void (*usb_rev6_setting)(int value);
 
 	u8 min_power;		/* vbus for periph, in mA/2 */
 
@@ -415,6 +417,9 @@ struct musb {
 
 	unsigned is_multipoint:1;
 	unsigned ignore_disconnect:1;	/* during bus resets */
+	/*HS03s for SR-AL5625-01-370 by wenyaqi at 20210429 start*/
+	unsigned ignore_fist_suspend:1;
+	/*HS03s for SR-AL5625-01-370 by wenyaqi at 20210429 end*/
 
 	unsigned hb_iso_rx:1;	/* high bandwidth iso rx? */
 	unsigned hb_iso_tx:1;	/* high bandwidth iso tx? */
@@ -490,11 +495,16 @@ struct musb {
 #if defined(CONFIG_USB_ROLE_SWITCH)
 	struct otg_switch_mtk *otg_sx;
 #endif
+#if defined(CONFIG_CABLE_TYPE_NOTIFIER)
+	int sec_cable_type;
+#endif
 	struct mt_usb_glue *glue;
 
 	/* host suspend */
 	bool host_suspend;
 	bool usb_connected;
+
+	struct work_struct dp_work;
 };
 
 static inline struct musb *gadget_to_musb(struct usb_gadget *g)
@@ -557,6 +567,9 @@ extern irqreturn_t musb_interrupt(struct musb *musb);
 extern irqreturn_t dma_controller_irq(int irq, void *private_data);
 
 extern void musb_hnp_stop(struct musb *musb);
+#if defined(CONFIG_CABLE_TYPE_NOTIFIER)
+extern bool musb_is_host(void);
+#endif
 
 static inline void musb_platform_set_vbus(struct musb *musb, int is_on)
 {
