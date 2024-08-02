@@ -224,6 +224,8 @@ obj-$(CONFIG_MFD_HI655X_PMIC)   += hi655x-pmic.o
 obj-$(CONFIG_MFD_DLN2)		+= dln2.o
 obj-$(CONFIG_MFD_RT5033)	+= rt5033.o
 obj-$(CONFIG_MFD_SKY81452)	+= sky81452.o
+obj-$(CONFIG_MFD_SM5714)	+= sm/sm5714/
+
 
 intel-soc-pmic-objs		:= intel_soc_pmic_core.o intel_soc_pmic_crc.o
 obj-$(CONFIG_INTEL_SOC_PMIC)	+= intel-soc-pmic.o
@@ -245,6 +247,8 @@ mt6397-objs			:= mt6397-core.o mt6397-irq.o mt6358-irq.o mt6358-ipi.o
 obj-$(CONFIG_MFD_MT6397)	+= mt6397.o
 obj-$(CONFIG_MFD_MT6397)	+= mt63xx-oc-debug.o
 ifeq ($(CONFIG_DEBUG_FS), y)
+obj-$(CONFIG_MFD_MT6397)	+= mt63xx-debug.o
+else ifneq ($(CONFIG_MTK_ECCCI_DRIVER), y)
 obj-$(CONFIG_MFD_MT6397)	+= mt63xx-debug.o
 endif
 endif
@@ -276,6 +280,7 @@ obj-$(CONFIG_RAVE_SP_CORE)	+= rave-sp.o
 obj-$(CONFIG_MFD_ROHM_BD718XX)	+= rohm-bd718x7.o
 
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
+subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat
 ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
 ifeq ($(CONFIG_MACH_MT6785),y)
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/sspm/v1/
