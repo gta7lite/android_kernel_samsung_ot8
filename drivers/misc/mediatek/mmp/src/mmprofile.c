@@ -2239,8 +2239,8 @@ static long mmprofile_ioctl_compat(struct file *file, unsigned int cmd,
 
 static int mmprofile_mmap(struct file *file, struct vm_area_struct *vma)
 {
-	unsigned long pos = 0;
-	unsigned long i = 0;
+	unsigned int pos = 0;
+	unsigned int i = 0;
 
 	if (mmprofile_globals.selected_buffer == MMPROFILE_GLOBALS_BUFFER) {
 
@@ -2263,12 +2263,12 @@ static int mmprofile_mmap(struct file *file, struct vm_area_struct *vma)
 	} else if (mmprofile_globals.selected_buffer ==
 		MMPROFILE_PRIMARY_BUFFER) {
 
+		mmprofile_init_buffer();
+
 		/* check user space buffer length */
 		if ((vma->vm_end - vma->vm_start) !=
 			mmprofile_globals.buffer_size_bytes)
 			return -EINVAL;
-
-		mmprofile_init_buffer();
 
 		if (!bmmprofile_init_buffer)
 			return -EAGAIN;
