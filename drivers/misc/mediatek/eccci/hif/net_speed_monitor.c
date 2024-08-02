@@ -32,10 +32,8 @@
 #include "ccci_platform.h"
 #include "ccci_core.h"
 #include "mtk_ppm_api.h"
-#ifdef MT6297
-#if !defined(CONFIG_MACH_MT6771)
 #include <linux/soc/mediatek/mtk-pm-qos.h>
-#endif
+
 #define CALC_DELTA		(1000)
 #define MAX_C_NUM		(4)
 
@@ -473,4 +471,3 @@ int mtk_ccci_speed_monitor_init(void)
 	return 0;
 }
 
-#endif

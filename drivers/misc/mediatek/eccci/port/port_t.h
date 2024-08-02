@@ -112,6 +112,9 @@ struct port_t {
 	unsigned int rx_drop_cnt;
 	unsigned int tx_pkg_cnt;
 	port_skb_handler skb_handler;
+#ifdef CONFIG_MTK_SRIL_SUPPORT
+	int md_state_changed;
+#endif
 	struct sk_buff_head port_rx_list;
 	atomic_t is_up; /*for ccmni status*/
 	spinlock_t flag_lock;

@@ -879,9 +879,7 @@ do { \
 	(DPMAIF_UL_INT_ERR_MSK | DPMAIF_UL_INT_MD_NOTREADY_MSK | \
 	DPMAIF_UL_INT_MD_PWR_NOTREADY_MSK)
 /* DPMAIF_UL_INT_EMPTY_MSK | */
-#define AP_UL_L2INTR_En_Msk \
-	(AP_UL_L2INTR_ERR_En_Msk | \
-	DPMAIF_UL_INT_QDONE_MSK)
+#define AP_UL_L2INTR_En_Msk	 DPMAIF_UL_INT_QDONE_MSK
 
 /* === RX interrupt mask === */
 #define DPMAIF_DL_INT_ERR_MSK                    (0x07 << 1)
