@@ -227,9 +227,7 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	freq = map_util_freq(util, freq, max);
 #endif
 
-#ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
 	freq = clamp_val(freq, policy->min, policy->max);
-#endif
 
 	if (freq == sg_policy->cached_raw_freq && !sg_policy->need_freq_update)
 		return sg_policy->next_freq;
@@ -280,6 +278,9 @@ unsigned long schedutil_cpu_util(int cpu, unsigned long util_cfs,
 	    type == FREQUENCY_UTIL && rt_rq_is_runnable(&rq->rt)) {
 		return max;
 	}
+
+	if (type == FREQUENCY_UTIL && idle_cpu(cpu))
+		return 0;
 
 	/*
 	 * Early check to see if IRQ/steal time saturates the CPU, can be
@@ -538,17 +539,13 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	unsigned int next_f;
 	bool busy;
 
-	raw_spin_lock(&sg_policy->update_lock);
-
 	sugov_iowait_boost(sg_cpu, time, flags);
 	sg_cpu->last_update = time;
 
 	ignore_dl_rate_limit(sg_cpu, sg_policy);
 
-	if (!sugov_should_update_freq(sg_policy, time)) {
-		raw_spin_unlock(&sg_policy->update_lock);
+	if (!sugov_should_update_freq(sg_policy, time))
 		return;
-	}
 
 	/* Limits may have changed, don't skip frequency update */
 	busy = !sg_policy->need_freq_update && sugov_cpu_is_busy(sg_cpu);
@@ -556,9 +553,6 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	util = sugov_get_util(sg_cpu);
 	max = sg_cpu->max;
 	util = sugov_iowait_apply(sg_cpu, time, util, max);
-#ifdef CONFIG_UCLAMP_TASK
-	trace_schedutil_uclamp_util(policy->cpu, util);
-#endif
 	next_f = get_next_freq(sg_policy, util, max);
 	/*
 	 * Do not reduce the frequency if the CPU has not been idle
@@ -587,12 +581,13 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	if (sg_policy->policy->fast_switch_enabled) {
 		sugov_fast_switch(sg_policy, time, next_f);
 	} else {
+		raw_spin_lock(&sg_policy->update_lock);
 		sugov_deferred_update(sg_policy, time, next_f);
+		raw_spin_unlock(&sg_policy->update_lock);
 	}
 #endif
 
 	__cpufreq_notifier_fp(cid, next_f);
-	raw_spin_unlock(&sg_policy->update_lock);
 
 }
 
@@ -1037,7 +1032,6 @@ static int sugov_init(struct cpufreq_policy *policy)
 				   schedutil_gov.name);
 	if (ret)
 		goto fail;
-
 
 out:
 	mutex_unlock(&global_tunables_lock);

@@ -786,6 +786,11 @@ void post_init_entity_util_avg(struct sched_entity *se)
 	long cpu_scale = arch_scale_cpu_capacity(NULL, cpu_of(rq_of(cfs_rq)));
 	long cap = (long)(cpu_scale - cfs_rq->avg.util_avg) / 2;
 
+	if (sched_forked_ramup_factor() != 0) {
+		cap = (long)(SCHED_CAPACITY_SCALE - cfs_rq->avg.util_avg) *
+				sched_forked_ramup_factor() / 100;
+	}
+
 	if (cap > 0) {
 		if (cfs_rq->avg.util_avg != 0) {
 			sa->util_avg  = cfs_rq->avg.util_avg * se->load.weight;
@@ -6092,7 +6097,7 @@ find_idlest_group(struct sched_domain *sd, struct task_struct *p,
 		  int this_cpu, int sd_flag)
 {
 	struct sched_group *idlest = NULL, *group = sd->groups;
-	struct sched_group *most_spare_sg = NULL, *this_group = NULL;
+	struct sched_group *most_spare_sg = NULL;
 	unsigned long min_runnable_load = ULONG_MAX;
 	unsigned long this_runnable_load = ULONG_MAX;
 	unsigned long min_avg_load = ULONG_MAX, this_avg_load = ULONG_MAX;
@@ -6126,7 +6131,6 @@ find_idlest_group(struct sched_domain *sd, struct task_struct *p,
 		avg_load = 0;
 		runnable_load = 0;
 		max_spare_cap = 0;
-		group->idle_cpus = 0;
 
 		for_each_cpu(i, sched_group_span(group)) {
 			/* Bias balancing toward CPUs of our domain */
@@ -6134,9 +6138,6 @@ find_idlest_group(struct sched_domain *sd, struct task_struct *p,
 				load = source_load(i, load_idx);
 			else
 				load = target_load(i, load_idx);
-
-			if (idle_cpu(i))
-				group->idle_cpus++;
 
 			runnable_load += load;
 
@@ -6159,7 +6160,6 @@ find_idlest_group(struct sched_domain *sd, struct task_struct *p,
 					group->sgc->capacity;
 
 		if (local_group) {
-			this_group = group;
 			this_runnable_load = runnable_load;
 			this_avg_load = avg_load;
 			this_spare = max_spare_cap;
@@ -6211,12 +6211,6 @@ find_idlest_group(struct sched_domain *sd, struct task_struct *p,
 		return most_spare_sg;
 
 skip_spare:
-	if (idlest && idlest->idle_cpus > 0)
-		if (!this_group || idlest->idle_cpus > this_group->idle_cpus)
-			return idlest;
-	if (this_group && this_group->idle_cpus > 0)
-		return this_group;
-
 	if (!idlest)
 		return NULL;
 
@@ -6288,7 +6282,7 @@ find_idlest_group_cpu(struct sched_group *group, struct task_struct *p, int this
 			}
 		} else if (shallowest_idle_cpu == -1) {
 			load = weighted_cpuload(cpu_rq(i));
-#if defined(CONFIG_MTK_SCHED_INTEROP) && defined(CONFIG_RT_GROUP_SCHED)
+#ifdef CONFIG_MTK_SCHED_INTEROP
 			load += mt_rt_load(i);
 #endif
 			if (load < min_load) {
@@ -6338,8 +6332,6 @@ static inline int find_idlest_cpu(struct sched_domain *sd, struct task_struct *p
 			sd = sd->child;
 			continue;
 		}
-		if (idle_cpu(new_cpu))
-			break;
 
 		/* Now try balancing at a lower domain level of 'new_cpu': */
 		cpu = new_cpu;
@@ -7655,7 +7647,7 @@ static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu, int sy
 			int cur_cpu_cap = capacity_orig_of(cpu);
 
 			if (cur_cpu_cap > best_cpu_cap){
-				if((best_energy - cur_energy) > max(1, (best_energy >> 4))) {
+				if((best_energy - cur_energy) > (best_energy >> 4 )) {
 					best_energy = cur_energy;
 					best_energy_cpu = cpu;
 				}
