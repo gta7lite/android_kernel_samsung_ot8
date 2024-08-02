@@ -47,7 +47,6 @@
 
 #if (defined(CONFIG_MACH_MT6781)  \
 	||defined(CONFIG_MACH_MT6768) || defined(CONFIG_MACH_MT6771))
-
 #include <mt-plat/upmu_common.h>
 //#include <mt-plat/mtk_secure_api.h>
 #if !defined(CONFIG_FPGA_EARLY_PORTING)
@@ -156,7 +155,8 @@ static int scp_get_sub_feature_idx(enum subsys_enum sys_e,
 {
 	int i;
 
-	if (sys_e >= SYS_NUM || comp_e >= SUB_FEATURE_NUM)
+	if ((sys_e < 0 || sys_e >= SYS_NUM) ||
+		(comp_e < 0 || comp_e >= SUB_FEATURE_NUM))
 		return -EINVAL;
 
 	if(!sd[sys_e].regmap || !sd[sys_e].fd) {
@@ -182,7 +182,8 @@ static struct sub_feature_data *scp_get_sub_feature(enum subsys_enum sys_e,
 {
 	int idx;
 
-	if (sys_e >= SYS_NUM || comp_e >= SUB_FEATURE_NUM)
+	if ((sys_e < 0 || sys_e >= SYS_NUM) ||
+		(comp_e < 0 || comp_e >= SUB_FEATURE_NUM))
 		return NULL;
 
 	idx = scp_get_sub_feature_idx(sys_e, comp_e);
@@ -197,7 +198,8 @@ static int scp_get_sub_feature_onoff(enum subsys_enum sys_e,
 {
 	int idx;
 
-	if (sys_e >= SYS_NUM || comp_e >= SUB_FEATURE_NUM)
+	if ((sys_e < 0 || sys_e >= SYS_NUM) ||
+		(comp_e < 0 || comp_e >= SUB_FEATURE_NUM))
 		return 0;
 
 	idx = scp_get_sub_feature_idx(sys_e, comp_e);
@@ -216,7 +218,8 @@ static unsigned int *scp_get_sub_register_cfg(enum subsys_enum sys_e,
 	unsigned int val = 0;
 	int i;
 
-	if (sys_e >= SYS_NUM || comp_e >= SUB_FEATURE_NUM)
+	if ((sys_e < 0 || sys_e >= SYS_NUM) ||
+		(comp_e < 0 || comp_e >= SUB_FEATURE_NUM))
 		return NULL;
 
 	fd = scp_get_sub_feature(sys_e, comp_e);
@@ -273,7 +276,8 @@ static int scp_set_sub_register_cfg(enum subsys_enum sys_e,
 	int ret = 0;
 	int i;
 
-	if (sys_e >= SYS_NUM || comp_e >= SUB_FEATURE_NUM)
+	if ((sys_e < 0 || sys_e >= SYS_NUM) ||
+		(comp_e < 0 || comp_e >= SUB_FEATURE_NUM))
 		return -EINVAL;
 	if (!regmap) {
 		pr_err("scp_dvfs: %d regmap is NULL\n", sys_e);
@@ -333,7 +337,6 @@ int scp_set_pmic_vcore(unsigned int cur_freq)
 		unsigned int uv = dvfs->opp[idx].uv_idx;
 	#if !defined(CONFIG_MACH_MT6768) \
 		&& !defined(CONFIG_MACH_MT6781) && !defined(CONFIG_MACH_MT6771)
-
 		int max_vcore = dvfs->opp[dvfs->scp_opp_num - 1].vcore + 100000;
 		int max_vsram = dvfs->opp[dvfs->scp_opp_num - 1].vsram + 100000;
 	#endif
@@ -346,7 +349,6 @@ int scp_set_pmic_vcore(unsigned int cur_freq)
 
 	#if (defined(CONFIG_MACH_MT6768) \
 	|| defined(CONFIG_MACH_MT6781) || defined(CONFIG_MACH_MT6771))
-
 		ret_vc = pmic_scp_set_vcore(vcore);
 		ret_vs = pmic_scp_set_vsram_vcore(dvfs->opp[idx].vsram);
 	#else
@@ -1262,8 +1264,6 @@ fail:
 
 	return ret;
 }
-
-
 #if defined(CONFIG_MACH_MT6781)
 
 static void mt_pmic_sshub_init_for_mt6781(void)
@@ -1444,7 +1444,6 @@ static void __init mt_pmic_sshub_init(void)
 	mt_pmic_sshub_init_for_mt6781();
 #elif defined(CONFIG_MACH_MT6771)
 	mt_pmic_sshub_init_for_mt6771();
-
 #else
 	int max_vcore = dvfs->opp[dvfs->scp_opp_num - 1].vcore + 100000;
 	int max_vsram = dvfs->opp[dvfs->scp_opp_num - 1].vsram + 100000;
@@ -1690,7 +1689,6 @@ static int __init mt_scp_dvfs_pdrv_probe(struct platform_device *pdev)
 #if (defined (CONFIG_MACH_MT6768) \
 	||defined(CONFIG_MACH_MT6781) || defined(CONFIG_MACH_MT6771))
 	pr_notice("mt6768  6781 6771 no pmic config in dts\n");
-
 	mt_pmic_sshub_init();
 	goto pass;
 #endif
