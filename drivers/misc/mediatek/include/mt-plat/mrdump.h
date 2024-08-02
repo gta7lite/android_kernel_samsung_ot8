@@ -74,9 +74,13 @@ struct mrdump_arm64_reg {
 
 struct mrdump_crash_record {
 	int reboot_mode;
-
+/* hs03s code for dump display by yanghui at 2021/04/29 start */
+#ifdef HQ_FACTORY_BUILD
+	char msg[304];
+#else
 	char msg[128];
-
+#endif
+/* hs03s code for dump display by yanghui at 2021/04/29 end */
 	uint32_t fault_cpu;
 
 	union {
