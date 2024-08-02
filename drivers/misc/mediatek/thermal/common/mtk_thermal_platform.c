@@ -124,7 +124,7 @@ do { \
 } while (0)
 
 
-#define TRIMz_ex(tz, x)   (tz = (unsigned long long)(x))
+#define TRIMz_ex(tz, x)   ((tz = (unsigned long long)(x)) < 0 ? 0 : tz)
 
 /* ********************************************* */
 /* CPU Index */

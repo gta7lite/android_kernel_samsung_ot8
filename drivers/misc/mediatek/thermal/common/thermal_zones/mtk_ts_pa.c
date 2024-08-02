@@ -193,10 +193,10 @@ static void pa_cal_stats(struct timer_list *t)
  *struct md_info g_pinfo_list[] =
  *{{"TXPWR_MD1", -127, "db", -127, 0},
  * {"TXPWR_MD2", -127, "db", -127, 1},
- * {"RFTEMP_2G_MD1", -32767, "¢XC", -32767, 2},
- * {"RFTEMP_2G_MD2", -32767, "¢XC", -32767, 3},
- * {"RFTEMP_3G_MD1", -32767, "¢XC", -32767, 4},
- * {"RFTEMP_3G_MD2", -32767, "¢XC", -32767, 5}};
+ * {"RFTEMP_2G_MD1", -32767, "ï¿½XC", -32767, 2},
+ * {"RFTEMP_2G_MD2", -32767, "ï¿½XC", -32767, 3},
+ * {"RFTEMP_3G_MD1", -32767, "ï¿½XC", -32767, 4},
+ * {"RFTEMP_3G_MD2", -32767, "ï¿½XC", -32767, 5}};
  */
 static DEFINE_MUTEX(TSPA_lock);
 static int mtktspa_get_hw_temp(void)
@@ -234,6 +234,11 @@ static int mtktspa_get_hw_temp(void)
 	if ((p_info[i].value > 100000) || (p_info[i].value < -30000))
 		pr_debug("[Power/PA_Thermal] PA T=%d\n", p_info[i].value);
 	mutex_unlock(&TSPA_lock);
+	/*HS03s for SR-AL5625-01-248 by wenyaqi at 20210429 start*/
+	#ifdef HQ_D85_BUILD
+	p_info[i].value = 25000;
+	#endif
+	/*HS03s for SR-AL5625-01-248 by wenyaqi at 20210429 end*/
 	return p_info[i].value;
 }
 
@@ -428,7 +433,11 @@ struct thermal_cooling_device *cdev, unsigned long state)
 		/* To trigger data abort to reset the system
 		 * for thermal protection.
 		 */
+		/* hs14 code for SR-AL6528A-01-336 by shanxinkai at 2022/09/15 start */
+		#if defined(HQ_FACTORY_BUILD) && (!defined(HQ_D85_BUILD))
 		BUG();
+		#endif
+		/* hs14 code for SR-AL6528A-01-336 by shanxinkai at 2022/09/15 end */
 	}
 	return 0;
 }

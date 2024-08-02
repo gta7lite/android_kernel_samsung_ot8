@@ -81,7 +81,11 @@ struct thermal_cooling_device *cdev, unsigned long state)
 #ifdef CONFIG_LVTS_DYNAMIC_ENABLE_REBOOT
 		if (tpcb > DYNAMIC_REBOOT_TRIP_TEMP) {
 			tscpu_printk("SW reset! tpcb = %d\n", tpcb);
+			/* hs14 code for SR-AL6528A-01-336 by shanxinkai at 2022/09/15 start */
+			#ifndef HQ_D85_BUILD
 			BUG();
+			#endif
+			/* hs14 code for SR-AL6528A-01-336 by shanxinkai at 2022/09/15 end */
 		} else {
 			tscpu_printk("Skip SW reset! tpcb = %d\n", tpcb);
 		}
@@ -89,7 +93,11 @@ struct thermal_cooling_device *cdev, unsigned long state)
 		/* To trigger data abort to reset the system
 		 * for thermal protection.
 		 */
+		/* hs14 code for SR-AL6528A-01-336 by shanxinkai at 2022/09/15 start */
+		#if !defined(HQ_D85_BUILD)
 		BUG();
+		#endif
+		/* hs14 code for SR-AL6528A-01-336 by shanxinkai at 2022/09/15 end */
 #endif
 
 	}
@@ -109,6 +117,22 @@ struct thermal_cooling_device *cdev, unsigned long *state)
 {
 	/* tscpu_dprintk("sysrst_buck_get_cur_state\n"); */
 	*state = cl_dev_sysrst_state_buck;
+	if (cl_dev_sysrst_state_buck == 1) {
+		tscpu_printk("%s = 1\n", __func__);
+		tscpu_printk("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
+		tscpu_printk("*****************************************\n");
+		tscpu_printk("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
+
+
+		/* To trigger data abort to reset the system
+		 * for thermal protection.
+		 */
+		/*HS03s for SR-AL5625-01-248 by wenyaqi at 20210615 start*/
+		#if !defined(HQ_D85_BUILD)
+		BUG();
+		#endif
+		/*HS03s for SR-AL5625-01-248 by wenyaqi at 20210615 end*/
+	}
 	return 0;
 }
 
@@ -127,7 +151,12 @@ struct thermal_cooling_device *cdev, unsigned long state)
 		/* To trigger data abort to reset the system
 		 * for thermal protection.
 		 */
+		/* hs14 code for SR-AL6528A-01-336 by shanxinkai at 2022/09/15 start */
+		#if !defined(HQ_D85_BUILD)
 		BUG();
+		#endif
+		/* hs14 code for SR-AL6528A-01-336 by shanxinkai at 2022/09/15 end */
+
 
 	}
 	return 0;
@@ -164,7 +193,11 @@ struct thermal_cooling_device *cdev, unsigned long state)
 		/* To trigger data abort to reset the system
 		 * for thermal protection.
 		 */
+		/* hs14 code for SR-AL6528A-01-336 by shanxinkai at 2022/09/15 start */
+		#if !defined(HQ_D85_BUILD)
 		BUG();
+		#endif
+		/* hs14 code for SR-AL6528A-01-336 by shanxinkai at 2022/09/15 end */
 
 	}
 	return 0;
@@ -201,7 +234,11 @@ struct thermal_cooling_device *cdev, unsigned long state)
 		/* To trigger data abort to reset the system
 		 * for thermal protection.
 		 */
+		/* hs14 code for SR-AL6528A-01-336 by shanxinkai at 2022/09/15 start */
+		#if !defined(HQ_D85_BUILD)
 		BUG();
+		#endif
+		/* hs14 code for SR-AL6528A-01-336 by shanxinkai at 2022/09/15 end */
 
 	}
 	return 0;

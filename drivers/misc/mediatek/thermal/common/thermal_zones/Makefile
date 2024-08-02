@@ -192,6 +192,16 @@ obj-$(CONFIG_THERMAL) += mtk_ts_cpu_noBank.o
 obj-$(CONFIG_THERMAL) += mtk_ts_pa.o
 obj-$(CONFIG_THERMAL) += mtk_ts_pa_thput.o
 obj-$(CONFIG_THERMAL) += mtk_ts_pmic.o
+# hs04 code for DEVAL6398A-13 by shixuanxuan at 20220707 start
+ifeq ($(CONFIG_HQ_PROJECT_OT8),y)
+# HS03s code for SR-AL5625-01-259 by wenyaqi at 20210422 start
+obj-$(CONFIG_THERMAL) += mtk_ts_usb.o
+# HS03s code for SR-AL5625-01-259 by wenyaqi at 20210422 end
+endif
+ifeq ($(CONFIG_HQ_PROJECT_HS03S),y)
+obj-$(CONFIG_THERMAL) += mtk_ts_usb.o
+endif
+# hs04 code for DEVAL6398A-13 by shixuanxuan at 20220707 end
 ifneq (,$(findstring tb8768, $(CONFIG_ARCH_MTK_PROJECT)))
 ifneq ($(CONFIG_CHARGER_BQ25601),)
 obj-$(CONFIG_THERMAL) += mtk_ts_btscharger.o
@@ -212,7 +222,9 @@ obj-$(CONFIG_THERMAL) += mtk_ts_imgsensor.o
 endif
 
 ifneq (,$(filter $(CONFIG_MTK_PLATFORM), "mt6768"))
+ifeq ($(CONFIG_MTK_GAUGE_VERSION),30)
 obj-$(CONFIG_THERMAL) += mtk_ts_battery.o
+endif
 
 obj-$(CONFIG_THERMAL) += mtk_ts_bts.o
 obj-$(CONFIG_THERMAL) += mtk_ts_btsmdpa.o
@@ -221,8 +233,17 @@ obj-$(CONFIG_THERMAL) += mtk_ts_cpu_noBank.o
 obj-$(CONFIG_THERMAL) += mtk_ts_pa.o
 obj-$(CONFIG_THERMAL) += mtk_ts_pa_thput.o
 
-obj-$(CONFIG_THERMAL) += mtk_ts_charger.o
+ifeq ($(CONFIG_MTK_GAUGE_VERSION),30)
+#hs14 code for SR-AL6528A-01-317 by wenyaqi at 2022/09/01 start
+obj-$(CONFIG_THERMAL) += mtk_ts_btscharger.o
+#obj-$(CONFIG_THERMAL) += mtk_ts_charger.o
+#hs14 code for SR-AL6528A-01-317 by wenyaqi at 2022/09/01 end
+endif
 #obj-$(CONFIG_THERMAL) += mtk_ts_charger2.o
+
+#hs14 code for SR-AL6528A-01-305 by shanxinkai at 2022/09/06 start
+obj-$(CONFIG_THERMAL) += mtk_ts_usb.o
+#hs14 code for SR-AL6528A-01-305 by shanxinkai at 2022/09/06 end
 
 ifneq ($(CONFIG_MTK_COMBO_WIFI),)
     obj-$(CONFIG_THERMAL) += mtk_ts_wmt.o

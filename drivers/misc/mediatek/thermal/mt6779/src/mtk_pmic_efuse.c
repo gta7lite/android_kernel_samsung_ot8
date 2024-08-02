@@ -450,6 +450,11 @@ int mtktspmic_get_hw_temp(void)
 	}
 
 out:
+	/*HS03s for SR-AL5625-01-248 by wenyaqi at 20210429 start*/
+	#ifdef HQ_D85_BUILD
+	temp1 = 25000;
+	#endif
+	/*HS03s for SR-AL5625-01-248 by wenyaqi at 20210429 end*/
 	return temp1;
 }
 

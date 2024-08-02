@@ -146,6 +146,11 @@ static int mtktscharger2_get_hw_temp(void)
 
 	mtktscharger2_dprintk_always("%s t=%d ret=%d\n", __func__,
 							t, ret);
+	/*HS03s for SR-AL5625-01-248 by wenyaqi at 20210429 start*/
+	#ifdef HQ_D85_BUILD
+	t = 25000;
+	#endif
+	/*HS03s for SR-AL5625-01-248 by wenyaqi at 20210429 end*/
 
 	return t;
 }
@@ -343,7 +348,11 @@ struct thermal_cooling_device *cdev, unsigned long state)
 		/* To trigger data abort to reset the system
 		 * for thermal protection.
 		 */
+		/* hs14 code for SR-AL6528A-01-336 by shanxinkai at 2022/09/15 start */
+		#if defined(HQ_FACTORY_BUILD) && (!defined(HQ_D85_BUILD))
 		BUG();
+		#endif
+		/* hs14 code for SR-AL6528A-01-336 by shanxinkai at 2022/09/15 end */
 	}
 
 	return 0;
