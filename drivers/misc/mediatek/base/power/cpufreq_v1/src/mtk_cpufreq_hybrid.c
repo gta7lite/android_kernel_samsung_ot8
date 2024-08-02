@@ -331,11 +331,7 @@ int Ripi_cpu_dvfs_thread(void *data)
 			/* Avoid memory issue */
 			if (p->mt_policy && p->mt_policy->governor &&
 				/* p->mt_policy->governor_enabled && */
-#if defined(CONFIG_MACH_MT6885)
-				(p->mt_policy->cpu < nr_cpu_ids) &&
-#else
 				(p->mt_policy->cpu < 10) &&
-#endif
 				(p->mt_policy->cpu >= 0)) {
 				int cid;
 
