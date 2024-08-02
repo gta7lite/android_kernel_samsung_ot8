@@ -435,6 +435,7 @@ int mtk_spk_send_ipi_buf_to_dsp(void *data_buffer, uint32_t data_size)
 
 	result = audio_send_ipi_buf_to_dsp(&ipi_msg, task_scene,
 					   AUDIO_DSP_TASK_AURISYS_SET_BUF,
+					   mtk_spk_get_type(),
 					   data_buffer, data_size);
 #endif
 	return result;
@@ -465,6 +466,7 @@ int mtk_spk_recv_ipi_buf_from_dsp(int8_t *buffer,
 	result = audio_recv_ipi_buf_from_dsp(&ipi_msg,
 					     task_scene,
 					     AUDIO_DSP_TASK_AURISYS_GET_BUF,
+					     mtk_spk_get_type(),
 					     buffer, size, buf_len);
 #endif
 	return result;

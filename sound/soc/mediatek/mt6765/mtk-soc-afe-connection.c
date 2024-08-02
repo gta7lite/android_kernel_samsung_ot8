@@ -155,11 +155,21 @@ bool SetAdcToVulData2(unsigned int ConnectionState)
 
 bool SetDl1ToI2s1Dac2(unsigned int ConnectionState)
 {
+	/* TabA7 Lite code for change speaker-L/R by libiao at 20230804 start */
+#if defined(CONFIG_HQ_PROJECT_OT8) && !defined(HQ_FACTORY_BUILD)
+	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I05,
+			   Soc_Aud_InterConnectionOutput_O04);
+	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I06,
+			   Soc_Aud_InterConnectionOutput_O03);
+	return true;
+#else
 	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I05,
 			   Soc_Aud_InterConnectionOutput_O28);
 	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I06,
 			   Soc_Aud_InterConnectionOutput_O29);
 	return true;
+#endif //CONFIG_HQ_PROJECT_OT8 && !HQ_FACTORY_BUILD
+	/* TabA7 Lite code for P230725-08807 by libiao at 20230804 end */
 }
 
 bool SetDl1ToAwb(unsigned int ConnectionState)
@@ -234,11 +244,21 @@ bool SetDl2ToI2s1Dac(unsigned int ConnectionState)
 
 bool SetDl2ToI2s1Dac2(unsigned int ConnectionState)
 {
+	/* TabA7 Lite code for change speaker-L/R by libiao at 20230804 start */
+#if defined(CONFIG_HQ_PROJECT_OT8) && !defined(HQ_FACTORY_BUILD)
+	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I07,
+			   Soc_Aud_InterConnectionOutput_O04);
+	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I08,
+			   Soc_Aud_InterConnectionOutput_O03);
+	return true;
+#else
 	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I07,
 			   Soc_Aud_InterConnectionOutput_O28);
 	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I08,
 			   Soc_Aud_InterConnectionOutput_O29);
 	return true;
+#endif //CONFIG_HQ_PROJECT_OT8 && !HQ_FACTORY_BUILD
+	/* TabA7 Lite code for P230725-08807 by libiao at 20230804 end */
 }
 
 bool SetDl2ToVul(unsigned int ConnectionState)
@@ -286,6 +306,24 @@ bool SetConnsysToHwGain1Out(unsigned int ConnectionState)
 	return true;
 }
 
+bool SetDLToHwGain1Out(unsigned int ConnectionState)
+{
+	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I05,
+			   Soc_Aud_InterConnectionOutput_O13);
+	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I06,
+			   Soc_Aud_InterConnectionOutput_O14);
+	return true;
+}
+
+bool SetDL2ToHwGain1Out(unsigned int ConnectionState)
+{
+	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I07,
+			   Soc_Aud_InterConnectionOutput_O13);
+	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I08,
+			   Soc_Aud_InterConnectionOutput_O14);
+	return true;
+}
+
 bool SetConnsysToAwb(unsigned int ConnectionState)
 {
 	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I34,
@@ -315,11 +353,21 @@ bool SetHwGain1InToI2s1Dac(unsigned int ConnectionState)
 
 bool SetHwGain1InToI2s1Dac2(unsigned int ConnectionState)
 {
+	/* TabA7 Lite code for change speaker-L/R by libiao at 20230804 start */
+#if defined(CONFIG_HQ_PROJECT_OT8) && !defined(HQ_FACTORY_BUILD)
+	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I10,
+			   Soc_Aud_InterConnectionOutput_O04);
+	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I11,
+			   Soc_Aud_InterConnectionOutput_O03);
+	return true;
+#else
 	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I10,
 			   Soc_Aud_InterConnectionOutput_O28);
 	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I11,
 			   Soc_Aud_InterConnectionOutput_O29);
 	return true;
+#endif //CONFIG_HQ_PROJECT_OT8 && !HQ_FACTORY_BUILD
+	/* TabA7 Lite code for P230725-08807 by libiao at 20230804 end */
 }
 
 bool SetHwGain1InToI2s3(unsigned int ConnectionState)
@@ -711,6 +759,28 @@ bool SetI2s2ToawbData2(unsigned int ConnectionState)
 
 	return true;
 }
+
+#ifdef CONFIG_MTK_TC10_FEATURE
+bool SetConnsysToHwGain2Out(uint32_t ConnectionState)
+{
+	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I34,
+			   Soc_Aud_InterConnectionOutput_O15);
+	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I35,
+			   Soc_Aud_InterConnectionOutput_O16);
+	return true;
+}
+
+bool SetHwGain2InToVul2(uint32_t ConnectionState)
+{
+	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I12,
+			   Soc_Aud_InterConnectionOutput_O32);
+	SetConnectionState(ConnectionState, Soc_Aud_InterConnectionInput_I13,
+			   Soc_Aud_InterConnectionOutput_O33);
+	return true;
+}
+
+#endif
+
 struct connection_link_t {
 	unsigned int input;
 	unsigned int output;
@@ -758,6 +828,10 @@ static const struct connection_link_t mConnectionLink[] = {
 	 Soc_Aud_AFE_IO_Block_HW_GAIN1_OUT, SetI2s0ToHwGain1Out},
 	{Soc_Aud_AFE_IO_Block_I2S_CONNSYS,
 	 Soc_Aud_AFE_IO_Block_HW_GAIN1_OUT, SetConnsysToHwGain1Out},
+	{Soc_Aud_AFE_IO_Block_MEM_DL1,
+	 Soc_Aud_AFE_IO_Block_HW_GAIN1_OUT, SetDLToHwGain1Out},
+	{Soc_Aud_AFE_IO_Block_MEM_DL2,
+	 Soc_Aud_AFE_IO_Block_HW_GAIN1_OUT, SetDL2ToHwGain1Out},
 	{Soc_Aud_AFE_IO_Block_HW_GAIN1_IN,
 	 Soc_Aud_AFE_IO_Block_I2S1_DAC, SetHwGain1InToI2s1Dac},
 	{Soc_Aud_AFE_IO_Block_HW_GAIN1_IN,
@@ -844,14 +918,20 @@ static const struct connection_link_t mConnectionLink[] = {
 	Soc_Aud_AFE_IO_Block_MEM_AWB2,
 	 SetI2s0ToawbData2},
 	{Soc_Aud_AFE_IO_Block_I2S2,
-	 Soc_Aud_AFE_IO_Block_MEM_AWB2, SetI2s2ToawbData2}
+	 Soc_Aud_AFE_IO_Block_MEM_AWB2, SetI2s2ToawbData2},
+#ifdef CONFIG_MTK_TC10_FEATURE
+	{Soc_Aud_AFE_IO_Block_I2S_CONNSYS,
+	 Soc_Aud_AFE_IO_Block_HW_GAIN2_OUT, SetConnsysToHwGain2Out},
+	{Soc_Aud_AFE_IO_Block_HW_GAIN2_IN,
+	 Soc_Aud_AFE_IO_Block_MEM_VUL2, SetHwGain2InToVul2}
+#endif
 };
 
 static const int CONNECTION_LINK_NUM = ARRAY_SIZE(mConnectionLink);
 
-static bool CheckBitsandReg(unsigned int regaddr, char bits)
+static bool CheckBitsandReg(short regaddr, char bits)
 {
-	if (regaddr == 0 || bits < 0) {
+	if (regaddr <= 0 || bits < 0) {
 		pr_debug("regaddr = %x bits = %d\n", regaddr, bits);
 		return false;
 	}
@@ -881,7 +961,7 @@ bool SetConnectionState(unsigned int ConnectionState, unsigned int Input,
 	 * pr_debug("SetinputConnection ConnectionState = %d
 	 * Input = %d Output = %d\n", ConnectionState, Input, Output);
 	 */
-	unsigned int connectReg = 0;
+	int connectReg = 0;
 	int set_bit = 0;
 
 	connectReg = (Input < Soc_Aud_InterConnectionInput_I32

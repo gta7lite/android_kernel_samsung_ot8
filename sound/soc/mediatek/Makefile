@@ -66,6 +66,16 @@ subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/include/
 endif
 endif
 
+$(warning "Warning Just for Test CONFIG_HQ_PROJECT_OT8 is $(CONFIG_HQ_PROJECT_OT8)")
+$(warning "Warning Just for Test MTK_TARGET_PROJECT is $(MTK_TARGET_PROJECT)")
+ifeq ($(CONFIG_HQ_PROJECT_OT8), y)
+# modify code for OT8
+$(warning "Warning Just for Test CONFIG_HQ_PROJECT_OT8 is $(CONFIG_HQ_PROJECT_OT8)")
+$(warning "Warning Just for Test MTK_TARGET_PROJECT is $(MTK_TARGET_PROJECT)")
+#TabA7 Lite code for OT8-5362 by yingboyang at 20220314 start
+obj-$(CONFIG_SND_SOC_AW87XXX) += aw87390/
+#TabA7 Lite code for OT8-5362 by yingboyang at 20220314 end
+endif
 # include path
 subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/include/mt-plat
 
@@ -113,7 +123,7 @@ subdir-ccflags-y += -DSND_SOC_AW87519
 endif
 
 # include path
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/accdet/mt6358
+subdir-ccflags-y += -I$(srctree)/sound/soc/codecs/
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat

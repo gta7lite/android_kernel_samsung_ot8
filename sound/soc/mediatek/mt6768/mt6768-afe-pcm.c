@@ -1340,6 +1340,8 @@ static const struct snd_kcontrol_new memif_ul2_ch2_mix[] = {
 static const struct snd_kcontrol_new memif_ul3_ch1_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("CONNSYS_I2S_CH1", AFE_CONN32_1,
 				    I_CONNSYS_I2S_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("GAIN2_OUT_CH1", AFE_CONN32,
+				    I_GAIN2_OUT_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL1_CH1", AFE_CONN32,
 				    I_DL1_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL2_CH1", AFE_CONN32,
@@ -1349,6 +1351,8 @@ static const struct snd_kcontrol_new memif_ul3_ch1_mix[] = {
 static const struct snd_kcontrol_new memif_ul3_ch2_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("CONNSYS_I2S_CH2", AFE_CONN33_1,
 				    I_CONNSYS_I2S_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("GAIN2_OUT_CH2", AFE_CONN33,
+				    I_GAIN2_OUT_CH2, 1, 0),
 };
 
 static const struct snd_kcontrol_new memif_ul4_ch1_mix[] = {
@@ -1491,6 +1495,9 @@ static const struct snd_soc_dapm_route mt6768_memif_routes[] = {
 	{"UL3_CH1", "CONNSYS_I2S_CH1", "Connsys I2S"},
 	{"UL3_CH2", "CONNSYS_I2S_CH2", "Connsys I2S"},
 
+	/* hw gain to UL3 */
+	{"UL3_CH1", "GAIN2_OUT_CH1", "HW Gain 2 Out"},
+	{"UL3_CH2", "GAIN2_OUT_CH2", "HW Gain 2 Out"},
 	{"Hostless_UL4 UL", NULL, "UL4_VIRTUAL_INPUT"},
 
 	{"UL4_CH1", "DL1_CH1", "Hostless_UL4 UL"},
@@ -2159,9 +2166,6 @@ static int mt6768_afe_runtime_suspend(struct device *dev)
 
 	/* reset sgen */
 	regmap_write(afe->regmap, AFE_SINEGEN_CON0, 0x0);
-	regmap_update_bits(afe->regmap, AFE_SINEGEN_CON2,
-			   INNER_LOOP_BACK_MODE_MASK_SFT,
-			   0x3f << INNER_LOOP_BACK_MODE_SFT);
 
 	/* cache only */
 	regcache_cache_only(afe->regmap, true);

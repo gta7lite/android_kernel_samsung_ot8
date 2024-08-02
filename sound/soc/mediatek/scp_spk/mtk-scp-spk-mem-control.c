@@ -169,8 +169,6 @@ int mtk_scp_spk_free_mem(struct snd_pcm_substream *substream,
 		if (afe->release_dram_resource)
 			afe->release_dram_resource(afe->dev);
 	}
-	substream->runtime->dma_addr = NULL;
-	substream->runtime->dma_area = NULL;
 
 	return 0;
 }
@@ -282,8 +280,6 @@ BYPASS_RSVED_MEM_ALLOCATE:
 		 spk_dma_buf->bytes,
 		 spk_mem->is_iv_buf_in_tcm);
 
-	*phys_addr = spk_dma_buf->addr;
-	*virt_addr = (char *)spk_dma_buf->area;
 	if (memif->using_sram == 0 && afe->request_dram_resource)
 		afe->request_dram_resource(afe->dev);
 
