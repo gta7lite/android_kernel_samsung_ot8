@@ -605,23 +605,6 @@ static int __mt6362_enable_bc12(struct mt6362_chg_data *data, bool en)
 				  MT6362_MASK_BC12_EN, en ? 0xff : 0);
 }
 
-#if defined(CONFIG_MACH_MT6853)
-bool is_usb_rdy(struct device *dev)
-{
-	struct device_node *node;
-	bool ready = false;
-
-	node = of_parse_phandle(dev->of_node, "usb", 0);
-	if (node) {
-		ready = of_property_read_bool(node, "gadget-ready");
-		dev_info(dev, "gadget-ready=%d\n", ready);
-	} else
-		dev_info(dev, "usb node missing or invalid\n");
-
-	return ready;
-}
-#endif
-
 static int mt6362_enable_bc12(struct mt6362_chg_data *data, bool en)
 {
 	struct mt6362_chg_platform_data *pdata = dev_get_platdata(data->dev);
@@ -664,7 +647,7 @@ static int mt6362_enable_bc12(struct mt6362_chg_data *data, bool en)
 			msleep(180);
 		/* Workaround for CDP port */
 		for (i = 0; i < max_wait_cnt; i++) {
-			if (is_usb_rdy(data->dev))
+			if (is_usb_rdy())
 				break;
 			dev_info(data->dev, "%s: CDP block\n", __func__);
 			if (!data->attach) {
@@ -918,7 +901,6 @@ static int mt6362_enable_otg_parameter(struct mt6362_chg_data *data, bool en)
 			if (ret < 0)
 				goto err;
 		}
-		data->otg_rdev->use_count++;
 		data->otg_mode_cnt++;
 	} else {
 		if (data->otg_mode_cnt == 1) {
@@ -926,8 +908,6 @@ static int mt6362_enable_otg_parameter(struct mt6362_chg_data *data, bool en)
 			if (ret < 0)
 				goto err;
 		}
-		if(data->otg_rdev->use_count > 0)
-			data->otg_rdev->use_count--;
 		data->otg_mode_cnt--;
 	}
 	goto out;
@@ -1580,7 +1560,7 @@ static int mt6362_enable_te(struct charger_device *chg_dev, bool en)
 static int mt6362_run_pump_express(struct mt6362_chg_data *data,
 				   enum pe_sel pe_sel)
 {
-	long timeout, pe_timeout = pe_sel == MT6362_PE_SEL_20 ? 1400 : 2800;
+	long timeout, pe_timeout = pe_sel ? 1400 : 2800;
 	int ret;
 
 	dev_info(data->dev, "%s\n", __func__);
@@ -1595,8 +1575,7 @@ static int mt6362_run_pump_express(struct mt6362_chg_data *data,
 		return ret;
 	/* switch pe10/pe20 select */
 	ret = regmap_update_bits(data->regmap, MT6362_REG_CHG_PUMPX,
-				 MT6362_MASK_PE_SEL,
-				 pe_sel == MT6362_PE_SEL_20 ? 0xff : 0);
+				 MT6362_MASK_PE_SEL, pe_sel ? 0xff : 0);
 	if (ret < 0)
 		return ret;
 	ret = regmap_update_bits(data->regmap, MT6362_REG_CHG_PUMPX,
@@ -2226,7 +2205,6 @@ static int mt6362_dump_registers(struct charger_device *chg_dev)
 		dev_err(data->dev, "%s: get chg setting fail\n", __func__);
 		return ret;
 	}
-	ic_stat = clamp_val(ic_stat, MT6362_STAT_HZ, MT6362_STAT_OTG);
 
 	for (i = 0; i < ARRAY_SIZE(adc_vals); i++) {
 		ret = iio_read_channel_processed(&data->iio_ch[i],
@@ -2990,7 +2968,6 @@ static int mt6362_chg_probe(struct platform_device *pdev)
 	struct regulator_config config = {};
 	bool use_dt = pdev->dev.of_node;
 	int rc;
-	char *name;
 
 	if (use_dt) {
 		pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
@@ -3090,15 +3067,9 @@ static int mt6362_chg_probe(struct platform_device *pdev)
 	}
 
 	/* mivr task */
-	name = devm_kasprintf(data->dev, GFP_KERNEL,
-			      "mivr_thread.%s", dev_name(data->dev));
-	if (!name) {
-		dev_notice(data->dev, "Fail to allocate memory\n");
-		rc = -ENOMEM;
-		goto out_devfs;
-	}
 	data->mivr_task = kthread_run(mt6362_chg_mivr_task_threadfn, data,
-				      name);
+				      devm_kasprintf(data->dev, GFP_KERNEL,
+				      "mivr_thread.%s", dev_name(data->dev)));
 	rc = PTR_ERR_OR_ZERO(data->mivr_task);
 	if (rc < 0) {
 		dev_err(data->dev, "create mivr handling thread fail\n");

@@ -29,6 +29,12 @@ config APM_POWER
 	  Say Y here to enable support APM status emulation using
 	  battery class devices.
 
+# HS03s for SR-AL5625-01-251 by wenyaqi at 20210425 start
+config BATTERY_ID_ADC
+	bool "battery id adc"
+	default y
+# HS03s for SR-AL5625-01-251 by wenyaqi at 20210425 end
+
 config GENERIC_ADC_BATTERY
 	tristate "Generic battery support using IIO"
 	depends on IIO
@@ -575,15 +581,6 @@ config CHARGER_BQ25890
 	help
 	  Say Y to enable support for the TI BQ25890 battery charger.
 
-config CHARGER_SC8551
-	tristate "Southchip SC8551 battery charger driver"
-	depends on I2C
-	help
-	  This adds support for charger in SC8551.
-	  Say Y to include support for Southchip Semiconductor Technology
-	  SC8551 charger IC Battery Charger. The base name for this driver is
-	  'sc8551.c'.
-
 config CHARGER_SMB347
 	tristate "Summit Microelectronics SMB347 Battery Charger"
 	depends on I2C
@@ -761,6 +758,14 @@ config MTK_PUMP_EXPRESS_40_SUPPORT
 	  Set Yes to enable PE 4.0
 	  Set No to disable PE 4.0
 
+# HS03s for SR-AL5625-01-249 by wenyaqi at 20210425 start
+config AFC_CHARGER
+	bool "Using AFC device driver"
+	default n
+	help
+	  If you say yes here you will get support for
+	  the AFC device driver.
+# HS03s for SR-AL5625-01-249 by wenyaqi at 20210425 end
 
 config CHARGER_RT9458
 	bool "Charger Driver for Richtek RT9458 Charger IC"
@@ -815,6 +820,59 @@ config CHARGER_BQ25601
 	  TI BQ25601 driver.
 	  It depends on
 	  the config MTK_CHARGER.
+# HS03s for SR-AL5625-01-509 by wenyaqi at 20210527 start
+config CHARGER_BQ2560X
+	bool "CHARGER_BQ2560X"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable
+	  TI BQ2560X driver.
+# HS03s for SR-AL5625-01-509 by wenyaqi at 20210527 end
+
+# HS03s for SR-AL5625-01-510 by wenyaqi at 20210531 start
+config CHARGER_SGM41511
+	bool "CHARGER_SGM41511"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable
+	  SGM41511 driver.
+# HS03s for SR-AL5625-01-510 by wenyaqi at 20210531 end
+
+# hs03s_NM code for SR-AL5625-01-646 by shixuanxuan at 20220414 start
+config CHARGER_SGM41513
+	bool "CHARGER_SGM41513"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable
+	  SGM41513 driver.
+# hs03s_NM code for SR-AL5625-01-646 by shixuanxuan at 20220414 end
+
+# HS04_T for DEAL6398A-1879 by shixuanxuan at 20221012 start
+config CHARGER_UPM6910
+	bool "CHARGER_UPM6910"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable
+	  UPM6910 driver.
+# HS04_T for DEAL6398A-1879 by shixuanxuan at 20221012 end
+
+# HS03s for SR-AL5625-01-543 by wenyaqi at 20210611 start
+config CHARGER_ETA6953
+	bool "CHARGER_ETA6953"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable
+	  ETA6953 driver.
+# HS03s for SR-AL5625-01-543 by wenyaqi at 20210611 end
+
+# HS03s for SR-AL5625-01-542 by wenyaqi at 20210609 start
+config CHARGER_SY6974
+	bool "CHARGER_SY6974"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable
+	  SY6974 driver.
+# HS03s for SR-AL5625-01-542 by wenyaqi at 20210609 end
 
 config CUSTOM_BATTERY_EXTERNAL_CHANNEL
 	bool "customer external gauge test"
@@ -881,4 +939,15 @@ source "drivers/power/supply/mediatek/battery/Kconfig"
 source "drivers/power/supply/mediatek/charger/Kconfig"
 endif
 
+# HS03s for SR-AL5628-01-162 by zhangjiangbin at 20220915 start
+config CHARGER_HARDINFO
+	bool "CHARGER_HARDINFO"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable
+	  charger hardinfo driver.
+#HS03s for SR-AL5628-01-162 by zhangjiangbin at 20220915 end
+
 endif # POWER_SUPPLY
+
+source "drivers/power/supply/sm/sm5714/Kconfig"

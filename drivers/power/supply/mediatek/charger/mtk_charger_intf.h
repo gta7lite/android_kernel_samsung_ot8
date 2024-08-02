@@ -32,6 +32,12 @@ struct charger_data;
 #include "adapter_class.h"
 #include "mtk_smartcharging.h"
 
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 start */
+#ifdef CONFIG_AFC_CHARGER
+#include "afc_charger_intf.h"
+#endif
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 end */
+
 #define CHARGING_INTERVAL 10
 #define CHARGING_FULL_INTERVAL 20
 
@@ -150,10 +156,34 @@ struct battery_thermal_protection_data {
 	int max_charge_temp_minus_x_degree;
 };
 
+/* hs14 code for  SR-AL6528A-01-338 by chengyuanhang at 2022/10/03 start */
+#ifndef HQ_FACTORY_BUILD
+#define is_between(left, right, value) \
+		(((left) >= (right) && (left) >= (value) \
+			&& (value) >= (right)) \
+		|| ((left) <= (right) && (left) <= (value) \
+			&& (value) <= (right)))
+
+struct range_data {
+	u32 low_threshold;
+	u32 high_threshold;
+	u32 value;
+};
+#define MAX_CV_ENTRIES	8
+
+#define MAX_CYCLE_COUNT	0xFFFF
+#endif
+/* hs14 code for SR-AL6528A-01-338 by chengyuanhang at 2022/10/03 end */
+
 struct charger_custom_data {
 	int battery_cv;	/* uv */
 	int max_charger_voltage;
 	int max_charger_voltage_setting;
+	/* hs14 code for AL6528ADEU-580 by gaozhengwei at 2022/10/09 start */
+	int hv_max_charger_voltage;
+	int hv_max_charger_voltage_setting;
+	int charger_voltage_drop;
+	/* hs14 code for AL6528ADEU-580 by gaozhengwei at 2022/10/09 end */
 	int min_charger_voltage;
 
 	int usb_charger_current_suspend;
@@ -169,6 +199,10 @@ struct charger_custom_data {
 	int usb_unlimited_current;
 	int ta_ac_charger_current;
 	int pd_charger_current;
+	/* hs14 code for SR-AL6528A-01-322 by wenyaqi at 2022/09/15 start */
+	int pd_input_current;
+	int pd_voltage_thr;
+	/* hs14 code for SR-AL6528A-01-322 by wenyaqi at 2022/09/15 end */
 
 	/* dynamic mivr */
 	int min_charger_voltage_1;
@@ -182,6 +216,14 @@ struct charger_custom_data {
 	int jeita_temp_t1_to_t2_cv;
 	int jeita_temp_t0_to_t1_cv;
 	int jeita_temp_below_t0_cv;
+	/* hs14 code for SR-AL6528A-01-323 by gaozhengwei at 2022/09/22 start */
+	int jeita_temp_above_t4_cur;
+	int jeita_temp_t3_to_t4_cur;
+	int jeita_temp_t2_to_t3_cur;
+	int jeita_temp_t1_to_t2_cur;
+	int jeita_temp_t0_to_t1_cur;
+	int jeita_temp_below_t0_cur;
+	/* hs14 code for SR-AL6528A-01-323 by gaozhengwei at 2022/09/22 end */
 	int temp_t4_thres;
 	int temp_t4_thres_minus_x_degree;
 	int temp_t3_thres;
@@ -267,6 +309,28 @@ struct charger_custom_data {
 
 	int vsys_watt;
 	int ibus_err;
+
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 start */
+#ifdef CONFIG_AFC_CHARGER
+	/* afc */
+	int afc_start_battery_soc;
+	int afc_stop_battery_soc;
+	int afc_pre_input_current;
+	int afc_charger_input_current;
+	int afc_charger_current;
+	int afc_ichg_level_threshold;
+	int afc_min_charger_voltage;
+	int afc_max_charger_voltage;
+#endif
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 end */
+/* hs14 code for  SR-AL6528A-01-338 by chengyuanhang at 2022/10/03 start */
+#ifndef HQ_FACTORY_BUILD
+	bool ss_batt_aging_enable;
+	int ss_batt_cycle;
+	struct range_data batt_cv_data[MAX_CV_ENTRIES];
+	int setting_cv;	/* uv */
+#endif
+/* hs14 code for SR-AL6528A-01-338 by chengyuanhang at 2022/10/03 end */
 };
 
 struct charger_data {
@@ -389,6 +453,21 @@ struct charger_manager {
 	int pd_type;
 	bool pd_reset;
 
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 start */
+#ifdef CONFIG_AFC_CHARGER
+	/* afc */
+	struct afc_dev afc;
+	bool enable_afc;
+	int hv_disable;
+	int afc_sts;
+/* hs14 code for AL6528ADEU-2119 by qiaodan at 2022/11/18 start */
+#ifndef HQ_FACTORY_BUILD //ss version
+	bool boot_with_dcp;
+#endif
+/* hs14 code for AL6528ADEU-2119 by qiaodan at 2022/11/18 end */
+#endif
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 end */
+
 	/* thread related */
 	struct hrtimer charger_kthread_timer;
 
@@ -427,6 +506,32 @@ struct charger_manager {
 	bool force_disable_pp[TOTAL_CHARGER];
 	bool enable_pp[TOTAL_CHARGER];
 	struct mutex pp_lock[TOTAL_CHARGER];
+#ifndef HQ_FACTORY_BUILD
+/* hs14 code for SR-AL6528A-01-261 | SR-AL6528A-01-343 by chengyuanhang at 2022/10/11 start */
+	int cust_batt_cap;
+	int batt_full_flag;
+	int batt_status;
+	int capacity;
+/* hs14 code for SR-AL6528A-01-261 | SR-AL6528A-01-343 by chengyuanhang at 2022/10/11 end */
+#endif
+
+	/* hs14 code for AL6528ADEU-580 by gaozhengwei at 2022/10/09 start */
+	bool swovp_disable;
+	int g_ovp_trigger;
+	/* hs14 code for AL6528ADEU-580 by gaozhengwei at 2022/10/09 end */
+/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 start */
+	bool input_suspend_flag;
+	bool hiz_flag;
+#ifdef HQ_FACTORY_BUILD //factory version
+	bool batt_cap_control;
+#endif
+#ifndef HQ_FACTORY_BUILD //ss version
+	int store_mode;
+	bool batt_store_mode;
+	struct wakeup_source *charger_wakelock_app;
+	struct delayed_work retail_app_status_change_work;
+#endif
+/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 end */
 };
 
 /* charger related module interface */
@@ -450,8 +555,14 @@ extern int pmic_get_bif_battery_voltage(int *vbat);
 extern int pmic_is_bif_exist(void);
 extern int pmic_enable_hw_vbus_ovp(bool enable);
 extern bool pmic_is_battery_exist(void);
-
-
+/* hs14 code for SR-AL6528A-01-261 | SR-AL6528A-01-343 by chengyuanhang at 2022/10/11 start */
+#ifndef HQ_FACTORY_BUILD
+extern void ss_batt_full_flag_get(int *val);
+#endif
+/* hs14 code for SR-AL6528A-01-261 | SR-AL6528A-01-343 by chengyuanhang at 2022/10/11 end */
+/* hs14 code for P221216-05713 by shanxinkai at 2022/12/19 start */
+extern void ss_charger_check_status(struct charger_manager *info);
+/* hs14 code for P221216-05713 by shanxinkai at 2022/12/19 end */
 extern void notify_adapter_event(enum adapter_type type, enum adapter_event evt,
 	void *val);
 
@@ -464,8 +575,7 @@ enum usb_state_enum {
 };
 
 #if defined(CONFIG_MACH_MT6877) || defined(CONFIG_MACH_MT6893) \
-	|| defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6785) \
-	|| defined(CONFIG_MACH_MT6853) || defined(CONFIG_MACH_MT6873)
+	|| defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6785)
 bool is_usb_rdy(struct device *dev);
 #else
 bool __attribute__((weak)) is_usb_rdy(void)

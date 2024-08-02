@@ -190,7 +190,7 @@ int pe_hal_get_charging_current(struct chg_alg_device *alg,
 		charger_dev_get_charging_current(hal->chg1_dev, ua);
 	else if (chgidx == CHG2 && hal->chg2_dev != NULL)
 		charger_dev_get_charging_current(hal->chg2_dev, ua);
-	pr_notice("%s idx:%d %d\n", __func__, chgidx, ua);
+	//pr_notice("%s idx:%d %d\n", __func__, chgidx, ua);
 
 	return 0;
 }
@@ -266,8 +266,7 @@ int pe_hal_get_uisoc(struct chg_alg_device *alg)
 		ret = prop.intval;
 	}
 
-	pr_notice("%s:%d\n", __func__,
-		ret);
+	//pr_notice("%s:%d\n", __func__,ret);
 	return ret;
 }
 
@@ -291,7 +290,7 @@ int pe_hal_get_charger_type(struct chg_alg_device *alg)
 		ret = info->chr_type;
 	}
 
-	pr_notice("%s type:%d\n", __func__, ret);
+	//pr_notice("%s type:%d\n", __func__, ret);
 	return info->chr_type;
 }
 

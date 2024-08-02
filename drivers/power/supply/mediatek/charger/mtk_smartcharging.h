@@ -36,6 +36,13 @@ enum sc_kernel_events {
 	SC_EVENT_STOP_CHARGING,
 };
 
+/* hs14 code for AL6528ADEU-580 by gaozhengwei at 2022/10/09 start */
+enum sc_adapter_type {
+	SC_ADAPTER_NORMAL,
+	SC_ADAPTER_HV,
+};
+/* hs14 code for AL6528ADEU-580 by gaozhengwei at 2022/10/09 end */
+
 struct sc_nl_msg_t {
 	unsigned int sc_cmd;
 	unsigned int sc_subcmd;

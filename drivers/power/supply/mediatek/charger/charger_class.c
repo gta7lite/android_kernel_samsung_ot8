@@ -788,6 +788,98 @@ int charger_dev_enable_bleed_discharge(struct charger_device *charger_dev,
 }
 EXPORT_SYMBOL(charger_dev_enable_bleed_discharge);
 
+/* hs14 code for SR-AL6528A-01-299 by gaozhengwei at 2022/09/02 start */
+int charger_dev_set_hiz_mode(struct charger_device *chg_dev, bool en)
+{
+	if (chg_dev != NULL && chg_dev->ops != NULL &&
+		chg_dev->ops->set_hiz_mode)
+		return chg_dev->ops->set_hiz_mode(chg_dev, en);
+
+	return -ENOTSUPP;
+}
+EXPORT_SYMBOL(charger_dev_set_hiz_mode);
+
+int charger_dev_get_hiz_mode(struct charger_device *chg_dev)
+{
+	if (chg_dev != NULL && chg_dev->ops != NULL &&
+		chg_dev->ops->get_hiz_mode)
+		return chg_dev->ops->get_hiz_mode(chg_dev);
+
+	return -ENOTSUPP;
+}
+EXPORT_SYMBOL(charger_dev_get_hiz_mode);
+/* hs14 code for SR-AL6528A-01-299 by gaozhengwei at 2022/09/02 end */
+
+/* hs14 code for  SR-AL6528A-01-259 by zhouyuhang at 2022/09/15 start*/
+int charger_dev_set_shipmode(struct charger_device *chg_dev, bool enable)
+{
+	if (chg_dev != NULL && chg_dev->ops != NULL &&
+		chg_dev->ops->set_ship_mode)
+		return chg_dev->ops->set_ship_mode(chg_dev, enable);
+
+	return -ENOTSUPP;
+}
+EXPORT_SYMBOL(charger_dev_set_shipmode);
+
+int charger_dev_get_shipmode(struct charger_device *chg_dev)
+{
+	if (chg_dev != NULL && chg_dev->ops != NULL &&
+		chg_dev->ops->get_ship_mode)
+		return chg_dev->ops->get_ship_mode(chg_dev);
+
+	return -ENOTSUPP;
+}
+EXPORT_SYMBOL(charger_dev_get_shipmode);
+/* hs14 code for  SR-AL6528A-01-259 by zhouyuhang at 2022/09/15 end*/
+
+/* hs14 code for  SR-AL6528A-01-339 by shanxinkai at 2022/09/30 start*/
+int charger_dev_get_chr_status(struct charger_device *chg_dev, int *status)
+{
+	if (chg_dev != NULL && chg_dev->ops != NULL &&
+		chg_dev->ops->get_chr_status)
+		return chg_dev->ops->get_chr_status(chg_dev, status);
+
+	return -ENOTSUPP;
+}
+EXPORT_SYMBOL(charger_dev_get_chr_status);
+/* hs14 code for  SR-AL6528A-01-339 by shanxinkai at 2022/09/30 end*/
+
+/* hs14 code for AL6528ADEU-580 by gaozhengwei at 2022/10/09 start */
+int charger_dev_get_vbus_status(struct charger_device *charger_dev)
+{
+	if (charger_dev != NULL && charger_dev->ops != NULL &&
+	    charger_dev->ops->get_vbus_status)
+		return charger_dev->ops->get_vbus_status(charger_dev);
+
+	return -ENOTSUPP;
+}
+EXPORT_SYMBOL(charger_dev_get_vbus_status);
+
+int charger_dev_dynamic_set_hwovp_threshold(struct charger_device *charger_dev,
+				      int adapter_type)
+{
+	if (charger_dev != NULL && charger_dev->ops != NULL &&
+	    charger_dev->ops->dynamic_set_hwovp_threshold)
+		return charger_dev->ops->dynamic_set_hwovp_threshold(charger_dev,
+							       adapter_type);
+
+	return -ENOTSUPP;
+}
+EXPORT_SYMBOL(charger_dev_dynamic_set_hwovp_threshold);
+/* hs14 code for AL6528ADEU-580 by gaozhengwei at 2022/10/09 end */
+
+/* hs14 code for P221116-03489 by wenyaqi at 2022/11/23 start */
+int charger_dev_bypass_chgdet(struct charger_device *chg_dev,bool bypass_chgdet_en)
+{
+	if (chg_dev != NULL && chg_dev->ops != NULL &&
+	    chg_dev->ops->bypass_chgdet)
+		return chg_dev->ops->bypass_chgdet(chg_dev, bypass_chgdet_en);
+
+	return -ENOTSUPP;
+}
+EXPORT_SYMBOL(charger_dev_bypass_chgdet);
+/* hs14 code for P221116-03489 by wenyaqi at 2022/11/23 end */
+
 static DEVICE_ATTR(name, 0444, charger_show_name, NULL);
 
 static struct attribute *charger_class_attrs[] = {

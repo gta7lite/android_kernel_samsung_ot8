@@ -597,8 +597,8 @@ static int _pe2_is_algo_ready(struct chg_alg_device *alg)
 
 	mutex_lock(&pe2->access_lock);
 	__pm_stay_awake(pe2->suspend_lock);
-	pe2_dbg("%s state:%s\n", __func__,
-		pe2_state_to_str(pe2->state));
+//	pe2_dbg("%s state:%s\n", __func__,
+//		pe2_state_to_str(pe2->state));
 
 	switch (pe2->state) {
 	case PE2_HW_UNINIT:

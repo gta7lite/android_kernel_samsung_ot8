@@ -25,6 +25,10 @@ subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/typec/tcpc/inc
 subdir-ccflags-y += -I$(srctree)/drivers/power/supply/mediatek/misc/
 subdir-ccflags-y += -I$(srctree)/drivers/power/supply/mediatek/battery/
 
+# hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 start
+obj-$(CONFIG_AFC_CHARGER) += afc_charger_intf.o
+# hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 end
+
 obj-y += charger_class.o mtk_charger.o mtk_switch_charging.o mtk_pdc_intf.o\
 	 mtk_chg_type_det.o mtk_pe40_intf.o mtk_linear_charging.o\
 	 adapter_class.o mtk_pd_adapter.o\
@@ -46,6 +50,15 @@ obj-$(CONFIG_CHARGER_HL7005) += hl7005.o
 obj-$(CONFIG_CHARGER_BQ25601) += bq25601.o
 obj-$(CONFIG_LOAD_SWITCH_RT9750) += rt9750.o
 obj-$(CONFIG_CHARGER_MT6362) += mt6362-chg.o
-obj-$(CONFIG_CHARGER_BQ25890) += bq2589x_charger.o
-obj-$(CONFIG_CHARGER_SGM41511) += sgm4151x.o
-obj-$(CONFIG_CHARGER_MM8013) += mm8013.o
+# hs14 code for SR-AL6528A-01-307 by wenyaqi at 2022/08/30 start
+obj-$(CONFIG_CHARGER_SGM41513) += sgm41513_charger.o
+# hs14 code for SR-AL6528A-01-307 by wenyaqi at 2022/08/30 end
+# hs14 code for SR-AL6528A-01-305 by gaozhengwei at 2022/09/01 start
+obj-$(CONFIG_CHARGER_SC8960X)	+= sc8960x_charger.o
+# hs14 code for SR-AL6528A-01-305 by gaozhengwei at 2022/09/01 end
+# hs14 code for SR-AL6528A-01-304 by gaozhengwei at 2022/09/07 start
+obj-$(CONFIG_CHARGER_UPM6910)	+= upm6910_charger.o
+# hs14 code for SR-AL6528A-01-304 by gaozhengwei at 2022/09/07 end
+#hs14 code for SR-AL6528A-01-305 by shanxinkai at 2022/09/19 start
+obj-$(CONFIG_CHARGER_VBUS) += vbus_ctrl.o
+#hs14 code for SR-AL6528A-01-305 by shanxinkai at 2022/09/19 end
