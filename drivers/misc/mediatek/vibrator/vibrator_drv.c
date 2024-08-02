@@ -19,10 +19,7 @@
 #include <vibrator.h>
 #include <vibrator_hal.h>
 #include <mt-plat/upmu_common.h>
-#ifndef CONFIG_MACH_MT6771
-#include <linux/regulator/consumer.h>
-#include <linux/of.h>
-#endif
+
 #define VIB_DEVICE				"mtk_vibrator"
 #define VIB_TAG                                 "[vibrator]"
 #undef pr_fmt
@@ -35,24 +32,19 @@ struct mt_vibr {
 	struct hrtimer vibr_timer;
 	int ldo_state;
 	int shutdown_flag;
-#ifndef CONFIG_MACH_MT6771
-	struct regulator *reg;
-#endif
 	atomic_t vibr_dur;
 	spinlock_t vibr_lock;
 	atomic_t vibr_state;
 };
 
 static struct mt_vibr *g_mt_vib;
+
 static int vibr_Enable(void)
 {
+
 	if (!g_mt_vib->ldo_state) {
 		pr_info("vibr enable");
-#ifndef CONFIG_MACH_MT6771
-		vibr_Enable_HW(g_mt_vib->reg);
-#else
 		vibr_Enable_HW();
-#endif
 		g_mt_vib->ldo_state = 1;
 	}
 	return 0;
@@ -60,13 +52,10 @@ static int vibr_Enable(void)
 
 static int vibr_Disable(void)
 {
+
 	if (g_mt_vib->ldo_state) {
 		pr_info("vibr disable");
-#ifndef CONFIG_MACH_MT6771
-		vibr_Disable_HW(g_mt_vib->reg);
-#else
 		vibr_Disable_HW();
-#endif
 		g_mt_vib->ldo_state = 0;
 	}
 	return 0;
@@ -268,14 +257,6 @@ static int vib_probe(struct platform_device *pdev)
 		return -ENODATA;
 	}
 
-#ifndef CONFIG_MACH_MT6771
-	vibr->reg = devm_regulator_get(&pdev->dev, "vibr");
-	if (IS_ERR(vibr->reg)) {
-		ret = PTR_ERR(vibr->reg);
-		pr_info("Error load dts: get regulator return %d\n", ret);
-		return ret;
-	}
-#endif
 	INIT_WORK(&vibr->vibr_onwork, on_vibrator);
 	INIT_WORK(&vibr->vibr_offwork, off_vibrator);
 	spin_lock_init(&vibr->vibr_lock);
