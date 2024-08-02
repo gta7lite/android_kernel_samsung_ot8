@@ -46,11 +46,14 @@ static const int regulator_voltage[] = {
 	REGULATOR_VOLTAGE_2900,
 };
 
+/*hs14 code for SR-AL5628-01-161 Universal macro adaptation by lisizhou at 2022/9/23 start*/
 struct REGULATOR_CTRL regulator_control[REGULATOR_TYPE_MAX_NUM] = {
 	{"vcama"},
 	{"vcamd"},
 	{"vcamio"},
+	{"vcamaf"},
 };
+/*hs14 code for SR-AL5628-01-161 Universal macro adaptation by lisizhou at 2022/9/23 end*/
 
 static struct REGULATOR reg_instance;
 
@@ -224,6 +227,7 @@ static enum IMGSENSOR_RETURN regulator_release(void *pinstance)
 	return IMGSENSOR_RETURN_SUCCESS;
 }
 
+/*hs14 code for SR-AL5628-01-161 Universal macro adaptation by lisizhou at 2022/9/23 start*/
 static enum IMGSENSOR_RETURN regulator_set(
 	void *pinstance,
 	enum IMGSENSOR_SENSOR_IDX   sensor_idx,
@@ -235,10 +239,11 @@ static enum IMGSENSOR_RETURN regulator_set(
 	int reg_type_offset;
 	atomic_t	*enable_cnt;
 
-	if (pin > IMGSENSOR_HW_PIN_DOVDD   ||
+	if (pin > IMGSENSOR_HW_PIN_AFVDD   ||
 	    pin < IMGSENSOR_HW_PIN_AVDD    ||
 	    pin_state < IMGSENSOR_HW_PIN_STATE_LEVEL_0 ||
-	    pin_state >= IMGSENSOR_HW_PIN_STATE_LEVEL_HIGH)
+	    pin_state >= IMGSENSOR_HW_PIN_STATE_LEVEL_HIGH ||
+	    sensor_idx < 0)
 		return IMGSENSOR_RETURN_ERROR;
 
 	reg_type_offset = REGULATOR_TYPE_VCAMA;
@@ -299,6 +304,7 @@ static enum IMGSENSOR_RETURN regulator_set(
 
 	return IMGSENSOR_RETURN_SUCCESS;
 }
+/*hs14 code for SR-AL5628-01-161 Universal macro adaptation by lisizhou at 2022/9/23 end*/
 
 static struct IMGSENSOR_HW_DEVICE device = {
 	.pinstance = (void *)&reg_instance,

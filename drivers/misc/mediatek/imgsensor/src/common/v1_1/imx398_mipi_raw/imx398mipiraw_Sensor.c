@@ -258,7 +258,7 @@ static struct imgsensor_info_struct imgsensor_info = {
 		/*   following for GetDefaultFramerateByScenario()  */
 		.max_framerate = 300,
 	},
-	.margin = 10,		/* sensor framelength & shutter margin */
+	.margin = 9,		/* sensor framelength & shutter margin */
 	.min_shutter = 1,	/* min shutter */
 	.min_gain = 64, /*1x gain*/
 	.max_gain = 512, /*8x gain*/
@@ -267,7 +267,7 @@ static struct imgsensor_info_struct imgsensor_info = {
 	.gain_type = 0,
 
 	/* max framelength by sensor register's limitation */
-	.max_frame_length = 0x7fff,
+	.max_frame_length = 0xffff,
 
 	.ae_shut_delay_frame = 0,
 	/* shutter delay frame for AE cycle,
@@ -3948,7 +3948,7 @@ static kal_int32 get_sensor_temperature(void)
 
 	temperature = read_cmos_sensor(0x013a);
 
-	if (temperature <= 0x4F)
+	if (temperature >= 0x0 && temperature <= 0x4F)
 		temperature_convert = temperature;
 	else if (temperature >= 0x50 && temperature <= 0x7F)
 		temperature_convert = 80;
