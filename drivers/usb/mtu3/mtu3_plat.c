@@ -615,10 +615,6 @@ static int __maybe_unused mtu3_suspend(struct device *dev)
 
 	ssusb_set_power_resource(ssusb, MTU3_RESOURCE_SUSPEND);
 
-#if IS_ENABLED(CONFIG_MACH_MT6771)
-	slp_set_infra_on(true);
-#endif
-
 	return 0;
 }
 
@@ -632,9 +628,6 @@ static int __maybe_unused mtu3_resume(struct device *dev)
 	if (!ssusb->is_host)
 		return 0;
 
-#if IS_ENABLED(CONFIG_MACH_MT6771)
-	slp_set_infra_on(false);
-#endif
 	ssusb_set_power_resource(ssusb, MTU3_RESOURCE_RESUME);
 	ssusb_wakeup_set(ssusb, false);
 	ret = ssusb_clks_enable(ssusb);
