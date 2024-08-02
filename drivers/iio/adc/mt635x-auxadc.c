@@ -677,6 +677,7 @@ static const struct auxadc_info mt6359_info = {
 /*
  * imix_r cali before entering suspend
  */
+#if 0
 static void enable_dummy_load(struct mt635x_auxadc_device *adc_dev)
 {
 	int i = 0;
@@ -773,6 +774,7 @@ static int auxadc_get_uisoc(void)
 	else
 		return prop.intval;
 }
+#endif
 
 /*
  * @adc_dev:	 pointer to the struct mt635x_auxadc_device
@@ -1059,6 +1061,7 @@ void auxadc_set_cali_fn(int channel,
 #define	IMIX_R_CALI_CNT		2
 static int auxadc_cali_imix_r(struct mt635x_auxadc_device *dev)
 {
+#if 0
 	static struct mt635x_auxadc_device *adc_dev;
 	static int pre_uisoc = 101;
 	int cur_uisoc = auxadc_get_uisoc();
@@ -1094,6 +1097,7 @@ static int auxadc_cali_imix_r(struct mt635x_auxadc_device *dev)
 
 	if (imix_r_avg > IMIX_R_MIN_MOHM)
 		adc_dev->imix_r = imix_r_avg;
+#endif
 	return 0;
 }
 
