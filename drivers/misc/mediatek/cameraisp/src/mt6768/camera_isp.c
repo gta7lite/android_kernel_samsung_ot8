@@ -637,12 +637,17 @@ struct S_START_T {
 	unsigned int usec;
 };
 
+/*hs14 code for AL6528ADEU-1551 by lisizhou at 2022/11/11 start*/
 /* QQ, remove later */
 /* record remain node count(success/fail)
  * excludes head when enque/deque control
  */
 static unsigned int g_regScen = 0xa5a5a5a5; /* remove later */
 
+static unsigned int g_virtual_cq_cnt[2] = {0,0};
+static unsigned int g_virtual_cq_cnt_a;
+static unsigned int g_virtual_cq_cnt_b;
+static  spinlock_t  virtual_cqcnt_lock;
 
 static /*volatile*/ wait_queue_head_t P2WaitQueueHead_WaitDeque;
 static /*volatile*/ wait_queue_head_t P2WaitQueueHead_WaitFrame;
@@ -3464,6 +3469,38 @@ static signed int ISP_DumpDIPReg(void)
 		ISP_RD32(ISP_DIP_A_BASE + 0x0D20),
 		ISP_RD32(ISP_DIP_A_BASE + 0x0D24));
 	CMDQ_ERR(
+	/*hs14 code for P221117-05599 by lisizhou at 2022/11/26 start*/
+	"isp: 15022D30(0x%x)-15022D34(0x%x)-15022D38(0x%x)-15022D3C(0x%x)\n",
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D30),
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D34),
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D38),
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D3C));
+	CMDQ_ERR(
+	"isp: 15022D40(0x%x)-15022D44(0x%x)-15022D48(0x%x)-15022D4C(0x%x)\n",
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D40),
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D44),
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D48),
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D4C));
+	CMDQ_ERR(
+	"isp: 15022D60(0x%x)-15022D64(0x%x)-15022D68(0x%x)-15022D6C(0x%x)\n",
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D60),
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D64),
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D68),
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D6C));
+	CMDQ_ERR(
+	"isp: 15022D70(0x%x)-15022D74(0x%x)-15022D78(0x%x)-15022D7C(0x%x)\n",
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D70),
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D74),
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D78),
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D7C));
+	CMDQ_ERR(
+	"isp: 15022D80(0x%x)-15022D84(0x%x)-15022D88(0x%x)-15022D8C(0x%x)\n",
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D80),
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D84),
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D88),
+		ISP_RD32(ISP_DIP_A_BASE + 0x0D8C));
+	CMDQ_ERR(
+	/*hs14 code for P221117-05599 by lisizhou at 2022/11/26 end*/
 	"isp: 15022408(0x%x)-15022204(0x%x)-15022208(0x%x)-1502220C(0x%x)\n",
 		ISP_RD32(ISP_DIP_A_BASE + 0x0408),
 		ISP_RD32(ISP_DIP_A_BASE + 0x0204),
@@ -4123,6 +4160,7 @@ EXPORT_SYMBOL(ISP_Halt_Mask);
  *****************************************************************************/
 static void ISP_EnableClock(bool En)
 {
+	unsigned int module = 0;
 #if defined(EP_NO_CLKMGR)
 	unsigned int setReg;
 #endif
@@ -4170,6 +4208,18 @@ static void ISP_EnableClock(bool En)
 		G_u4EnableClockCount++;
 		spin_unlock(&(IspInfo.SpinLockClock));
 		Prepare_Enable_ccf_clock(); /* can't be used in spinlock! */
+		spin_lock(&(IspInfo.SpinLockClock));
+		if (G_u4EnableClockCount == 1) {
+			spin_unlock(&(IspInfo.SpinLockClock));
+			for (module = ISP_CAM_A_IDX; module < ISP_CAMSV4_IDX; module++) {
+				enable_irq(isp_devs[module].irq);
+				LOG_INF(
+					"enable_irq cam %d, irq=%d\n",
+					module, isp_devs[module].irq);
+			}
+		} else {
+			spin_unlock(&(IspInfo.SpinLockClock));
+		}
 #endif
 	/* Disable CAMSYS_HALT1_EN: LSCI&BPCI, To avoid ISP halt keep arise */
 		#if 0/* TBD */
@@ -4226,7 +4276,17 @@ static void ISP_EnableClock(bool En)
 
 			ISP_WR32(CLOCK_CELL_BASE, _reg&(~(1<<6)));
 		}
-		spin_unlock(&(IspInfo.SpinLockClock));
+		if (G_u4EnableClockCount == 0) {
+			spin_unlock(&(IspInfo.SpinLockClock));
+			for (module = ISP_CAM_A_IDX; module < ISP_CAMSV4_IDX; module++) {
+				disable_irq(isp_devs[module].irq);
+				LOG_INF(
+					"disable_irq cam %d, irq=%d\n",
+					module, isp_devs[module].irq);
+			}
+		} else {
+			spin_unlock(&(IspInfo.SpinLockClock));
+		}
 		Disable_Unprepare_ccf_clock(); /* can't be used in spinlock! */
 #endif
 	}
@@ -5075,7 +5135,8 @@ static long ISP_REF_CNT_CTRL_FUNC(unsigned long Param)
 				ref_cnt_ctrl.ctrl, ref_cnt_ctrl.id);
 
 		/*  */
-		if (ref_cnt_ctrl.id < ISP_REF_CNT_ID_MAX) {
+		if ((ref_cnt_ctrl.id < ISP_REF_CNT_ID_MAX) &&
+		    (ref_cnt_ctrl.id >= 0)) {
 			/* //////////////////---add lock here */
 			spin_lock(&(IspInfo.SpinLockIspRef));
 			/* ////////////////// */
@@ -5441,8 +5502,8 @@ static signed int ISP_P2_BufQue_Update_ListCIdx(
 	case ISP_P2_BUFQUE_LIST_TAG_UNIT:
 		/* [1] check global pointer current sts */
 		//0831-s
-		if (P2_FrameUnit_List_Idx[property].curr < 0) {
-			LOG_NOTICE("curr < 0\n");
+		if ((property < 0) || (P2_FrameUnit_List_Idx[property].curr < 0)) {
+			LOG_NOTICE("property(%d) || curr < 0", property);
 			return -EFAULT;
 		}
 		///0831-e
@@ -5552,12 +5613,10 @@ enum ISP_P2_BUFQUE_LIST_TAG listTag, signed int idx)
 	int tmpIdx = 0;
 
 	//0831-s
-	/*
 	if (property < ISP_P2_BUFQUE_PROPERTY_DIP) {
 		LOG_NOTICE("property < ISP_P2_BUFQUE_PROPERTY_DIP");
 		return ret;
 	}
-	*/
 	//0831-e
 	switch (listTag) {
 	case ISP_P2_BUFQUE_LIST_TAG_PACKAGE:
@@ -6517,12 +6576,14 @@ static signed int ISP_MARK_IRQ(struct ISP_WAIT_IRQ_STRUCT *irqinfo)
 	unsigned long long  sec = 0;
 	unsigned long       usec = 0;
 
-	if (irqinfo->Type >= ISP_IRQ_TYPE_AMOUNT) {
+	if ((irqinfo->Type >= ISP_IRQ_TYPE_AMOUNT) ||
+	    (irqinfo->Type < 0)) {
 		LOG_NOTICE("MARK_IRQ: type error(%d)", irqinfo->Type);
 		return -EFAULT;
 	}
 
-	if (irqinfo->EventInfo.St_type >= ISP_IRQ_ST_AMOUNT) {
+	if ((irqinfo->EventInfo.St_type >= ISP_IRQ_ST_AMOUNT) ||
+	    (irqinfo->EventInfo.St_type < 0)) {
 		LOG_NOTICE("MARK_IRQ: sq_type error(%d)",
 				irqinfo->EventInfo.St_type);
 		return -EFAULT;
@@ -8994,6 +9055,26 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 		}
 		LOG_NOTICE("ISP_SET_SEC_ENABLE sec_on = %d\n", sec_on);
 		break;
+	case ISP_SET_VIR_CQCNT:
+		spin_lock((spinlock_t *)(&virtual_cqcnt_lock));
+		if (copy_from_user(&g_virtual_cq_cnt, (void *)Param,
+			sizeof(unsigned int)*2) == 0) {
+			LOG_NOTICE("From hw_module:%d Virtual CQ count from user land : %d\n",
+				g_virtual_cq_cnt[0], g_virtual_cq_cnt[1]);
+		} else {
+			LOG_NOTICE(
+				"Virtual CQ count copy_from_user failed\n");
+			Ret = -EFAULT;
+		}
+		if(g_virtual_cq_cnt[0] == 0){
+			g_virtual_cq_cnt_a = g_virtual_cq_cnt[1];
+			LOG_NOTICE("Update Virtual CQ cnt for hw_module:0\n");
+		}else if(g_virtual_cq_cnt[0] == 1){
+			g_virtual_cq_cnt_b = g_virtual_cq_cnt[1];
+			LOG_NOTICE("Update Virtual CQ cnt for hw_module:1\n");
+		}
+		spin_unlock((spinlock_t *)(&virtual_cqcnt_lock));
+		break;
 	default:
 	{
 		LOG_NOTICE("Unknown Cmd(%d)\n", Cmd);
@@ -9447,6 +9528,12 @@ static long ISP_ioctl_compat(struct file *filp, unsigned int cmd,
 			(unsigned long)data);
 		return ret;
 	}
+	case COMPAT_ISP_TRANSFOR_CCU_REG: {
+		ret =
+			filp->f_op->unlocked_ioctl(filp, ISP_TRANSFOR_CCU_REG,
+					   (unsigned long)compat_ptr(arg));
+		return ret;
+	}
 	case ISP_GET_DUMP_INFO:
 	case ISP_WAIT_IRQ:
 	case ISP_CLEAR_IRQ: /* structure (no pointer) */
@@ -9474,6 +9561,7 @@ static long ISP_ioctl_compat(struct file *filp, unsigned int cmd,
 	case ISP_SET_PM_QOS_INFO:
 	case ISP_SET_PM_QOS:
 	case ISP_SET_SEC_DAPC_REG:
+	case ISP_SET_VIR_CQCNT:
 		return filp->f_op->unlocked_ioctl(filp, cmd, arg);
 	default:
 		return -ENOIOCTLCMD;
@@ -10084,7 +10172,7 @@ static signed int ISP_mmap(struct file *pFile, struct vm_area_struct *pVma)
 	case UNI_A_BASE_HW:
 		if (length > ISP_REG_RANGE) {
 			LOG_NOTICE(
-				"mmap range error :module(0x%lx) length(0x%lx), ISP_REG_RANGE(0x%lx)!\n",
+				"mmap range error :module(0x%x) length(0x%lx), ISP_REG_RANGE(0x%lx)!\n",
 				pfn, length, ISP_REG_RANGE);
 			return -EAGAIN;
 		}
@@ -10092,7 +10180,7 @@ static signed int ISP_mmap(struct file *pFile, struct vm_area_struct *pVma)
 	case DIP_A_BASE_HW:
 		if (length > ISP_REG_PER_DIP_RANGE) {
 			LOG_NOTICE(
-				"mmap range error :module(0x%lx),length(0x%lx), ISP_REG_PER_DIP_RANGE(0x%lx)!\n",
+				"mmap range error :module(0x%x),length(0x%lx), ISP_REG_PER_DIP_RANGE(0x%lx)!\n",
 				pfn, length, ISP_REG_PER_DIP_RANGE);
 			return -EAGAIN;
 		}
@@ -10100,7 +10188,7 @@ static signed int ISP_mmap(struct file *pFile, struct vm_area_struct *pVma)
 	case SENINF_BASE_HW:
 		if (length > 0x8000) {
 			LOG_NOTICE(
-				"mmap range error :module(0x%lx),length(0x%lx), SENINF_BASE_RANGE(0x%x)!\n",
+				"mmap range error :module(0x%x),length(0x%lx), SENINF_BASE_RANGE(0x%x)!\n",
 				pfn, length, 0x4000);
 			return -EAGAIN;
 		}
@@ -10108,7 +10196,7 @@ static signed int ISP_mmap(struct file *pFile, struct vm_area_struct *pVma)
 	case MIPI_RX_BASE_HW:
 		if (length > 0x6000) {
 			LOG_NOTICE(
-				"mmap range error :module(0x%lx),length(0x%lx), MIPI_RX_RANGE(0x%x)!\n",
+				"mmap range error :module(0x%x),length(0x%lx), MIPI_RX_RANGE(0x%x)!\n",
 				pfn, length, 0x6000);
 			return -EAGAIN;
 		}
@@ -10310,6 +10398,9 @@ static signed int ISP_probe(struct platform_device *pDev)
 					return Ret;
 				}
 
+				/* Reset irq ref cnt after request_irq by disable_irq. */
+				disable_irq(isp_dev->irq);
+
 				pr_info(
 					"nr_isp_devs=%d, devnode(%s), irq=%d, ISR: %s\n",
 					nr_isp_devs, pDev->dev.of_node->name,
@@ -10377,6 +10468,7 @@ static signed int ISP_probe(struct platform_device *pDev)
 		spin_lock_init(&(SpinLock_P2FrameList));
 		spin_lock_init(&(SpinLockRegScen));
 		spin_lock_init(&(SpinLock_UserKey));
+		spin_lock_init(&(virtual_cqcnt_lock));
 		#ifdef ENABLE_KEEP_ION_HANDLE
 		for (i = 0; i < ISP_DEV_NODE_NUM; i++) {
 			if (gION_TBL[i].node != ISP_DEV_NODE_NUM) {
@@ -14863,9 +14955,20 @@ LB_CAMA_SOF_IGNORE:
 	spin_unlock(&(IspInfo.SpinLockIrq[module]));
 	/*  */
 	if (IrqStatus & SOF_INT_ST) {
-		wake_up_interruptible(&IspInfo.WaitQHeadCam
+		if( (ISP_RD32(CAM_REG_CTL_SPARE2(reg_module))%0x100) != g_virtual_cq_cnt_a){
+			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
+				"CAMA PHY cqcnt:%d != VIR cqcnt:%d\n",
+				(ISP_RD32(CAM_REG_CTL_SPARE2(reg_module))%0x100),
+				g_virtual_cq_cnt_a);
+		}else {
+			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
+				"CAMA PHY cqcnt:%d VIR cqcnt:%d\n",
+				(ISP_RD32(CAM_REG_CTL_SPARE2(reg_module))%0x100),
+				g_virtual_cq_cnt_a);
+			wake_up_interruptible(&IspInfo.WaitQHeadCam
 			[ISP_GetWaitQCamIndex(module)]
 			[ISP_WAITQ_HEAD_IRQ_SOF]);
+		}
 	}
 	if (IrqStatus & SW_PASS1_DON_ST) {
 		wake_up_interruptible(&IspInfo.WaitQHeadCam
@@ -15472,9 +15575,20 @@ LB_CAMB_SOF_IGNORE:
 	spin_unlock(&(IspInfo.SpinLockIrq[module]));
 	/*  */
 	if (IrqStatus & SOF_INT_ST) {
-		wake_up_interruptible(&IspInfo.WaitQHeadCam
+		if( (ISP_RD32(CAM_REG_CTL_SPARE2(reg_module))%0x100) != g_virtual_cq_cnt_b){
+			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
+				"CAMB PHY cqcnt:%d != VIR cqcnt:%d\n",
+				(ISP_RD32(CAM_REG_CTL_SPARE2(reg_module))%0x100),
+				g_virtual_cq_cnt_b);
+		}else {
+			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
+				"CAMB PHY cqcnt:%d VIR cqcnt:%d\n",
+				(ISP_RD32(CAM_REG_CTL_SPARE2(reg_module))%0x100),
+				g_virtual_cq_cnt_b);
+			wake_up_interruptible(&IspInfo.WaitQHeadCam
 			[ISP_GetWaitQCamIndex(module)]
 			[ISP_WAITQ_HEAD_IRQ_SOF]);
+		}
 	}
 	if (IrqStatus & SW_PASS1_DON_ST) {
 		wake_up_interruptible(&IspInfo.WaitQHeadCam
@@ -15519,6 +15633,7 @@ LB_CAMB_SOF_IGNORE:
 
 	return IRQ_HANDLED;
 }
+/*hs14 code for AL6528ADEU-1551 by lisizhou at 2022/11/11 end*/
 
 
 /******************************************************************************

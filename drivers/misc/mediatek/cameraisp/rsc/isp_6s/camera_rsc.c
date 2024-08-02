@@ -1560,6 +1560,7 @@ static inline void RSC_Reset(void)
 /*******************************************************************************
  *
  ******************************************************************************/
+
 static signed int RSC_WaitIrq(struct RSC_WAIT_IRQ_STRUCT *WaitIrq)
 {
 

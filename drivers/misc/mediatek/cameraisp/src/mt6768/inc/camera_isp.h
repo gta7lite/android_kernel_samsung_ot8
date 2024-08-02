@@ -618,6 +618,7 @@ struct compat_ISP_REF_CNT_CTRL_STRUCT {
 #endif
 
 
+/*hs14 code for AL6528ADEU-1551 by lisizhou at 2022/11/11 start*/
 /*******************************************************************************
  *
  ******************************************************************************/
@@ -679,8 +680,9 @@ enum ISP_CMD_ENUM {
 	ISP_CMD_SET_PM_QOS,
 	ISP_CMD_SET_PM_QOS_INFO,
 	ISP_CMD_TRANSFOR_CCU_REG,
-	ISP_CMD_SET_SEC_DAPC_REG,
-	ISP_CMD_SET_SEC_ENABLE
+	ISP_CMD_SET_SEC_ENABLE,
+	ISP_CMD_SET_VIR_CQCNT,
+	ISP_CMD_SET_SEC_DAPC_REG
 };
 
 enum ISP_HALT_DMA_ENUM {
@@ -799,6 +801,8 @@ enum ISP_HALT_DMA_ENUM {
 	_IOWR(ISP_MAGIC, ISP_CMD_TRANSFOR_CCU_REG,  unsigned char*)
 #define ISP_SET_SEC_ENABLE \
 	_IOW(ISP_MAGIC, ISP_CMD_SET_SEC_ENABLE, unsigned int)
+#define ISP_SET_VIR_CQCNT \
+	_IOWR(ISP_MAGIC, ISP_CMD_SET_VIR_CQCNT, unsigned int)
 
 #ifdef CONFIG_COMPAT
 #define COMPAT_ISP_READ_REGISTER      \
@@ -841,6 +845,10 @@ enum ISP_HALT_DMA_ENUM {
 #define COMPAT_ISP_SET_MEM_INFO       \
 	_IOWR(ISP_MAGIC, ISP_CMD_SET_MEM_INFO, \
 					struct compat_ISP_MEM_INFO_STRUCT)
+#define COMPAT_ISP_SET_VIR_CQCNT      \
+	_IOWR(ISP_MAGIC, ISP_CMD_SET_VIR_CQCNT, unsigned int)
+#define COMPAT_ISP_TRANSFOR_CCU_REG     \
+	_IOWR(ISP_MAGIC, ISP_CMD_TRANSFOR_CCU_REG,   compat_uptr_t)
 #endif
 
 int32_t ISP_MDPClockOnCallback(uint64_t engineFlag);
@@ -855,4 +863,4 @@ int32_t ISP_EndGCECallback(uint32_t taskID, uint32_t regCount,
 				uint32_t *regValues);
 
 #endif
-
+/*hs14 code for AL6528ADEU-1551 by lisizhou at 2022/11/11 end*/
