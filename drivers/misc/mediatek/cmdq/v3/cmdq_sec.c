@@ -1895,7 +1895,8 @@ static s32 cmdq_sec_insert_handle_from_thread_array_by_cookie(
 		return -EMSGSIZE;
 	}
 
-	thread->task_list[cookie % max_task] = task;
+	thread->task_list[cookie % cmdq_max_task_in_secure_thread[
+		thread->idx - CMDQ_MIN_SECURE_THREAD_ID]] = task;
 	task->handle->secData.waitCookie = cookie;
 	task->handle->secData.resetExecCnt = reset_thread;
 
@@ -2219,7 +2220,7 @@ static void cmdq_sec_thread_irq_handle_by_cookie(
 		 */
 		thread->wait_cookie = 0;
 		thread->task_cnt = 0;
-		*va = 0;
+		CMDQ_REG_SET32(va, 0);
 
 		spin_unlock_irqrestore(&cmdq_sec_task_list_lock, flags);
 		return;
@@ -2518,7 +2519,7 @@ static s32 __init cmdq_late_init(void)
 		sizeof(struct iwcCmdqMessageEx2_t), GFP_KERNEL);
 	if (!handle->mtee_iwcMessageEx2)
 		return -ENOMEM;
-	CMDQ_LOG("iwc:%p(%#lx) ex:%p(%#lx) ex2:%p(%#lx)\n",
+	CMDQ_LOG("iwc:%p(%#x) ex:%p(%#x) ex2:%p(%#x)\n",
 		handle->mtee_iwcMessage, sizeof(struct iwcCmdqMessage_t),
 		handle->mtee_iwcMessageEx, sizeof(struct iwcCmdqMessageEx_t),
 		handle->mtee_iwcMessageEx2, sizeof(struct iwcCmdqMessageEx2_t));

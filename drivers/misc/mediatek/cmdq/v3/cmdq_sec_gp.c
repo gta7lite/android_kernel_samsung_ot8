@@ -11,9 +11,17 @@
 void cmdq_sec_setup_tee_context(struct cmdq_sec_tee_context *tee)
 {
 	/* 09010000 0000 0000 0000000000000000 */
+#if defined(CONFIG_TEEGRIS_TEE_SUPPORT)
+	tee->uuid = (TEEC_UUID) { 0x00000000, 0x4D54, 0x4B5F,
+		{0x42, 0x46, 0x43, 0x4D, 0x44, 0x51, 0x54, 0x41} };
+#else
 	tee->uuid = (struct TEEC_UUID) { 0x09010000, 0x0, 0x0,
 		{ 0x0, 0x0, 0x0, 0x0, 0x0, 0x0 } };
+#endif
 }
+
+#include <linux/atomic.h>
+static atomic_t m4u_init = ATOMIC_INIT(0);
 
 s32 cmdq_sec_init_context(struct cmdq_sec_tee_context *tee)
 {
@@ -32,6 +40,11 @@ s32 cmdq_sec_init_context(struct cmdq_sec_tee_context *tee)
 	}
 #endif
 	CMDQ_LOG("[SEC]TEE is ready\n");
+	/* do m4u sec init */
+	if (atomic_cmpxchg(&m4u_init, 0, 1) == 0) {
+		m4u_sec_init();
+		CMDQ_LOG("[SEC] M4U_sec_init is called\n");
+	}
 
 	status = TEEC_InitializeContext(NULL, &tee->gp_context);
 	if (status != TEEC_SUCCESS)
@@ -148,9 +161,9 @@ s32 cmdq_sec_execute_session(struct cmdq_sec_tee_context *tee,
 	u32 cmd, s32 timeout_ms, bool share_mem_ex1, bool share_mem_ex2)
 {
 	s32 status;
-	struct TEEC_Operation operation;
+	TYPE_STRUCT  TEEC_Operation operation;
 
-	memset(&operation, 0, sizeof(struct TEEC_Operation));
+	memset(&operation, 0, sizeof(TYPE_STRUCT  TEEC_Operation));
 #if defined(CONFIG_TRUSTONIC_TEE_SUPPORT)
 	operation.param_types = TEEC_PARAM_TYPES(TEEC_MEMREF_PARTIAL_INOUT,
 		share_mem_ex1 ? TEEC_MEMREF_PARTIAL_INOUT : TEEC_NONE,
