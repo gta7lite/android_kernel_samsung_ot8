@@ -92,6 +92,10 @@ static unsigned int last_level;
 static unsigned int current_level;
 static DEFINE_MUTEX(bl_level_limit_mutex);
 
+/* HS03S code added for SR-AL5625-01-393 by gaozhengwei at 20210604 start */
+extern bool g_system_is_shutdown;
+/* HS03S code added for SR-AL5625-01-393 by gaozhengwei at 20210604 end */
+
 /****************************************************************************
  * external functions for display
  * this API add for control the power and temperature,
@@ -535,6 +539,10 @@ static void mt65xx_leds_shutdown(struct platform_device *pdev)
 	struct nled_setting led_tmp_setting = { NLED_OFF, 0, 0 };
 
 	pr_debug("Turn off backlight\n");
+
+	/* HS03S code added for SR-AL5625-01-393 by gaozhengwei at 20210604 start */
+	g_system_is_shutdown = 1;
+	/* HS03S code added for SR-AL5625-01-393 by gaozhengwei at 20210604 end */
 
 	for (i = 0; i < MT65XX_LED_TYPE_TOTAL; i++) {
 		if (!g_leds_data[i])
