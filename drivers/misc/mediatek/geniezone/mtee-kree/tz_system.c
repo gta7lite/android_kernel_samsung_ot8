@@ -64,6 +64,12 @@
 #define KREE_ERR(fmt...) pr_info("[KREE][ERR]" fmt)
 #endif
 
+#if IS_ENABLED(CONFIG_TEEGRIS_TEE_SUPPORT)
+	#define TYPE_STRUCT
+#else
+	#define TYPE_STRUCT struct
+#endif
+
 #define DYNAMIC_TIPC_LEN
 #define GZ_SYS_SERVICE_NAME_TRUSTY "com.mediatek.geniezone.srv.sys"
 #define GZ_SYS_SERVICE_NAME_NEBULA "nebula.com.mediatek.geniezone.srv.sys"
@@ -978,11 +984,11 @@ TZ_RESULT _Gz_KreeServiceCall_body(KREE_SESSION_HANDLE handle, uint32_t command,
 		param[1].value.a = ret;
 		break;
 
-#if IS_ENABLED(CONFIG_MTK_TEE_GP_SUPPORT)
+#if IS_ENABLED(CONFIG_MTK_TEE_GP_SUPPORT) && !IS_ENABLED(CONFIG_TEEGRIS_TEE_SUPPORT)
 	case REE_SERVICE_CMD_TEE_INIT_CTX:
 		ret = TEEC_InitializeContext(
 			(char *)param[0].mem.buffer,
-			(struct TEEC_Context *)param[1].mem.buffer);
+			(TYPE_STRUCT TEEC_Context *)param[1].mem.buffer);
 		if (ret != TEEC_SUCCESS)
 			KREE_ERR("[ERROR] TEEC_InitializeContext failed: %x\n",
 				 ret);
@@ -991,14 +997,14 @@ TZ_RESULT _Gz_KreeServiceCall_body(KREE_SESSION_HANDLE handle, uint32_t command,
 
 	case REE_SERVICE_CMD_TEE_FINAL_CTX:
 		TEEC_FinalizeContext(
-			(struct TEEC_Context *)param[0].mem.buffer);
+			(TYPE_STRUCT TEEC_Context *)param[0].mem.buffer);
 		break;
 
 	case REE_SERVICE_CMD_TEE_OPEN_SE:
 		ret = TEEC_OpenSession(
-			(struct TEEC_Context *)param[0].mem.buffer,
-			(struct TEEC_Session *)param[1].mem.buffer,
-			(struct TEEC_UUID *)param[2].mem.buffer,
+			(TYPE_STRUCT TEEC_Context *)param[0].mem.buffer,
+			(TYPE_STRUCT TEEC_Session *)param[1].mem.buffer,
+			(TYPE_STRUCT TEEC_UUID *)param[2].mem.buffer,
 			TEEC_LOGIN_PUBLIC, NULL, NULL, NULL);
 		if (ret != TEEC_SUCCESS)
 			KREE_ERR("[ERROR] TEEC_OpenSession failed: %x\n", ret);
@@ -1006,14 +1012,14 @@ TZ_RESULT _Gz_KreeServiceCall_body(KREE_SESSION_HANDLE handle, uint32_t command,
 		break;
 
 	case REE_SERVICE_CMD_TEE_CLOSE_SE:
-		TEEC_CloseSession((struct TEEC_Session *)param[0].mem.buffer);
+		TEEC_CloseSession((TYPE_STRUCT TEEC_Session *)param[0].mem.buffer);
 		break;
 
 	case REE_SERVICE_CMD_TEE_INVOK_CMD:
 		ret = TEEC_InvokeCommand(
-			(struct TEEC_Session *)param[0].mem.buffer,
+			(TYPE_STRUCT TEEC_Session *)param[0].mem.buffer,
 			param[1].value.a,
-			(struct TEEC_Operation *)param[2].mem.buffer, NULL);
+			(TYPE_STRUCT TEEC_Operation *)param[2].mem.buffer, NULL);
 		if (ret != TEEC_SUCCESS)
 			KREE_ERR("[ERROR] TEEC_InvokeCommand failed: %x\n",
 				 ret);
