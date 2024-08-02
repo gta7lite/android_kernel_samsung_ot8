@@ -640,8 +640,7 @@ static int init_heavy_tlb(void)
 			cpu_overutil->max_task_pid = 0;
 
 			if (cid < 0 || cid >= cluster_nr) {
-				printk_deferred_once("%s: cid=%d is out of nr=%d\n", __func__,
-							cid, cluster_nr);
+				pr_info("%s: cid=%d is out of nr=%d\n", __func__, cid, cluster_nr);
 				continue;
 			}
 
@@ -667,7 +666,7 @@ static int init_heavy_tlb(void)
 						overutil_threshold)/100;
 			}
 
-			printk_deferred_once("%s: cpu=%d thresh_l=%d thresh_h=%d max_capaicy=%lu\n",
+			pr_info("%s: cpu=%d thresh_l=%d thresh_h=%d max_capaicy=%lu\n",
 				__func__, tmp_cpu,
 				cpu_overutil->overutil_thresh_l,
 				cpu_overutil->overutil_thresh_h,

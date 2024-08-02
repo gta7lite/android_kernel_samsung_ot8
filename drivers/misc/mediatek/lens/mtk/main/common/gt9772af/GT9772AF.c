@@ -227,7 +227,19 @@ int GT9772AF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 	int Ret = 0;
 
 	LOG_INF("Start\n");
-
+/* Huaqin modify for o6 Reduce motor sound by gaozhenyu at 2021/5/22 start */
+	if (*g_pAF_Opened == 2) {
+		LOG_INF("Wait\n");
+	        s4AF_WriteReg(0, 0x04, 200); /* Power down mode */
+                msleep(20);
+                s4AF_WriteReg(0, 0x04, 40);
+                msleep(20);
+                s4AF_WriteReg(0, 0x04, 10);
+                msleep(20);
+                s4AF_WriteReg(0, 0x04, 5);
+                msleep(20);
+	}
+/* Huaqin modify for o6 Reduce motor sound by gaozhenyu at 2021/5/22 end */
 	if (*g_pAF_Opened) {
 		LOG_INF("Free\n");
 
@@ -272,13 +284,10 @@ int GT9772AF_GetFileName(unsigned char *pFileName)
 {
 	#if SUPPORT_GETTING_LENS_FOLDER_NAME
 	char FilePath[256];
-	char *FileString = NULL;
+	char *FileString;
 
-	if (snprintf(FilePath, sizeof(FilePath), "%s", __FILE__) < 0)
-		return 0;
+	sprintf(FilePath, "%s", __FILE__);
 	FileString = strrchr(FilePath, '/');
-	if (FileString == NULL)
-		return 0;
 	*FileString = '\0';
 	FileString = (strrchr(FilePath, '/') + 1);
 	strncpy(pFileName, FileString, AF_MOTOR_NAME);
