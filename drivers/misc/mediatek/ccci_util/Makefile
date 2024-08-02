@@ -36,6 +36,7 @@ ifneq ($(CCCI_OBJ), n)
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/ccci_util
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/memory-amms
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/aee/
 
 ifeq ($(CONFIG_MTK_SECURITY_SW_SUPPORT), y)
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/asf_export_inc
