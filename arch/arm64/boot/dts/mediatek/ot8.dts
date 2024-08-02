@@ -12,13 +12,9 @@
 
 /* chosen */
 &chosen {
-
-	/* fpga may has no lk, we need to specify display info here */
-	/* fb buffer is reserved using this dts by memory node above */
 	atag,videolfb-fb_base_h = <0x0>;
 	atag,videolfb-fb_base_l = <0x5e605000>;
 	atag,videolfb-islcmfound = <1>;
-	/* because no lk, so lcm is not inited */
 	atag,videolfb-islcm_inited = <0>;
 	atag,videolfb-fps= <6000>;
 	atag,videolfb-vramSize= <0x017bb000>;
@@ -81,7 +77,6 @@
 		vib_limit = <9>;
 		vib_vol= <9>;
 	};
-	/*TabA7 Lite code for OT8-54 by Hujincan at 20201126 start*/
 	sardsi:sardsi_detect@0 {
 		compatible = "mediatek,sardsi_detect";
 		interrupt-parent = <&pio>;
@@ -90,17 +85,12 @@
 		pinctrl-names = "sardsi_active";
 		pinctrl-0 = <&dsi_active>;
 	};
-	/*TabA7 Lite code for OT8-54 by Hujincan at 20201126 end*/
-        /*TabA7 Lite code for OT8S-7 by chengerui at 20220302 start*/
 	grdm-dev {
 		compatible = "sec,guardianm";
-		/* TabA7 Lite code for P210218-01007 by chengerui at 20220314 start */
 		clocks = <&infracfg_ao CLK_IFR_SPI0>;
 		clock-names = "grdm-clk";
-		/* TabA7 Lite code for P210218-01007 by chengerui at 20220314 end */
 		sec,gpio_power = <&pio 159 1>;
     };
-        /*TabA7 Lite code for OT8S-7 by chengerui at 20220302 end*/
 };
 
 &pio {
@@ -117,7 +107,6 @@
 		};
 	};
 
-	/*TabA7 Lite code for OT8-54 by Hujincan at 20201126 start*/
 	dsi_active: dsi_active {
 		pins_cmd_dat {
 			pinmux = <PINMUX_GPIO53__FUNC_GPIO53>;
@@ -126,7 +115,6 @@
 			bias-disable;
 		};
 	};
-	/*TabA7 Lite code for OT8-54 by Hujincan at 20201126 end*/
 };
 
 &i2c0 {
@@ -174,7 +162,7 @@
 	};
 
 };
-/* TOUCH start */
+
 &touch {
 /delete-property/ compatible;
 	compatible = "mediatek,touch";
@@ -239,9 +227,7 @@
 		};
 	};
 };
-/* TOUCH end */
 
-/* CONSYS GPIO standardization */
 &pio {
 	consys_pins_default: consys_default {
 	};
@@ -277,9 +263,7 @@
 	pinctrl-3 = <&gpslna_pins_ol>;
 	status = "okay";
 };
-/* CONSYS end */
 
-/* accdet start */
 &accdet {
 	accdet-mic-vol = <6>;
 	headset-mode-setting = <0x500 0x500 1 0x1f0 0x800 0x800 0x20 0x44>;
@@ -305,50 +289,7 @@
 		};
 	};
 };
-/* accdet end */
 
-/* FINGERPRINT start
-&spi0 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	fingerprint@0 {
-		compatible = "goodix,goodix-fp";
-		reg = <0>;
-		spi-max-frequency = <8000000>;
-		netlink-event = <30>;
-		status = "okay";
-	};
-};
-
-&goodix_fp {
-	pinctrl-names = "default", "reset_high", "reset_low";
-	pinctrl-0 = <&fingerprint_default>;
-	pinctrl-1 = <&fingerprint_reset_high>;
-	pinctrl-2 = <&fingerprint_reset_low>;
-	status = "okay";
-};
-
-&pio {
-	fingerprint_default: state_default {
-	};
-	fingerprint_reset_high: state_reset_high {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO172__FUNC_GPIO172>;
-			slew-rate = <1>;
-			output-high;
-		};
-	};
-	fingerprint_reset_low: state_reset_low {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO172__FUNC_GPIO172>;
-			slew-rate = <1>;
-			output-low;
-		};
-	};
-};
-FINGERPRINT end */
-
-/* IRTX GPIO end */
 &irtx_pwm {
 	pinctrl-names = "irtx_gpio_led_default", "irtx_gpio_led_set";
 	pinctrl-0 = <&irtx_gpio_led_default>;
@@ -374,9 +315,7 @@ FINGERPRINT end */
 		};
 	};
 };
-/* IRTX GPIO Settings -End */
 
-/* AUDIO GPIO standardization */
 &audgpio {
 	pinctrl-names = "aud_clk_mosi_off",
 			"aud_clk_mosi_on",
@@ -504,7 +443,6 @@ FINGERPRINT end */
 		};
 	};
 };
-/* AUDIO end */
 
 &keypad {
 	pinctrl-names = "default";
@@ -522,7 +460,6 @@ FINGERPRINT end */
 	};
 };
 
-/* FLASHLIGHT GPIO standardization */
 &odm {
 	flashlights_sywt78: flashlights_sywt78 {
 		compatible = "mediatek,flashlights_sywt78";
@@ -579,31 +516,21 @@ FINGERPRINT end */
 	};
 };
 
-/* #include <ot8/cust.dtsi> */
-/* modify code for O8 */
-/* FLASHLIGHT end */
-
-#include "mediatek/ot8/cust.dtsi"
-#include "mediatek/cust_mt8768_camera.dtsi"
 
 &msdc1 {
 	cd_level = /bits/ 8 <MSDC_CD_HIGH>;
 };
 
-/*TabA7 Lite code for OT8-3701 by wenyaqi at 20210309 start*/
 &mt6370_chg {
 	bc12_sel = <1>;
 };
-/*TabA7 Lite code for OT8-3701 by wenyaqi at 20210309 end*/
 
 &mt6370_pmu {
-	mt6370,intr_gpio_num = <11>; /* direct defined GPIO num */
+	mt6370,intr_gpio_num = <11>;
 	mt6370,intr_gpio = <&pio 11 0x0>;
 };
 
 &mt6370_typec {
-	mt6370pd,intr_gpio_num = <41>; /* direct defined GPIO num */
+	mt6370pd,intr_gpio_num = <41>;
 	mt6370pd,intr_gpio = <&pio 41 0x0>;
 };
-/*End of this file, DO NOT ADD ANYTHING HERE*/
-
