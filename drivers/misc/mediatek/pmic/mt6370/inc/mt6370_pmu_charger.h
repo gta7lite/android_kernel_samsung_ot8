@@ -13,6 +13,10 @@
 #define CONFIG_MT6370_DCDTOUT_SUPPORT
 
 /* Parameter */
+/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 start*/
+#define SLOW_CHARGING_CURRENT_STANDARD	400000 /*400mA*/
+#define V_SLOW_CHARGER_MIN 4500000 /*4.5 V*/
+/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 end*/
 /* uA */
 #define MT6370_ICHG_NUM		64
 #define MT6370_ICHG_MIN		100000
@@ -323,12 +327,21 @@
 #define MT6370_MASK_DC_VBUSOV_EN	(1 << MT6370_SHIFT_DC_VBUSOV_EN)
 #define MT6370_MASK_DC_VBUSOV_LVL	0x7C
 
+/*HS03s for SR-AL5625-01-261 by wenyaqi at 20210428 start*/
+/* ========== CHGHIDDENCTRL15 0x3E ============ */
+#define MT6370_MASK_dADC_IBIAS_SEL	(0x0C)
+/*HS03s for SR-AL5625-01-261 by wenyaqi at 20210428 end*/
+
 /* ========== CHG_STAT 0x4A ============ */
 #define MT6370_SHIFT_ADC_STAT	0
 #define MT6370_SHIFT_CHG_STAT	6
+/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 start*/
+#define MT6371_SHIFT_BATT_CHG_STAT	4
 
 #define MT6370_MASK_ADC_STAT	(1 << MT6370_SHIFT_ADC_STAT)
 #define MT6370_MASK_CHG_STAT	0xC0
+#define MT6371_MASK_BAT_CHG_STAT	0x30
+/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 end*/
 
 /* ============ VDDA SUPPLY 0x62 ============ */
 #define MT6370_SHIFT_LBPHYS_SEL		(7)
