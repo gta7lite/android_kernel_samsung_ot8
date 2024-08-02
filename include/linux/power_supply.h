@@ -39,15 +39,30 @@ enum {
 	POWER_SUPPLY_STATUS_DISCHARGING,
 	POWER_SUPPLY_STATUS_NOT_CHARGING,
 	POWER_SUPPLY_STATUS_FULL,
+	POWER_SUPPLY_STATUS_CMD_DISCHARGING,
 };
 
+/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 start*/
+#ifndef HQ_FACTORY_BUILD	//ss version
 enum {
 	POWER_SUPPLY_CHARGE_TYPE_UNKNOWN = 0,
 	POWER_SUPPLY_CHARGE_TYPE_NONE,
 	POWER_SUPPLY_CHARGE_TYPE_TRICKLE,
 	POWER_SUPPLY_CHARGE_TYPE_FAST,
 	POWER_SUPPLY_CHARGE_TYPE_TAPER,
+	POWER_SUPPLY_CHARGE_TYPE_SLOW,
 };
+#else
+enum {
+	POWER_SUPPLY_CHARGE_TYPE_UNKNOWN = 0,
+	POWER_SUPPLY_CHARGE_TYPE_NONE,
+	POWER_SUPPLY_CHARGE_TYPE_TRICKLE,
+	POWER_SUPPLY_CHARGE_TYPE_FAST,
+	POWER_SUPPLY_CHARGE_TYPE_SLOW,
+	POWER_SUPPLY_CHARGE_TYPE_TAPER,
+};
+#endif
+/*HS03s for SR-AL5625-01-278 by wenyaqi at 20210427 end*/
 
 enum {
 	POWER_SUPPLY_HEALTH_UNKNOWN = 0,
@@ -63,6 +78,9 @@ enum {
 	POWER_SUPPLY_HEALTH_WARM,
 	POWER_SUPPLY_HEALTH_COOL,
 	POWER_SUPPLY_HEALTH_HOT,
+	POWER_SUPPLY_HEALTH_UNDERVOLTAGE,
+	POWER_SUPPLY_HEALTH_OVERHEATLIMIT,
+	POWER_SUPPLY_HEALTH_MAX,
 };
 
 enum {
@@ -173,6 +191,185 @@ enum power_supply_property {
 	POWER_SUPPLY_PROP_STATUS = 0,
 	POWER_SUPPLY_PROP_CHARGE_TYPE,
 	POWER_SUPPLY_PROP_HEALTH,
+#if defined(CONFIG_HQ_PROJECT_HS03S)
+	/*HS03s for SR-AL5625-01-249 by wenyaqi at 20210425 start*/
+	#ifdef CONFIG_AFC_CHARGER
+	POWER_SUPPLY_PROP_HV_CHARGER_STATUS,
+	POWER_SUPPLY_PROP_AFC_RESULT,
+	POWER_SUPPLY_PROP_HV_DISABLE,
+	#endif
+	/*HS03s for SR-AL5625-01-249 by wenyaqi at 20210425 end*/
+	#ifndef HQ_FACTORY_BUILD	//ss version
+	/* HS03s code for SR-AL5625-01-260 by shixuanxuan at 20210425 start */
+	POWER_SUPPLY_PROP_BATT_PROTECT,
+	POWER_SUPPLY_PROP_BATT_PROTECT_ENABLE,
+	/* HS03s code for SR-AL5625-01-260 by shixuanxuan at 20210425 end */
+	/*HS03s for SR-AL5625-01-293 by wenyaqi at 20210426 start*/
+	POWER_SUPPLY_PROP_BATT_CURRENT_UA_NOW,
+	POWER_SUPPLY_PROP_BATTERY_CYCLE,
+	/*HS03s for SR-AL5625-01-293 by wenyaqi at 20210426 end*/
+	/*HS03s for SR-AL5625-01-276 by wenyaqi at 20210426 start*/
+	POWER_SUPPLY_PROP_BATT_SLATE_MODE,
+	/*HS03s for SR-AL5625-01-276 by wenyaqi at 20210426 end*/
+	/*HS03s for SR-AL5625-01-286 by wenyaqi at 20210426 start*/
+	POWER_SUPPLY_PROP_BATT_MISC_EVENT,
+	/*HS03s for SR-AL5625-01-286 by wenyaqi at 20210426 end*/
+	/*HS03s for SR-AL5625-01-282 by wenyaqi at 20210426 start*/
+	POWER_SUPPLY_PROP_BATT_CURRENT_EVENT,
+	/*HS03s for SR-AL5625-01-282 by wenyaqi at 20210426 end*/
+	/*HS03s for SR-AL5625-01-277 by wenyaqi at 20210427 start*/
+	POWER_SUPPLY_PROP_STORE_MODE,
+	/*HS03s for SR-AL5625-01-277 by wenyaqi at 20210427 end*/
+	#endif
+	/*HS03s for SR-AL5625-01-272 by wenyaqi at 20210427 start*/
+	#ifdef HQ_FACTORY_BUILD //factory version
+	POWER_SUPPLY_PROP_BATT_CAP_CONTROL,
+	#endif
+	/*HS03s for SR-AL5625-01-272 by wenyaqi at 20210427 end*/
+	/*HS03s for AL5626TDEV-224 by liuhong at 20220921 start*/
+	#ifndef HQ_FACTORY_BUILD
+	POWER_SUPPLY_PROP_BATT_FULL_CAPACITY,
+	#endif
+	/*HS03s for AL5626TDEV-224 by liuhong at 20220921 end*/
+#elif defined(CONFIG_HQ_PROJECT_HS04)
+	/*HS03s for SR-AL5625-01-249 by wenyaqi at 20210425 start*/
+	#ifdef CONFIG_AFC_CHARGER
+	POWER_SUPPLY_PROP_HV_CHARGER_STATUS,
+	POWER_SUPPLY_PROP_AFC_RESULT,
+	POWER_SUPPLY_PROP_HV_DISABLE,
+	#endif
+	/*HS03s for SR-AL5625-01-249 by wenyaqi at 20210425 end*/
+	#ifndef HQ_FACTORY_BUILD	//ss version
+	/* HS03s code for SR-AL5625-01-260 by shixuanxuan at 20210425 start */
+	POWER_SUPPLY_PROP_BATT_PROTECT,
+	POWER_SUPPLY_PROP_BATT_PROTECT_ENABLE,
+	/* HS03s code for SR-AL5625-01-260 by shixuanxuan at 20210425 end */
+	/*HS03s for SR-AL5625-01-293 by wenyaqi at 20210426 start*/
+	POWER_SUPPLY_PROP_BATT_CURRENT_UA_NOW,
+	POWER_SUPPLY_PROP_BATTERY_CYCLE,
+	/*HS03s for SR-AL5625-01-293 by wenyaqi at 20210426 end*/
+	/*HS03s for SR-AL5625-01-276 by wenyaqi at 20210426 start*/
+	POWER_SUPPLY_PROP_BATT_SLATE_MODE,
+	/*HS03s for SR-AL5625-01-276 by wenyaqi at 20210426 end*/
+	/*HS03s for SR-AL5625-01-286 by wenyaqi at 20210426 start*/
+	POWER_SUPPLY_PROP_BATT_MISC_EVENT,
+	/*HS03s for SR-AL5625-01-286 by wenyaqi at 20210426 end*/
+	/*HS03s for SR-AL5625-01-282 by wenyaqi at 20210426 start*/
+	POWER_SUPPLY_PROP_BATT_CURRENT_EVENT,
+	/*HS03s for SR-AL5625-01-282 by wenyaqi at 20210426 end*/
+	/*HS03s for SR-AL5625-01-277 by wenyaqi at 20210427 start*/
+	POWER_SUPPLY_PROP_STORE_MODE,
+	/*HS03s for SR-AL5625-01-277 by wenyaqi at 20210427 end*/
+	#endif
+	/*HS03s for SR-AL5625-01-272 by wenyaqi at 20210427 start*/
+	#ifdef HQ_FACTORY_BUILD //factory version
+	POWER_SUPPLY_PROP_BATT_CAP_CONTROL,
+	#endif
+	/*HS03s for SR-AL5625-01-272 by wenyaqi at 20210427 end*/
+	/* HS04_T for DEAL6398A-1879 by shixuanxuan at 20221012 start */
+#ifndef HQ_FACTORY_BUILD
+	POWER_SUPPLY_PROP_BATT_FULL_CAPACITY,
+#endif
+	POWER_SUPPLY_PROP_SHIPMODE,
+	POWER_SUPPLY_PROP_SHIPMODE_REG,
+	/* HS04_T for DEAL6398A-1879 by shixuanxuan at 20221012 end*/
+#elif defined(CONFIG_HQ_PROJECT_OT8)
+	/*TabA7 Lite  code for SR-AX3565-01-108 by gaoxugang at 20201124 start*/
+	#if !defined(HQ_FACTORY_BUILD)
+	POWER_SUPPLY_PROP_BATT_SLATE_MODE,
+	#endif
+	/*TabA7 Lite  code for SR-AX3565-01-108 by gaoxugang at 20201124 end*/
+	/*TabA7 Lite  code for SR-AX3565-01-109 by gaoxugang at 20201124 start*/
+	#if !defined(HQ_FACTORY_BUILD)
+	POWER_SUPPLY_PROP_STORE_MODE,
+	#endif
+	/*TabA7 Lite  code for SR-AX3565-01-109 by gaoxugang at 20201124 end*/
+	/*TabA7 Lite  code for SR-AX3565-01-110 by gaoxugang at 20201124 start*/
+	#if !defined(HQ_FACTORY_BUILD)
+	POWER_SUPPLY_PROP_BATT_MISC_EVENT,
+	#endif
+	/*TabA7 Lite  code for SR-AX3565-01-110 by gaoxugang at 20201124 end*/
+	/* AX3565 for SR-AX3565-01-737 add battery protect function by shixuanxuan at 2021/01/13 start */
+	#if !defined(HQ_FACTORY_BUILD)
+	POWER_SUPPLY_PROP_BATT_PROTECT,
+	POWER_SUPPLY_PROP_BATT_PROTECT_ENABLE,
+	#endif
+	/* AX3565 for SR-AX3565-01-737 add battery protect function by shixuanxuan at 2021/01/13 end */
+	/*TabA7 Lite  code for SR-AX3565-01-113 by gaoxugang at 20201124 start*/
+	#if !defined(HQ_FACTORY_BUILD)
+	POWER_SUPPLY_PROP_BATT_CURRENT_EVENT,
+	#endif
+	/*TabA7 Lite  code for SR-AX3565-01-113 by gaoxugang at 20201124 end*/
+	/*TabA7 Lite code for OT8-106 add afc charger driver by wenyaqi at 20201210 start*/
+	#ifdef CONFIG_AFC_CHARGER
+	POWER_SUPPLY_PROP_HV_CHARGER_STATUS,
+	POWER_SUPPLY_PROP_AFC_RESULT,
+	POWER_SUPPLY_PROP_HV_DISABLE,
+	#endif
+	/*TabA7 Lite code for OT8-106 add afc charger driver by wenyaqi at 20201210 end*/
+	/*TabA7 Lite code for SR-AX3565-01-124 Import battery aging by wenyaqi at 20201221 start*/
+	#ifndef HQ_FACTORY_BUILD	//ss version
+	POWER_SUPPLY_PROP_BATT_CURRENT_UA_NOW,
+	POWER_SUPPLY_PROP_BATTERY_CYCLE,
+	#endif
+	/*TabA7 Lite code for SR-AX3565-01-124 Import battery aging by wenyaqi at 20201221 end*/
+	/*TabA7 Lite code for OT8-739 discharging over 80 by wenyaqi at 20210104 start*/
+	#ifdef HQ_FACTORY_BUILD //factory version
+	POWER_SUPPLY_PROP_BATT_CAP_CONTROL,
+	#endif
+	/*TabA7 Lite code for OT8-739 discharging over 80 by wenyaqi at 20210104 end*/
+        #ifndef HQ_FACTORY_BUILD
+	POWER_SUPPLY_PROP_BATT_FULL_CAPACITY,
+        #endif
+#elif defined(CONFIG_HQ_PROJECT_O22)
+	/* hs14 code for  SR-AL6528A-01-259 by zhouyuhang at 2022/09/15 start*/
+	POWER_SUPPLY_PROP_SHIPMODE,
+	POWER_SUPPLY_PROP_SHIPMODE_REG,
+	/* hs14 code for  SR-AL6528A-01-259 by zhouyuhang at 2022/09/15 end*/
+	/* hs14 code for  SR-AL6528A-01-339 by shanxinkai at 20220930 start*/
+	POWER_SUPPLY_PROP_CHARGE_STATUS,
+	/* hs14 code for  SR-AL6528A-01-339 by shanxinkai at 20220930 end*/
+	/* hs14 code for SR-AL6528A-445 by shanxinkai at 2022/10/28 start */
+	POWER_SUPPLY_PROP_DUMP_CHARGER_IC,
+	/* hs14 code for SR-AL6528A-445 by shanxinkai at 2022/10/28 end */
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 start */
+#ifdef CONFIG_AFC_CHARGER
+	POWER_SUPPLY_PROP_HV_CHARGER_STATUS,
+	POWER_SUPPLY_PROP_AFC_RESULT,
+	POWER_SUPPLY_PROP_HV_DISABLE,
+#endif
+/* hs14 code for SR-AL6528A-01-321 by gaozhengwei at 2022/09/22 end */
+#ifndef HQ_FACTORY_BUILD
+	/* hs14 code for SR-AL6528A-01-338 | SR-AL6528A-01-337 by chengyuanhang at 2022/10/08 start */
+	POWER_SUPPLY_PROP_BATTERY_CYCLE,
+	POWER_SUPPLY_PROP_BATT_CURRENT_UA_NOW,
+	/* hs14 code for SR-AL6528A-01-338 | SR-AL6528A-01-337 by chengyuanhang at 2022/10/08 end */
+	/* hs14 code for SR-AL6528A-01-346 by zhouyuhang at 2022/10/11 start*/
+	POWER_SUPPLY_PROP_BATT_CURRENT_EVENT,
+	/* hs14 code for SR-AL6528A-01-346 by zhouyuhang at 2022/10/11 end*/
+	/* hs14 code for SR-AL6528A-01-261 | SR-AL6528A-01-343 by chengyuanhang at 2022/10/11 start */
+	POWER_SUPPLY_PROP_BATT_FULL_CAPICITY,
+	POWER_SUPPLY_PROP_BATT_MISC_EVENT,
+	/* hs14 code for SR-AL6528A-01-261 | SR-AL6528A-01-343 by chengyuanhang at 2022/10/11 end */
+	/* hs14 code for SR-AL6528A-01-242 by shanxinkai at 2022/10/12 start */
+	POWER_SUPPLY_PROP_BATT_SLATE_MODE,
+	/* hs14 code for SR-AL6528A-01-242 by shanxinkai at 2022/10/12 end */
+	/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 start */
+	POWER_SUPPLY_PROP_STORE_MODE,
+	/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 end */
+	/* hs14 code for AL6528A-1055 by qiaodan at 2023/01/18 start */
+	POWER_SUPPLY_PROP_BATT_TEMP,
+	POWER_SUPPLY_PROP_BATT_DISCHARGE_LEVEL,
+	/* hs14 code for AL6528A-1055 by qiaodan at 2023/01/18 end */
+#endif
+/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 start */
+#ifdef HQ_FACTORY_BUILD
+	POWER_SUPPLY_PROP_BATT_CAP_CONTROL,
+#endif
+/* hs14 code for SR-AL6528A-01-244 by shanxinkai at 2022/11/04 end */
+#else
+// no add new power_supply
+#endif
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_AUTHENTIC,
@@ -401,13 +598,82 @@ enum power_supply_property {
 	POWER_SUPPLY_PROP_PTMC_ID,
 	POWER_SUPPLY_PROP_MANUFACTURER,
 	POWER_SUPPLY_PROP_BATTERY_TYPE,
+#if defined(CONFIG_HQ_PROJECT_O22)
+	/* hs14 code for SR-AL6528A-01-258 by shanxinkai at 2022/09/13 start */
+	POWER_SUPPLY_PROP_CHG_INFO,
+	POWER_SUPPLY_PROP_TCPC_INFO,
+	/* hs14 code for SR-AL6528A-01-258 by shanxinkai at 2022/09/13 end */
+	/* hs14 code for AL6528A-1055 by qiaodan at 2023/01/18 start */
+#ifndef HQ_FACTORY_BUILD
+	POWER_SUPPLY_PROP_BATT_TYPE,
+#endif
+	/* hs14 code for AL6528A-1055 by qiaodan at 2023/01/18 end */
+#else
+	// no add new power_supply
+#endif
 	POWER_SUPPLY_PROP_CYCLE_COUNTS,
 	/*
 	 * Add local extensions for properties with string values between
 	 * MODEL_NAME and SERIAL_NUMBER. Don't add below SERIAL_NUMBER.
 	 */
 	POWER_SUPPLY_PROP_SERIAL_NUMBER,
+	POWER_SUPPLY_PROP_FUELGAUGE_RESET,
+	POWER_SUPPLY_PROP_USBPD_RESET,
+	POWER_SUPPLY_PROP_FACTORY_MODE,
+	POWER_SUPPLY_PROP_PD_SUPPORT,
+	POWER_SUPPLY_PROP_FILTER_CFG,
+	POWER_SUPPLY_PROP_CHARGE_OTG_CONTROL,
+	POWER_SUPPLY_PROP_CHARGE_POWERED_OTG_CONTROL,
+	POWER_SUPPLY_PROP_CHARGE_TEMP,
+	POWER_SUPPLY_PROP_CHARGE_UNO_CONTROL,
+	POWER_SUPPLY_PROP_AFC_CHARGER_MODE,
+	POWER_SUPPLY_PROP_VCHGIN,
+	POWER_SUPPLY_PROP_VWCIN,
+	POWER_SUPPLY_PROP_VBYP,
+	POWER_SUPPLY_PROP_VSYS,
+	POWER_SUPPLY_PROP_VBAT,
+	POWER_SUPPLY_PROP_VGPADC,
+	POWER_SUPPLY_PROP_VCC1,
+	POWER_SUPPLY_PROP_VCC2,
+	POWER_SUPPLY_PROP_ICHGIN,
+	POWER_SUPPLY_PROP_IWCIN,
+	POWER_SUPPLY_PROP_IOTG,
+	POWER_SUPPLY_PROP_ITX,
+	POWER_SUPPLY_PROP_CO_ENABLE,
+	POWER_SUPPLY_PROP_RR_ENABLE,
+	POWER_SUPPLY_PROP_PM_FACTORY,
+	POWER_SUPPLY_PROP_TDIE,
+	POWER_SUPPLY_PROP_FAST_IAVG,
+//	POWER_SUPPLY_PROP_USBPD_RESET,
+	POWER_SUPPLY_PROP_CURRENT_FULL,
+	POWER_SUPPLY_PROP_USBPD_TEST_READ,
+	POWER_SUPPLY_PROP_MAX,
+	POWER_SUPPLY_EXT_PROP_MAX = POWER_SUPPLY_PROP_MAX + 256,
 };
+
+#if !defined(HQ_FACTORY_BUILD) //ss version
+enum batt_misc_event_ss {
+	//BATT_MISC_EVENT_NONE = 0x000000,					/* Default value, nothing will be happen */
+	BATT_MISC_EVENT_UNDEFINED_RANGE_TYPE = 0x00000001,	/* water detection - not support */
+	BATT_MISC_EVENT_TIMEOUT_OPEN_TYPE = 0x00000004,		/* DCD timeout */
+	BATT_MISC_EVENT_HICCUP_TYPE = 0x00000020,			/* not use, it happens when water is detected in a interface port */
+	BATT_MISC_EVENT_FULL_CAPACITY = 0x01000000,
+};
+#endif
+/*HS03s for SR-AL5625-01-286 by wenyaqi at 20210426 end*/
+/*HS03s for SR-AL5625-01-282 by wenyaqi at 20210426 start*/
+#if !defined(HQ_FACTORY_BUILD) //ss version
+enum batt_current_event_ss {
+       SEC_BAT_CURRENT_EVENT_NONE = 0x00000,               /* Default value, nothing will be happen */
+       SEC_BAT_CURRENT_EVENT_AFC = 0x00001,                /* Do not use this*/
+       SEC_BAT_CURRENT_EVENT_CHARGE_DISABLE = 0x00002,     /* This event is for a head mount VR, It is not need */
+       SEC_BAT_CURRENT_EVENT_LOW_TEMP_SWELLING = 0x00010,  /* battery temperature is lower than 18 celsius degree */
+       SEC_BAT_CURRENT_EVENT_HIGH_TEMP_SWELLING = 0x00020, /* battery temperature is higher than 41 celsius degree */
+       SEC_BAT_CURRENT_EVENT_USB_100MA = 0x00040,          /* USB 2.0 device under test is set in unconfigured state, not enumerate */
+	   SEC_BAT_CURRENT_EVENT_SLATE = 0x00800,
+};
+#endif
+
 
 enum power_supply_type {
 	POWER_SUPPLY_TYPE_UNKNOWN = 0,
@@ -433,6 +699,41 @@ enum power_supply_type {
 	POWER_SUPPLY_TYPE_UFP,			/* Type-C UFP */
 	POWER_SUPPLY_TYPE_DFP,			/* Type-C DFP */
 	POWER_SUPPLY_TYPE_CHARGE_PUMP,		/* Charge Pump */
+	/* Added by Customer */
+	POWER_SUPPLY_TYPE_MISC,
+	POWER_SUPPLY_TYPE_HV_WIRELESS,
+	POWER_SUPPLY_TYPE_PMA_WIRELESS,
+	POWER_SUPPLY_TYPE_CARDOCK,
+	POWER_SUPPLY_TYPE_UARTOFF,
+	POWER_SUPPLY_TYPE_OTG,
+	POWER_SUPPLY_TYPE_LAN_HUB,
+	POWER_SUPPLY_TYPE_MHL_500,
+	POWER_SUPPLY_TYPE_MHL_900,
+	POWER_SUPPLY_TYPE_MHL_1500,
+	POWER_SUPPLY_TYPE_MHL_USB,
+	POWER_SUPPLY_TYPE_SMART_OTG,
+	POWER_SUPPLY_TYPE_SMART_NOTG,
+	POWER_SUPPLY_TYPE_POWER_SHARING,
+	POWER_SUPPLY_TYPE_HV_MAINS,
+	POWER_SUPPLY_TYPE_HV_MAINS_12V,
+	POWER_SUPPLY_TYPE_HV_PREPARE_MAINS, 
+	POWER_SUPPLY_TYPE_HV_ERR,
+	POWER_SUPPLY_TYPE_MHL_USB_100,
+	POWER_SUPPLY_TYPE_MHL_2000,
+	POWER_SUPPLY_TYPE_HV_UNKNOWN,
+	POWER_SUPPLY_TYPE_MDOCK_TA,
+	POWER_SUPPLY_TYPE_HMT_CONNECTED,
+	POWER_SUPPLY_TYPE_HMT_CHARGE,
+	POWER_SUPPLY_TYPE_WIRELESS_PACK,
+	POWER_SUPPLY_TYPE_WIRELESS_PACK_TA,
+	POWER_SUPPLY_TYPE_WIRELESS_STAND,
+	POWER_SUPPLY_TYPE_WIRELESS_HV_STAND,
+	POWER_SUPPLY_TYPE_PDIC,
+	POWER_SUPPLY_TYPE_HV_MAINS_CHG_LIMIT,
+	POWER_SUPPLY_TYPE_HV_QC20,
+	POWER_SUPPLY_TYPE_HV_QC30,
+	POWER_SUPPLY_TYPE_POGO,
+	POWER_SUPPLY_TYPE_MAX,
 };
 
 enum power_supply_usb_type {
@@ -489,6 +790,7 @@ enum power_supply_typec_power_role {
 
 enum power_supply_notifier_events {
 	PSY_EVENT_PROP_CHANGED,
+	PSY_EVENT_PROP_ADDED,
 };
 
 union power_supply_propval {
