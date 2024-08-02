@@ -35,15 +35,13 @@ int als_data_report_t(int value, int status, int64_t time_stamp)
 		err = sensor_input_event(cxt->als_mdev.minor, &event);
 		cxt->is_get_valid_als_data_after_enable = true;
 	}
-	if (value != last_als_report_data) {
-		event.handle = ID_LIGHT;
-		event.flush_action = DATA_ACTION;
-		event.word[0] = value;
-		event.status = status;
-		err = sensor_input_event(cxt->als_mdev.minor, &event);
-		if (err >= 0)
-			last_als_report_data = value;
-	}
+	/* hs03s code for DEVAL5625-27 by xiongxiaoliang at 2021/05/01 start */
+	event.handle = ID_LIGHT;
+	event.flush_action = DATA_ACTION;
+	event.word[0] = value;
+	event.status = status;
+	err = sensor_input_event(cxt->als_mdev.minor, &event);
+	/* hs03s code for DEVAL5625-27 by xiongxiaoliang at 2021/05/01 end */
 	return err;
 }
 int als_data_report(int value, int status)

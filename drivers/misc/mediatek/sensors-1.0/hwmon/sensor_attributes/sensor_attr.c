@@ -14,6 +14,11 @@
 #include <linux/major.h>
 #include <linux/module.h>
 
+/* hs03s code for SR-AL5625-01-168 by xiongxiaoliang at 2021/06/09 start */
+char *sar_name = NULL;
+module_param(sar_name, charp, 0644);
+/* hs03s code for SR-AL5625-01-168 by xiongxiaoliang at 2021/06/09 end */
+
 static int sensor_attr_major = -1;
 static struct class *sensor_attr_class;
 

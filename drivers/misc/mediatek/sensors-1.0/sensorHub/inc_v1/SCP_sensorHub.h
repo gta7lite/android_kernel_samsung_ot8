@@ -200,7 +200,20 @@ struct sar_event_t {
 	};
 	uint32_t status;
 };
-
+/*hs14 code for SR-AL6528A-01-779 by xiongxiaoliang at 2022/11/23 start*/
+#ifdef CONFIG_MTK_WAKE_UP_MOTION
+struct wakeup_event_t {
+	int32_t state;		/* 0,1 */
+};
+#endif
+/*hs14 code for SR-AL6528A-01-779 by xiongxiaoliang at 2022/11/23 end*/
+/*hs14 code for SR-AL6528A-01-778 by xiongxiaoliang at 2022/11/26 start*/
+#ifdef CONFIG_MTK_SMARTALERT_HUB
+struct alert_event_t {
+	int32_t state;		/* 0,1 */
+};
+#endif
+/*hs14 code for SR-AL6528A-01-778 by xiongxiaoliang at 2022/11/26 end*/
 enum activity_type_t {
 	STILL,
 	STANDING,
@@ -257,6 +270,16 @@ struct data_unit_t {
 		struct in_pocket_event_t inpocket_event;
 		struct geofence_event_t geofence_data_t;
 		struct sar_event_t sar_event;
+/*hs14 code for SR-AL6528A-01-779 by xiongxiaoliang at 2022/11/23 start*/
+#ifdef CONFIG_MTK_WAKE_UP_MOTION
+		struct wakeup_event_t wakeup_event;
+#endif
+/*hs14 code for SR-AL6528A-01-779 by xiongxiaoliang at 2022/11/23 end*/
+/*hs14 code for SR-AL6528A-01-778 by xiongxiaoliang at 2022/11/26 start*/
+#ifdef CONFIG_MTK_SMARTALERT_HUB
+		struct alert_event_t alert_event;
+#endif
+/*hs14 code for SR-AL6528A-01-778 by xiongxiaoliang at 2022/11/26 end*/
 		int32_t data[8];
 	};
 } __packed;
@@ -431,6 +454,9 @@ struct SCP_SENSOR_HUB_GET_RAW_DATA {
 		uint16_t uint16_data[0];
 		int32_t int32_data[0];
 		uint32_t uint32_data[SCP_SENSOR_HUB_AXES_NUM];
+		/* hs03s code for SR-AL5625-01-49 by xiongxiaoliang at 2021/05/06 start */
+		uint32_t      pdata_offset;
+		/* hs03s code for SR-AL5625-01-49 by xiongxiaoliang at 2021/05/06 end */
 	};
 };
 

@@ -290,6 +290,22 @@ static ssize_t trace_store(struct device_driver *ddri, const char *buf,
 	return count;
 }
 
+/* hs03s code for SR-AL5625-01-142 by xiongxiaoliang at 2021/04/25 start */
+static ssize_t cali_status_show(struct device_driver *ddri, char *buf)
+{
+    struct accelhub_ipi_data *obj = obj_ipi_data;
+    uint8_t status = obj->static_cali_status;
+    int err = 0;
+
+    err = wait_for_completion_timeout(&obj->calibration_done, msecs_to_jiffies(2000));
+    if (!err) {
+        status = 2;
+    }
+
+    return snprintf(buf, PAGE_SIZE, "%d\n", status);
+}
+/* hs03s code for SR-AL5625-01-142 by xiongxiaoliang at 2021/04/25 end */
+
 static ssize_t chip_orientation_show(struct device_driver *ddri, char *buf)
 {
 	ssize_t _tLength = 0;
@@ -345,12 +361,14 @@ static ssize_t test_cali_store(struct device_driver *ddri, const char *buf,
 	return tCount;
 }
 
+/* hs03s code for SR-AL5625-01-142 by xiongxiaoliang at 2021/04/25 start */
 static DRIVER_ATTR_RO(chipinfo);
 static DRIVER_ATTR_RO(sensordata);
 static DRIVER_ATTR_RO(cali);
 static DRIVER_ATTR_WO(trace);
 static DRIVER_ATTR_RW(chip_orientation);
 static DRIVER_ATTR_WO(test_cali);
+static DRIVER_ATTR_RO(cali_status);
 
 static struct driver_attribute *accelhub_attr_list[] = {
 	&driver_attr_chipinfo,   /*chip information */
@@ -359,7 +377,9 @@ static struct driver_attribute *accelhub_attr_list[] = {
 	&driver_attr_trace,      /*trace log */
 	&driver_attr_chip_orientation,
 	&driver_attr_test_cali,
+	&driver_attr_cali_status,
 };
+/* hs03s code for SR-AL5625-01-142 by xiongxiaoliang at 2021/04/25 end */
 
 static int accelhub_create_attr(struct device_driver *driver)
 {
