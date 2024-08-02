@@ -67,6 +67,17 @@
 /* 400us, Accdet irq clear timeout  */
 #define ACCDET_TIME_OUT 0x61A80
 
+/*hs14 code for AL6528A-338 by liudi at 20221018 start*/
+#ifdef CONFIG_HQ_PROJECT_O22
+#include <linux/notifier.h>
+#define HEADSET_PLUGOUT_STATE    0
+#define HEADSET_PLUGIN_STATE    1
+extern int headset_notifier_register(struct notifier_block *nb);
+extern int headset_notifier_unregister(struct notifier_block *nb);
+extern int headset_notifier_call_chain(unsigned long val, void *v);
+#endif
+/*hs14 code for AL6528A-338 by liudi at 20221018 end*/
+
 /* cable type  recognized by accdet, and report to WiredAccessoryManager */
 enum accdet_report_state {
 	NO_DEVICE = 0,
