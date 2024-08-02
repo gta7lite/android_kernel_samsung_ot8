@@ -282,15 +282,12 @@ static ssize_t lock_debug_read(struct file *file,
 	struct dbg_internal *d = &di->internal;
 	char buf[10];
 	bool lock;
-	int ret = 0;
 
 	mutex_lock(&d->io_lock);
 	lock = d->access_lock;
 	mutex_unlock(&d->io_lock);
 
-	ret = snprintf(buf, sizeof(buf), "%d\n", lock);
-	if (ret < 0)
-		pr_debug("%s snprintf failed\n", __func__);
+	snprintf(buf, sizeof(buf), "%d\n", lock);
 	return simple_read_from_buffer(user_buf, cnt, loff, buf, strlen(buf));
 }
 
@@ -772,7 +769,7 @@ static int rt5133_validate_vendor_info(struct rt5133_priv *priv)
 void rt5133_register_interrupt_callback(enum RT5133_IRQ_NUM intno,
 					RT5133_IRQ_FUNC_PTR IRQ_FUNC_PTR)
 {
-	if (intno < RT5133_IRQ_MAX) {
+	if (intno < RT5133_IRQ_MAX && intno >= 0) {
 		rt5133_callback[intno] = IRQ_FUNC_PTR;
 		rt5133_callback[intno]();
 	}
