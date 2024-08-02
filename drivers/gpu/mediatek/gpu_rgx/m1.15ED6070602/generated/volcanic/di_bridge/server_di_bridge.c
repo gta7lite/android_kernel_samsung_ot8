@@ -211,9 +211,9 @@ PVRSRVBridgeDIDestroyContext(IMG_UINT32 ui32DispatchTableEntry,
 	LockHandle(psConnection->psHandleBase);
 
 	psDIDestroyContextOUT->eError =
-	    PVRSRVDestroyHandleStagedUnlocked(psConnection->psHandleBase,
-					      (IMG_HANDLE) psDIDestroyContextIN->hContext,
-					      PVRSRV_HANDLE_TYPE_DI_CONTEXT);
+	    PVRSRVReleaseHandleStagedUnlock(psConnection->psHandleBase,
+					    (IMG_HANDLE) psDIDestroyContextIN->hContext,
+					    PVRSRV_HANDLE_TYPE_DI_CONTEXT);
 	if (unlikely((psDIDestroyContextOUT->eError != PVRSRV_OK) &&
 		     (psDIDestroyContextOUT->eError != PVRSRV_ERROR_RETRY)))
 	{

@@ -535,20 +535,20 @@ PVRSRVBridgeRGXSubmitTransfer2(IMG_UINT32 ui32DispatchTableEntry,
 	{
 
 		ui64BufferSize +=
-		    ((IMG_UINT64) psRGXSubmitTransfer2IN->ui32PrepareCount *
-			sizeof(SYNC_PRIMITIVE_BLOCK **));
+		    psRGXSubmitTransfer2IN->ui32PrepareCount *
+		    sizeof(SYNC_PRIMITIVE_BLOCK **);
 		ui64BufferSize +=
-		    ((IMG_UINT64) psRGXSubmitTransfer2IN->ui32PrepareCount *
-			sizeof(IMG_HANDLE **));
+		    psRGXSubmitTransfer2IN->ui32PrepareCount *
+		    sizeof(IMG_HANDLE **);
 		ui64BufferSize +=
-		    ((IMG_UINT64) psRGXSubmitTransfer2IN->ui32PrepareCount *
-			sizeof(IMG_UINT32 *));
+		    psRGXSubmitTransfer2IN->ui32PrepareCount *
+		    sizeof(IMG_UINT32 *);
 		ui64BufferSize +=
-		    ((IMG_UINT64) psRGXSubmitTransfer2IN->ui32PrepareCount *
-			sizeof(IMG_UINT32 *));
+		    psRGXSubmitTransfer2IN->ui32PrepareCount *
+		    sizeof(IMG_UINT32 *);
 		ui64BufferSize +=
-		    ((IMG_UINT64) psRGXSubmitTransfer2IN->ui32PrepareCount *
-			sizeof(IMG_UINT8 *));
+		    psRGXSubmitTransfer2IN->ui32PrepareCount *
+		    sizeof(IMG_UINT8 *);
 	}
 
 	if (unlikely
@@ -822,20 +822,16 @@ PVRSRVBridgeRGXSubmitTransfer2(IMG_UINT32 ui32DispatchTableEntry,
 		for (i = 0; i < psRGXSubmitTransfer2IN->ui32PrepareCount; i++)
 		{
 			ui64BufferSize +=
-			    ((IMG_UINT64) ui32ClientUpdateCountInt[i] *
-				sizeof(SYNC_PRIMITIVE_BLOCK *));
+			    ui32ClientUpdateCountInt[i] *
+			    sizeof(SYNC_PRIMITIVE_BLOCK *);
 			ui64BufferSize +=
-			    ((IMG_UINT64) ui32ClientUpdateCountInt[i] *
-				sizeof(IMG_HANDLE *));
+			    ui32ClientUpdateCountInt[i] * sizeof(IMG_HANDLE *);
 			ui64BufferSize +=
-			    ((IMG_UINT64) ui32ClientUpdateCountInt[i] *
-				sizeof(IMG_UINT32));
+			    ui32ClientUpdateCountInt[i] * sizeof(IMG_UINT32);
 			ui64BufferSize +=
-			    ((IMG_UINT64) ui32ClientUpdateCountInt[i] *
-				sizeof(IMG_UINT32));
+			    ui32ClientUpdateCountInt[i] * sizeof(IMG_UINT32);
 			ui64BufferSize +=
-			    ((IMG_UINT64) ui32CommandSizeInt[i] *
-				sizeof(IMG_UINT8));
+			    ui32CommandSizeInt[i] * sizeof(IMG_UINT8);
 		}
 		if (ui64BufferSize > IMG_UINT32_MAX)
 		{

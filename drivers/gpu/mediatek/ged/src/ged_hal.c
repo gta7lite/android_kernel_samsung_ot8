@@ -276,7 +276,7 @@ static ssize_t custom_boost_gpu_freq_show(struct kobject *kobj,
 	if (false == mtk_get_custom_boost_gpu_freq(&ui32BoostGpuFreqLevel))
 		ui32BoostGpuFreqLevel = 0;
 
-	return scnprintf(buf, PAGE_SIZE, "%u\n", ui32BoostGpuFreqLevel);
+	return scnprintf(buf, PAGE_SIZE, "%d\n", ui32BoostGpuFreqLevel);
 }
 
 static ssize_t custom_boost_gpu_freq_store(struct kobject *kobj,

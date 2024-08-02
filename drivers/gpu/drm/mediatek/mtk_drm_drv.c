@@ -3,6 +3,7 @@
  * Copyright (c) 2019 MediaTek Inc.
 */
 
+#include <linux/syscalls.h>
 #include <drm/drmP.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc_helper.h>
@@ -608,12 +609,10 @@ static void mtk_atomic_force_doze_switch(struct drm_device *dev,
 		/* blocking flush before stop trigger loop */
 		mtk_crtc_pkt_create(&handle, &mtk_crtc->base,
 			mtk_crtc->gce_obj.client[CLIENT_CFG]);
-		if (mtk_crtc_is_frame_trigger_mode(crtc)) {
-			/* cmdq sleep 1ms */
-			cmdq_pkt_sleep(handle, 26000, CMDQ_GPR_R03);
+		if (mtk_crtc_is_frame_trigger_mode(crtc))
 			cmdq_pkt_wait_no_clear(handle,
 				mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
-		} else
+		else
 			cmdq_pkt_wait_no_clear(handle,
 				mtk_crtc->gce_obj.event[EVENT_VDO_EOF]);
 		cmdq_pkt_flush(handle);
@@ -730,6 +729,8 @@ static void mtk_atomit_doze_bypass_pq(struct drm_crtc *crtc)
 	struct mtk_cmdq_cb_data *cb_data;
 	int i, j;
 
+	return;
+
 	DDPINFO("%s\n", __func__);
 	mtk_state = to_mtk_crtc_state(crtc->state);
 
@@ -795,15 +796,15 @@ static void mtk_atomit_doze_enable_pq(struct drm_crtc *crtc)
 	DDPINFO("%s\n", __func__);
 	mtk_state = to_mtk_crtc_state(crtc->state);
 
-	// suspend state will return to avoid cmdq timeout
+	return;
+
 	if (!crtc->state->active) {
 		DDPINFO("%s: crtc is not active\n", __func__);
 		return;
 	}
-	/* only current state is not doze, will enable pq
-	 * state change: doze->resume, doze suspend->resume, supsend->resume
-	 */
-	if (!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+
+	if (mtk_state->doze_changed &&
+		!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
 		DDPINFO("%s: disable doze, enable pq\n", __func__);
 
 		cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
@@ -1007,6 +1008,9 @@ static void mtk_atomic_complete(struct mtk_drm_private *private,
 				struct drm_atomic_state *state)
 {
 	struct drm_device *drm = private->drm;
+	struct drm_crtc *crtc = private->crtc[0];
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	bool skip_frame = mtk_crtc->skip_frame;
 
 	mtk_atomic_wait_for_fences(state);
 
@@ -1042,11 +1046,16 @@ static void mtk_atomic_complete(struct mtk_drm_private *private,
 
 	mtk_atomic_check_plane_sec_state(drm, state);
 
-	if (!mtk_atomic_skip_plane_update(private, state)) {
+	if (!mtk_atomic_skip_plane_update(private, state) && !skip_frame) {
 		drm_atomic_helper_commit_planes(drm, state,
 						DRM_PLANE_COMMIT_ACTIVE_ONLY);
 #ifdef MTK_DRM_ESD_SUPPORT
 		drm_atomic_esd_chk_first_enable(drm, state);
+#endif
+	} else if (skip_frame) {
+		pr_info("[%s] skip frame update\n", __func__);
+#ifdef MTK_DRM_FENCE_SUPPORT
+		release_fence_frame_skip(crtc);
 #endif
 	}
 
@@ -1108,12 +1117,15 @@ static int mtk_atomic_commit(struct drm_device *drm,
 	uint32_t crtc_mask;
 	struct drm_crtc *crtc;
 	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_crtc *mtk_crtc0 = to_mtk_crtc(private->crtc[0]);
 	int ret, i = 0;
 	int index;
 
 	ret = drm_atomic_helper_prepare_planes(drm, state);
 	if (ret)
 		return ret;
+
+	mtk_check_powermode(state, MTK_POWER_MODE_CHANGE);
 
 	mutex_lock(&private->commit.lock);
 	flush_work(&private->commit.work);
@@ -1135,6 +1147,11 @@ static int mtk_atomic_commit(struct drm_device *drm,
 	}
 	mutex_nested_time_start = sched_clock();
 
+#ifndef CONFIG_ARCH_HAS_SYSCALL_WRAPPER
+	mtk_crtc0->need_lock_tid = sys_gettid();
+#else
+	mtk_crtc0->need_lock_tid = current->pid;
+#endif
 	ret = drm_atomic_helper_swap_state(state, 0);
 	if (ret) {
 		DDPPR_ERR("DRM swap state failed! state:%p, ret:%d\n",
@@ -1174,8 +1191,10 @@ err_mutex_unlock:
 				i + (1 << 8));
 	}
 	DRM_MMP_EVENT_END(mutex_lock, 0, 0);
-
+	mtk_crtc0->need_lock_tid = 0;
 	mutex_unlock(&private->commit.lock);
+
+	mtk_check_powermode(state, MTK_POWER_MODE_DONE);
 
 	return 0;
 }
@@ -3089,8 +3108,10 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	init_waitqueue_head(&private->repaint_data.wq);
 	INIT_LIST_HEAD(&private->repaint_data.job_queue);
 	INIT_LIST_HEAD(&private->repaint_data.job_pool);
-	for (i = 0; i < MAX_CRTC ; ++i)
+	for (i = 0; i < MAX_CRTC ; ++i) {
 		atomic_set(&private->crtc_present[i], 0);
+		atomic_set(&private->crtc_rel_present[i], 0);
+	}
 	atomic_set(&private->rollback_all, 0);
 
 #ifdef CONFIG_DRM_MEDIATEK_DEBUG_FS
@@ -3177,12 +3198,6 @@ static const struct drm_ioctl_desc mtk_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(MTK_SUPPORT_COLOR_TRANSFORM,
 				mtk_drm_ioctl_support_color_matrix,
 				DRM_UNLOCKED),
-	DRM_IOCTL_DEF_DRV(MTK_SUPPORT_SLD,
-				mtk_drm_ioctl_enable_sld,
-				DRM_UNLOCKED),
-	DRM_IOCTL_DEF_DRV(MTK_SET_SLD_PARAM,
-				mtk_drm_ioctl_set_sld_param,
-				DRM_UNLOCKED),
 	DRM_IOCTL_DEF_DRV(MTK_SET_GAMMALUT, mtk_drm_ioctl_set_gammalut,
 			  DRM_UNLOCKED),
 	DRM_IOCTL_DEF_DRV(MTK_SET_PQPARAM, mtk_drm_ioctl_set_pqparam,
@@ -3259,8 +3274,6 @@ static const struct drm_ioctl32_desc mtk_compat_ioctls[] = {
 	DRM_IOCTL32_DEF_DRV(MTK_CCORR_EVENTCTL, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_CCORR_GET_IRQ, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_SUPPORT_COLOR_TRANSFORM, NULL),
-	DRM_IOCTL32_DEF_DRV(MTK_SUPPORT_SLD, NULL),
-	DRM_IOCTL32_DEF_DRV(MTK_SET_SLD_PARAM, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_SET_GAMMALUT, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_SET_PQPARAM, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_SET_PQINDEX, NULL),
@@ -3939,6 +3952,10 @@ static int mtk_drm_probe(struct platform_device *pdev)
 #ifdef CONFIG_MTK_IOMMU_V2
 	memcpy(&mydev, pdev, sizeof(mydev));
 #endif
+
+	private->uevent_data.name = "lcm_disconnect";
+	uevent_dev_register(&private->uevent_data);
+	mtk_notifier_activate();
 
 	return 0;
 

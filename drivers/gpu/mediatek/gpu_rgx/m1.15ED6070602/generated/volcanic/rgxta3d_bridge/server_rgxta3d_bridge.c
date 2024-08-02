@@ -317,14 +317,11 @@ PVRSRVBridgeRGXDestroyHWRTDataSet(IMG_UINT32 ui32DispatchTableEntry,
 	LockHandle(psConnection->psHandleBase);
 
 	psRGXDestroyHWRTDataSetOUT->eError =
-	    PVRSRVDestroyHandleStagedUnlocked(psConnection->psHandleBase,
-					      (IMG_HANDLE) psRGXDestroyHWRTDataSetIN->
-					      hKmHwRTDataSet,
-					      PVRSRV_HANDLE_TYPE_RGX_KM_HW_RT_DATASET);
-	if (unlikely
-	    ((psRGXDestroyHWRTDataSetOUT->eError != PVRSRV_OK)
-	     && (psRGXDestroyHWRTDataSetOUT->eError != PVRSRV_ERROR_KERNEL_CCB_FULL)
-	     && (psRGXDestroyHWRTDataSetOUT->eError != PVRSRV_ERROR_RETRY)))
+	    PVRSRVReleaseHandleStagedUnlock(psConnection->psHandleBase,
+					    (IMG_HANDLE) psRGXDestroyHWRTDataSetIN->hKmHwRTDataSet,
+					    PVRSRV_HANDLE_TYPE_RGX_KM_HW_RT_DATASET);
+	if (unlikely((psRGXDestroyHWRTDataSetOUT->eError != PVRSRV_OK) &&
+		     (psRGXDestroyHWRTDataSetOUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
 			 "%s: %s",
@@ -471,14 +468,11 @@ PVRSRVBridgeRGXDestroyZSBuffer(IMG_UINT32 ui32DispatchTableEntry,
 	LockHandle(psConnection->psHandleBase);
 
 	psRGXDestroyZSBufferOUT->eError =
-	    PVRSRVDestroyHandleStagedUnlocked(psConnection->psHandleBase,
-					      (IMG_HANDLE) psRGXDestroyZSBufferIN->
-					      hsZSBufferMemDesc,
-					      PVRSRV_HANDLE_TYPE_RGX_FWIF_ZSBUFFER);
-	if (unlikely
-	    ((psRGXDestroyZSBufferOUT->eError != PVRSRV_OK)
-	     && (psRGXDestroyZSBufferOUT->eError != PVRSRV_ERROR_KERNEL_CCB_FULL)
-	     && (psRGXDestroyZSBufferOUT->eError != PVRSRV_ERROR_RETRY)))
+	    PVRSRVReleaseHandleStagedUnlock(psConnection->psHandleBase,
+					    (IMG_HANDLE) psRGXDestroyZSBufferIN->hsZSBufferMemDesc,
+					    PVRSRV_HANDLE_TYPE_RGX_FWIF_ZSBUFFER);
+	if (unlikely((psRGXDestroyZSBufferOUT->eError != PVRSRV_OK) &&
+		     (psRGXDestroyZSBufferOUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
 			 "%s: %s",
@@ -606,9 +600,9 @@ PVRSRVBridgeRGXUnpopulateZSBuffer(IMG_UINT32 ui32DispatchTableEntry,
 	LockHandle(psConnection->psHandleBase);
 
 	psRGXUnpopulateZSBufferOUT->eError =
-	    PVRSRVDestroyHandleStagedUnlocked(psConnection->psHandleBase,
-					      (IMG_HANDLE) psRGXUnpopulateZSBufferIN->hsPopulation,
-					      PVRSRV_HANDLE_TYPE_RGX_POPULATION);
+	    PVRSRVReleaseHandleStagedUnlock(psConnection->psHandleBase,
+					    (IMG_HANDLE) psRGXUnpopulateZSBufferIN->hsPopulation,
+					    PVRSRV_HANDLE_TYPE_RGX_POPULATION);
 	if (unlikely((psRGXUnpopulateZSBufferOUT->eError != PVRSRV_OK) &&
 		     (psRGXUnpopulateZSBufferOUT->eError != PVRSRV_ERROR_RETRY)))
 	{
@@ -817,9 +811,9 @@ PVRSRVBridgeRGXDestroyFreeList(IMG_UINT32 ui32DispatchTableEntry,
 	LockHandle(psConnection->psHandleBase);
 
 	psRGXDestroyFreeListOUT->eError =
-	    PVRSRVDestroyHandleStagedUnlocked(psConnection->psHandleBase,
-					      (IMG_HANDLE) psRGXDestroyFreeListIN->hCleanupCookie,
-					      PVRSRV_HANDLE_TYPE_RGX_FREELIST);
+	    PVRSRVReleaseHandleStagedUnlock(psConnection->psHandleBase,
+					    (IMG_HANDLE) psRGXDestroyFreeListIN->hCleanupCookie,
+					    PVRSRV_HANDLE_TYPE_RGX_FREELIST);
 	if (unlikely((psRGXDestroyFreeListOUT->eError != PVRSRV_OK) &&
 		     (psRGXDestroyFreeListOUT->eError != PVRSRV_ERROR_RETRY)))
 	{
@@ -1072,10 +1066,10 @@ PVRSRVBridgeRGXDestroyRenderContext(IMG_UINT32 ui32DispatchTableEntry,
 	LockHandle(psConnection->psHandleBase);
 
 	psRGXDestroyRenderContextOUT->eError =
-	    PVRSRVDestroyHandleStagedUnlocked(psConnection->psHandleBase,
-					      (IMG_HANDLE) psRGXDestroyRenderContextIN->
-					      hCleanupCookie,
-					      PVRSRV_HANDLE_TYPE_RGX_SERVER_RENDER_CONTEXT);
+	    PVRSRVReleaseHandleStagedUnlock(psConnection->psHandleBase,
+					    (IMG_HANDLE) psRGXDestroyRenderContextIN->
+					    hCleanupCookie,
+					    PVRSRV_HANDLE_TYPE_RGX_SERVER_RENDER_CONTEXT);
 	if (unlikely
 	    ((psRGXDestroyRenderContextOUT->eError != PVRSRV_OK)
 	     && (psRGXDestroyRenderContextOUT->eError != PVRSRV_ERROR_RETRY)))

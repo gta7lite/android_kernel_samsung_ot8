@@ -1060,6 +1060,13 @@ void mt_gpufreq_set_power_limit_by_pbm(unsigned int limited_power)
 	mutex_unlock(&mt_gpufreq_power_lock);
 }
 
+/* API : get current GPU temperature */
+int mt_gpufreq_get_gpu_temp(void)
+{
+	return get_immediate_gpu_wrap();
+}
+EXPORT_SYMBOL(mt_gpufreq_get_gpu_temp);
+
 /*
  * API : set GPU loading for SSPM
  */
@@ -2828,7 +2835,7 @@ static int __mt_gpufreq_init_clk(struct platform_device *pdev)
 }
 
 static void __mt_gpufreq_init_efuse(struct platform_device *pdev)
-{	
+{
 #ifdef CONFIG_MTK_DEVINFO
 	struct nvmem_cell *efuse_cell;
 	unsigned int *efuse_buf;
@@ -2884,7 +2891,7 @@ static void __mt_gpufreq_init_efuse(struct platform_device *pdev)
 	} else
 		g_segment_id = MT6768_SEGMENT;
 gpufreq_pr_debug("@%s: g_efuse_id = 0x%08X, g_segment_id = %d\n",__func__, g_efuse_id, g_segment_id);
-		
+
 }
 
 static void __mt_gpufreq_init_others(void)
