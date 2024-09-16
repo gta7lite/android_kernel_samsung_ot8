@@ -89,6 +89,8 @@ struct _RGX_FREELIST_ {
 	PMR						*psFreeListStatePMR;
 	IMG_DEVMEM_OFFSET_T		uiFreeListStatePMROffset;
 
+	DEVMEMINT_RESERVATION2	*psFreeListAndStateReservation;
+
 	/* Freelist config */
 	IMG_UINT32				ui32MaxFLPages;
 	IMG_UINT32				ui32InitFLPages;
@@ -148,6 +150,7 @@ typedef struct {
 	IMG_UINT32				ui32ZSBufferID;
 	IMG_UINT32				ui32RefCount;
 	IMG_BOOL				bOnDemand;
+	IMG_BOOL				bIsBacked;
 
 	IMG_BOOL				ui32NumReqByApp;		/* Number of Backing Requests from Application */
 	IMG_BOOL				ui32NumReqByFW;			/* Number of Backing Requests from Firmware */
@@ -284,6 +287,19 @@ PVRSRV_ERROR RGXCreateFreeList(CONNECTION_DATA      *psConnection,
 							   PMR					*psFreeListStatePMR,
 							   IMG_DEVMEM_OFFSET_T	uiFreeListStatePMROffset,
 							   RGX_FREELIST			**ppsFreeList);
+
+/* Create free list */
+PVRSRV_ERROR RGXCreateFreeList2(CONNECTION_DATA       *psConnection,
+                               PVRSRV_DEVICE_NODE	     *psDeviceNode,
+                               IMG_HANDLE             hMemCtxPrivData,
+                               IMG_UINT32             ui32MaxFLPages,
+                               IMG_UINT32             ui32InitFLPages,
+                               IMG_UINT32             ui32GrowFLPages,
+                               IMG_UINT32             ui32GrowParamThreshold,
+                               RGX_FREELIST           *psGlobalFreeList,
+                               IMG_BOOL               bCheckFreelist,
+                               DEVMEMINT_RESERVATION2	 *psFreeListAndStateReservation,
+                               RGX_FREELIST           **ppsFreeList);
 
 /* Destroy free list */
 PVRSRV_ERROR RGXDestroyFreeList(RGX_FREELIST *psFreeList);

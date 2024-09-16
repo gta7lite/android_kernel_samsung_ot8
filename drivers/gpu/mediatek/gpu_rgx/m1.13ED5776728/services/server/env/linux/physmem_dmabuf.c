@@ -876,7 +876,16 @@ PhysmemExportDmaBuf(CONNECTION_DATA *psConnection,
 	return PVRSRV_OK;
 
 fail_dma_buf:
+	/*
+	 * In this error path the dmabuf will always drop its last reference
+	 * since we just created it with export, 0 ref count will
+	 * call into our release function which will Unref the PMR.
+	 */
 	dma_buf_put(psDmaBuf);
+	mutex_unlock(&g_HashLock);
+
+	PVR_ASSERT(eError != PVRSRV_OK);
+	return eError;
 
 fail_pmr_ref:
 	mutex_unlock(&g_HashLock);
@@ -1101,7 +1110,13 @@ err:
 	{
 		IMG_DEVMEM_SIZE_T uiSize = ui32NumVirtChunks * uiChunkSize;
 		IMG_UINT32 uiLog2PageSize = PAGE_SHIFT; /* log2(uiChunkSize) */
-		eError = PhysMemValidateParams(ui32NumPhysChunks, ui32NumVirtChunks, uiFlags, &uiLog2PageSize, &uiSize, &uiChunkSize);
+		eError = PhysMemValidateParams(ui32NumPhysChunks,
+		                               ui32NumVirtChunks,
+		                               pui32MappingTable,
+		                               uiFlags,
+		                               &uiLog2PageSize,
+		                               &uiSize,
+		                               &uiChunkSize);
 		PVR_LOG_GOTO_IF_ERROR(eError, "PhysMemValidateParams", errUnlockAndDMAPut);
 	}
 
