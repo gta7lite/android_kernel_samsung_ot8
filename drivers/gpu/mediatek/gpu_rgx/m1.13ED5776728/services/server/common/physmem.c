@@ -51,6 +51,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pdump_physmem.h"
 #include "pdump_km.h"
 #include "rgx_heaps.h"
+#include "pvr_ricommon.h"
 #include "allocmem.h"
 
 #if defined(DEBUG)
@@ -87,6 +88,7 @@ PVRSRV_ERROR DevPhysMemAlloc(PVRSRV_DEVICE_NODE	*psDevNode,
                              const IMG_CHAR *pszSymbolicAddress,
                              IMG_HANDLE *phHandlePtr,
 #endif
+                             IMG_PID uiPid,
                              IMG_HANDLE hMemHandle,
                              IMG_DEV_PHYADDR *psDevPhysAddr)
 {
@@ -108,7 +110,8 @@ PVRSRV_ERROR DevPhysMemAlloc(PVRSRV_DEVICE_NODE	*psDevNode,
 	eError = psDevNode->sDevMMUPxSetup.pfnDevPxAlloc(psDevNode,
 	                                                 TRUNCATE_64BITS_TO_SIZE_T(ui32MemSize),
 	                                                 psMemHandle,
-	                                                 &sDevPhysAddr_int);
+	                                                 &sDevPhysAddr_int,
+	                                                 uiPid);
 	PVR_LOG_RETURN_IF_ERROR(eError, "pfnDevPxAlloc:1");
 
 	/* Check to see if the page allocator returned pages with our desired
@@ -124,7 +127,8 @@ PVRSRV_ERROR DevPhysMemAlloc(PVRSRV_DEVICE_NODE	*psDevNode,
 		eError = psDevNode->sDevMMUPxSetup.pfnDevPxAlloc(psDevNode,
 		                                                 TRUNCATE_64BITS_TO_SIZE_T(ui32MemSize),
 		                                                 psMemHandle,
-		                                                 &sDevPhysAddr_int);
+		                                                 &sDevPhysAddr_int,
+		                                                 uiPid);
 		PVR_LOG_RETURN_IF_ERROR(eError, "pfnDevPxAlloc:2");
 
 		sDevPhysAddr_int.uiAddr += uiMask;
@@ -339,6 +343,16 @@ if (ui32NumVirtChunks == 0)
 		PVR_DPF((PVR_DBG_ERROR, "%s: Number of virtual chunks cannot be 0",
 				__func__));
 		return PVRSRV_ERROR_INVALID_PARAMS;
+	}
+
+	/* Sparse allocations must be backed immediately as the requested
+	 * pui32MappingTable is not retained in any structure if not immediately
+	 * actioned on allocation.
+	 */
+	if (PVRSRV_CHECK_ON_DEMAND(uiFlags) && bIsSparse)
+	{
+		PVR_DPF((PVR_DBG_ERROR, "%s: Invalid to specify ON_DEMAND for a sparse allocation: 0x%" PVRSRV_MEMALLOCFLAGS_FMTSPEC, __func__, uiFlags));
+		return PVRSRV_ERROR_INVALID_FLAGS;
 	}
 
 	/* Protect against invalid page sizes */
@@ -568,6 +582,16 @@ PhysmemNewRamBackedPMR(CONNECTION_DATA *psConnection,
 		}
 	}
 #endif /* defined(DEBUG) */
+
+	/* If the driver is in an 'init' state all of the allocated memory
+	 * should be attributed to the driver (PID 1) rather than to the
+	 * process those allocations are made under. Same applies to the memory
+	 * allocated for the Firmware. */
+	if (psDevNode->eDevState == PVRSRV_DEVICE_STATE_INIT ||
+	    PVRSRV_CHECK_FW_LOCAL(uiFlags))
+	{
+		uiPid = PVR_SYS_ALLOC_PID;
+	}
 
 	eError = psDevNode->pfnCreateRamBackedPMR[ePhysHeapIdx](psConnection,
 	                                                      psDevNode,
