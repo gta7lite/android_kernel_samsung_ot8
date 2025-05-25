@@ -58,8 +58,6 @@ struct anon_vma {
 
 	/* Interval tree of private "related" vmas */
 	struct rb_root_cached rb_root;
-	/* key to tell if a valid anon_vma type */
-	unsigned long private;
 
 	/*
 	 * ANDROID: KABI preservation, it's safe to put these at the end of this structure as it's
@@ -78,6 +76,7 @@ struct anon_vma {
 	/* Count of VMAs whose ->anon_vma pointer points to this object. */
 	unsigned long num_active_vmas;
 #endif
+
 };
 
 /*
