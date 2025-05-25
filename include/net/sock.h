@@ -1920,9 +1920,9 @@ sk_dst_get(struct sock *sk)
 static inline void dst_negative_advice(struct sock *sk)
 {
 	struct dst_entry *dst = __sk_dst_get(sk);
- 
- 	sk_rethink_txhash(sk);
- 
+
+	sk_rethink_txhash(sk);
+
 	if (dst && dst->ops->negative_advice)
 		dst->ops->negative_advice(sk, dst);
 }
