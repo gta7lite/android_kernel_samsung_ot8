@@ -1645,7 +1645,7 @@ static bool poll_iocb_lock_wq(struct poll_iocb *req)
 	 * In that case, only RCU prevents the queue memory from being freed.
 	 */
 	rcu_read_lock();
-	head = smp_load_acquire(&req->head); /* BS check patch */
+	head = smp_load_acquire(&req->head);
 	if (head) {
 		spin_lock(&head->lock);
 		if (!list_empty(&req->wait.entry))
