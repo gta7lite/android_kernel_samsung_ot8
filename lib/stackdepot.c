@@ -87,7 +87,6 @@ static struct stack_record *max_found;
 static DEFINE_SPINLOCK(max_found_lock);
 #endif
 
-
 static bool init_stack_slab(void **prealloc)
 {
 	if (!*prealloc)
