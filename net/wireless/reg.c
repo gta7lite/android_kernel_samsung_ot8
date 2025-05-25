@@ -1057,6 +1057,8 @@ extern int hq_get_boot_mode(void);
 /*HS03S code for DEVAL5626-458 by wangzikang at 20210720 end*/
 static int query_regdb_file(const char *alpha2)
 {
+	int err;
+
 	ASSERT_RTNL();
 
 	if (regdb)
@@ -1065,22 +1067,14 @@ static int query_regdb_file(const char *alpha2)
 	alpha2 = kmemdup(alpha2, 2, GFP_KERNEL);
 	if (!alpha2)
 		return -ENOMEM;
-	return 0;
-/*HS03S code for DEVAL5626-458 by wangzikang at 20210720 start*/
-#ifndef HQ_FACTORY_BUILD	//ss version
-	if (hq_get_boot_mode() == KERNEL_POWER_OFF_CHARGING_BOOT ||
-		hq_get_boot_mode() == LOW_POWER_OFF_CHARGING_BOOT) {
-		pr_err("This is lpm, dont load regulatory.db\n");
-		return -1;
-	} else {
-#endif
-		return request_firmware_nowait(THIS_MODULE, true, "regulatory.db",
-						&reg_pdev->dev, GFP_KERNEL,
-						(void *)alpha2, regdb_fw_cb);
-#ifndef HQ_FACTORY_BUILD	//ss version
-	}
-#endif
-/*HS03S code for DEVAL5626-458 by wangzikang at 20210720 end*/
+
+	err = request_firmware_nowait(THIS_MODULE, true, "regulatory.db",
+				      &reg_pdev->dev, GFP_KERNEL,
+				      (void *)alpha2, regdb_fw_cb);
+	if (err)
+		kfree(alpha2);
+
+	return err;
 }
 
 int reg_reload_regdb(void)
