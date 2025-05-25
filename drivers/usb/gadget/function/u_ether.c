@@ -20,10 +20,12 @@
 #include <net/sch_generic.h>
 #include <linux/ip.h>
 #include <linux/ktime.h>
+#include <linux/string_helpers.h>
+#include <linux/usb/composite.h>
 
 #include "u_ether.h"
 #include "rndis.h"
-#include "rps_perf.h"
+/* #include "rps_perf.h" */
 #ifdef CONFIG_MEDIATEK_SOLUTION
 #include "usb_boost.h"
 #endif
@@ -82,41 +84,6 @@ static inline int qlen(struct usb_gadget *gadget, unsigned qmult)
 	else
 		return DEFAULT_QLEN;
 }
-
-/*-------------------------------------------------------------------------*/
-
-/* REVISIT there must be a better way than having two sets
- * of debug calls ...
- */
-
-#undef DBG
-#undef VDBG
-#undef ERROR
-#undef INFO
-
-#define xprintk(d, level, fmt, args...) \
-	printk(level "%s: " fmt , (d)->net->name , ## args)
-
-#ifdef DEBUG
-#undef DEBUG
-#define DBG(dev, fmt, args...) \
-	xprintk(dev , KERN_DEBUG , fmt , ## args)
-#else
-#define DBG(dev, fmt, args...) \
-	do { } while (0)
-#endif /* DEBUG */
-
-#ifdef VERBOSE_DEBUG
-#define VDBG	DBG
-#else
-#define VDBG(dev, fmt, args...) \
-	do { } while (0)
-#endif /* DEBUG */
-
-#define ERROR(dev, fmt, args...) \
-	xprintk(dev , KERN_ERR , fmt , ## args)
-#define INFO(dev, fmt, args...) \
-	xprintk(dev , KERN_INFO , fmt , ## args)
 
 /*-------------------------------------------------------------------------*/
 unsigned int rndis_test_last_resp_id;
@@ -535,8 +502,9 @@ static void set_rps_map_work(struct work_struct *work)
 	if (!dev->port_usb)
 		return;
 
-	pr_info("%s - set rps to 0xff\n", __func__);
-	set_rps_map(dev->net->_rx, 0xff);
+	/* pr_info("%s - set rps to 0xff\n", __func__); */
+	/* set_rps_map(dev->net->_rx, 0xff); */
+	pr_info("%s - NOT implement RPS patch yet\n", __func__);
 }
 
 static void tx_complete(struct usb_ep *ep, struct usb_request *req)
@@ -1338,6 +1306,8 @@ int gether_get_host_addr_cdc(struct net_device *net, char *host_addr, int len)
 
 	dev = netdev_priv(net);
 	snprintf(host_addr, len, "%pm", dev->host_mac);
+
+	string_upper(host_addr, host_addr);
 
 	return strlen(host_addr);
 }
