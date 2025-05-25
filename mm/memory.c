@@ -3066,7 +3066,6 @@ static vm_fault_t do_wp_page(struct vm_fault *vmf)
 	 */
 	if (PageAnon(vmf->page) && !PageKsm(vmf->page)) {
 		int total_map_swapcount;
-
 		if (!trylock_page(vmf->page)) {
 			get_page(vmf->page);
 			pte_unmap_unlock(vmf->pte, vmf->ptl);
