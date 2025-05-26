@@ -3518,12 +3518,6 @@ static struct tpd_driver_t nvt_device_driver = {
 static int32_t __init nvt_driver_init(void)
 {
 	int32_t ret = 0;
-	/*Tab A7 lite_U code for SR-AX3565U-01-4  by zhengkunbang at 20230807 start*/
-	if ((tp_get_boot_mode() != NORMAL_BOOT) && (tp_get_boot_mode() != ALARM_BOOT)) {
-		NVT_ERR("tp init fail because boot_mode = %d\n",tp_get_boot_mode());
-		return -EINVAL;
-	}
-	/*Tab A7 lite_U code for SR-AX3565U-01-4  by zhengkunbang at 20230807 end*/
 
 	NVT_LOG("start\n");
 	tpd_get_dts_info();

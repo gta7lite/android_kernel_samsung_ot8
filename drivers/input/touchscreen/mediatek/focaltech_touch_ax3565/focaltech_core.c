@@ -2040,12 +2040,6 @@ static int __init tpd_driver_init(void)
 #if FTS_PSENSOR_EN
     fts_proximity_init();
 #endif
-    /*Tab A7 lite_U code for SR-AX3565U-01-4  by zhengkunbang at 20230807 start*/
-    if ((tp_get_boot_mode() != NORMAL_BOOT) && (tp_get_boot_mode() != ALARM_BOOT)) {
-        FTS_ERROR("tp init fail because boot_mode = %d\n",tp_get_boot_mode());
-        return -EINVAL;
-    }
-    /*Tab A7 lite_U code for SR-AX3565U-01-4  by zhengkunbang at 20230807 end*/
     if (tpd_driver_add(&tpd_device_driver) < 0) {
         FTS_ERROR("[TPD]: Add FTS Touch driver failed!!");
     }

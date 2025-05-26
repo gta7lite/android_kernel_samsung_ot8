@@ -647,11 +647,6 @@ static struct spi_driver cts_spi_driver = {
 /*HS04_U code for SR-AL6398U-01-3  by zhengkunbang at 20230807 start*/
 static int cts_detect_panel(void)
 {
-    if ((tp_get_boot_mode() != NORMAL_BOOT) && (tp_get_boot_mode() != ALARM_BOOT)) {
-        cts_err("tp init fail because boot_mode = %d\n",tp_get_boot_mode());
-        return -EINVAL;
-    }
-
     if (saved_command_line == NULL) {
         return -EFAULT;
     }

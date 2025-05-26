@@ -408,13 +408,6 @@ EXPORT_SYMBOL(tp_choose_panel);
 int tp_detect_panel(const char *tp_ic)
 {
     const char *panel_name = tp_choose_panel();
-    #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0))
-    enum boot_mode_t boot_mode = tp_get_boot_mode();
-    if ((boot_mode != NORMAL_BOOT) && (boot_mode != ALARM_BOOT)) {
-        TP_ERROR("tp init fail because boot_mode = %d\n", boot_mode);
-        return -EINVAL;
-    }
-    #endif
 
     if (panel_name == NULL) {
         TP_ERROR("panel_name is NULL\n");
