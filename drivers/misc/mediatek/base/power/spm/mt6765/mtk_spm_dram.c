@@ -48,11 +48,12 @@ static void spm_phypll_mode_check(void)
 
 	if ((val & (R0_SC_PHYPLL_MODE_SW_PCM | R0_SC_PHYPLL2_MODE_SW_PCM))
 			!= R0_SC_PHYPLL_MODE_SW_PCM) {
-
+#ifdef CONFIG_MTK_AEE_FEATURE
 		aee_kernel_warning(
 			"SPM Warning",
 			"Invalid SPM_POWER_ON_VAL0: 0x%08x\n",
 			val);
+#endif
 	}
 }
 
@@ -73,8 +74,10 @@ void spm_do_dram_config_check(void)
 {
 #if !defined(CONFIG_FPGA_EARLY_PORTING) && defined(CONFIG_MTK_DRAMC)
 	if (spm_dram_golden_setting_cmp(0) != 0)
+#ifdef CONFIG_MTK_AEE_FEATURE
 		aee_kernel_warning("SPM Warning",
 			"dram golden setting mismach");
+#endif
 #endif /* CONFIG_MTK_DRAMC && !CONFIG_FPGA_EARLY_PORTING */
 
 	spm_phypll_mode_check();

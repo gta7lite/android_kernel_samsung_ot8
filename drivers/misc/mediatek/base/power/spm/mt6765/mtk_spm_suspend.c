@@ -208,7 +208,9 @@ static void spm_trigger_wfi_for_sleep(struct pwr_ctrl *pwrctrl)
 	}
 
 	if (spm_dormant_sta < 0) {
+#ifdef CONFIG_MTK_AEE_FEATURE
 		aee_sram_printk("spm_dormant_sta %d", spm_dormant_sta);
+#endif
 		printk_deferred("[name:spm&][SPM] spm_dormant_sta %d"
 			, spm_dormant_sta);
 	}
@@ -280,15 +282,21 @@ static unsigned int spm_output_wake_reason(struct wake_status *wakesta)
 	if (log_wakesta_index >= 0xFFFFFFF0)
 		log_wakesta_index = 0;
 
+#ifdef CONFIG_MTK_AEE_FEATURE
 	aee_sram_printk("sleep_count = %d\n", spm_sleep_count);
+#endif
 	printk_deferred("[name:spm&][SPM] sleep_count = %d\n", spm_sleep_count);
 	if (spm_ap_mdsrc_req_cnt != 0) {
+#ifdef CONFIG_MTK_AEE_FEATURE
 		aee_sram_printk("warning: spm_ap_mdsrc_req_cnt = %d, ",
 			spm_ap_mdsrc_req_cnt);
+#endif
 		printk_deferred("[name:spm&][SPM ]warning: spm_ap_mdsrc_req_cnt = %d, ",
 			spm_ap_mdsrc_req_cnt);
+#ifdef CONFIG_MTK_AEE_FEATURE
 		aee_sram_printk("r7[ap_mdsrc_req] = 0x%x\n",
 			spm_read(SPM_POWER_ON_VAL1) & (1 << 17));
+#endif
 		printk_deferred("r7[ap_mdsrc_req] = 0x%x\n",
 			spm_read(SPM_POWER_ON_VAL1) & (1 << 17));
 	}
@@ -465,9 +473,11 @@ unsigned int spm_go_to_sleep(void)
 
 	mtk_spm_irq_backup();
 
+#ifdef CONFIG_MTK_AEE_FEATURE
 	aee_sram_printk("sec = %u, wakesrc = 0x%x (%u)(%u)\n",
 		  sec, pwrctrl->wake_src, is_cpu_pdn(pwrctrl->pcm_flags),
 		  is_infra_pdn(pwrctrl->pcm_flags));
+#endif
 	printk_deferred("[name:spm&][SPM] sec = %u, wakesrc = 0x%x (%u)(%u)\n",
 		  sec, pwrctrl->wake_src, is_cpu_pdn(pwrctrl->pcm_flags),
 		  is_infra_pdn(pwrctrl->pcm_flags));
@@ -515,8 +525,10 @@ RESTORE_IRQ:
 		if (!pwrctrl->wdt_disable)
 			wd_api->wd_resume_notify();
 		else {
+#ifdef CONFIG_MTK_AEE_FEATURE
 			aee_sram_printk("pwrctrl->wdt_disable %d\n",
 				pwrctrl->wdt_disable);
+#endif
 			printk_deferred("[name:spm&][SPM] pwrctrl->wdt_disable %d\n",
 				pwrctrl->wdt_disable);
 		}
@@ -533,8 +545,10 @@ RESTORE_IRQ:
 	spm_suspend_footprint(0);
 
 	if (pwrctrl->wakelock_timer_val) {
+#ifdef CONFIG_MTK_AEE_FEATURE
 		aee_sram_printk("#@# %s(%d) calling spm_pm_stay_awake()\n",
 			__func__, __LINE__);
+#endif
 		printk_deferred("[name:spm&][SPM ]#@# %s(%d) calling spm_pm_stay_awake()\n",
 			__func__, __LINE__);
 		spm_pm_stay_awake(pwrctrl->wakelock_timer_val);
