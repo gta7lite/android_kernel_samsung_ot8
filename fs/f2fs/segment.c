@@ -2523,9 +2523,7 @@ skip_left:
 	}
 got_it:
 	/* set it as dirty segment in free segmap */
-	if (unlikely(test_bit(segno, free_i->free_segmap)))
-		goto unlock_bug_on;
-
+	f2fs_bug_on(sbi, test_bit(segno, free_i->free_segmap));
 	__set_inuse(sbi, segno);
 	*newseg = segno;
 out_unlock:
